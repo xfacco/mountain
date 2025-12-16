@@ -1,0 +1,12 @@
+[
+    {
+        "name": "Frontend Dev",
+        "command": "npm run dev",
+        "cwd": "frontend"
+    },
+    {
+        "name": "Backend Dev",
+        "command": "uvicorn main:app --reload --port 8000",
+        "cwd": "backend"
+    }
+]

@@ -1,0 +1,1337 @@
+'use client';
+
+import {
+    LayoutDashboard,
+    LogOut,
+    Settings,
+    Map,
+    Plus,
+    Search,
+    CheckCircle,
+    Trash2,
+    Save,
+    X,
+    ArrowLeft,
+    Home
+} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function AdminDashboard() {
+    const router = useRouter();
+    const [activeTab, setActiveTab] = useState('locations');
+    const [locations, setLocations] = useState<any[]>([]);
+    const [loadingLocs, setLoadingLocs] = useState(true);
+
+    // Edit Mode State
+    const [editingLocation, setEditingLocation] = useState<any>(null);
+
+    // Load locations from Firestore
+    useEffect(() => {
+        const fetchLocations = async () => {
+            try {
+                const { collection, getDocs, orderBy, query } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase');
+
+                const q = query(collection(db, 'locations'), orderBy('createdAt', 'desc'));
+                const querySnapshot = await getDocs(q);
+
+                const docs = querySnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setLocations(docs);
+            } catch (e) {
+                console.error("Error fetching locations:", e);
+            } finally {
+                setLoadingLocs(false);
+            }
+        };
+
+        if (!editingLocation) {
+            fetchLocations();
+        }
+    }, [activeTab, editingLocation]);
+
+    // Selection & Merge State
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+    const toggleSelection = (id: string) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
+
+    const startMerge = () => {
+        if (selectedIds.length < 2) return;
+        setActiveTab('merge');
+    };
+
+    const handleLogout = async () => {
+        sessionStorage.removeItem('mountcomp_admin_user');
+        router.push('/admin/login');
+    };
+
+    const handleDeleteLocation = async (id: string, name: string) => {
+        if (!confirm(`Sei sicuro di voler eliminare "${name}"? Questa azione è irreversibile.`)) return;
+
+        try {
+            const { doc, deleteDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await deleteDoc(doc(db, 'locations', id));
+
+            setLocations(prev => prev.filter(l => l.id !== id));
+            alert('Località eliminata con successo.');
+        } catch (error) {
+            console.error(error);
+            alert('Errore durante l\'eliminazione.');
+        }
+    };
+
+    const handleSaveEdit = async (updatedData: any) => {
+        try {
+            const { doc, updateDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            const finalData = { ...updatedData };
+            delete finalData.id; // Don't save ID inside the doc
+
+            await updateDoc(doc(db, 'locations', updatedData.id), finalData);
+
+            setEditingLocation(null); // Close editor
+            setActiveTab('locations'); // Refresh list
+            alert('Modifiche salvate con successo!');
+        } catch (e) {
+            console.error("Update Error:", e);
+            alert("Errore durante il salvataggio delle modifiche.");
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-slate-50 flex">
+            {/* Sidebar */}
+            <aside className="w-64 bg-white border-r border-slate-200 fixed inset-y-0 left-0 z-10 flex flex-col">
+                <div className="p-6 border-b border-slate-100 flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-bold">M</div>
+                    <span className="font-display font-bold text-lg text-slate-800">AdminPanel</span>
+                </div>
+
+                <nav className="flex-1 p-4 space-y-1">
+                    <button
+                        onClick={() => { setActiveTab('locations'); setEditingLocation(null); setSelectedIds([]); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'locations' && !editingLocation ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <Map size={18} />
+                        Gestione Località
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('ai-tasks'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'ai-tasks' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <LayoutDashboard size={18} />
+                        Richieste AI
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('home-config'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'home-config' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <Home size={18} />
+                        Configura Home
+                    </button>
+                </nav>
+
+                <div className="p-4 border-t border-slate-100">
+                    <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-all">
+                        <LogOut size={18} />
+                        Esci
+                    </button>
+                </div>
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 ml-64 p-8">
+                {/* Editor View */}
+                {editingLocation ? (
+                    <EditLocationView
+                        location={editingLocation}
+                        onSave={handleSaveEdit}
+                        onCancel={() => setEditingLocation(null)}
+                    />
+                ) : activeTab === 'merge' ? (
+                    <MergeTool
+                        selectedLocations={locations.filter(l => selectedIds.includes(l.id))}
+                        onCancel={() => setActiveTab('locations')}
+                        onComplete={() => { setActiveTab('locations'); setSelectedIds([]); }}
+                    />
+                ) : (
+                    <>
+                        <header className="flex justify-between items-center mb-8">
+                            <div>
+                                <h1 className="text-2xl font-bold text-slate-900">
+                                    {activeTab === 'locations' ? 'Località' : 'Motore AI Ricerca'}
+                                </h1>
+                                <p className="text-slate-500 text-sm mt-1">
+                                    {activeTab === 'locations' ? 'Gestisci le destinazioni pubblicate.' : activeTab === 'ai-tasks' ? 'Estrai nuovi dati dal web tramite Gemini.' : 'Modifica i contenuti della Home Page.'}
+                                </p>
+                            </div>
+                            <div className="flex gap-3">
+                                {selectedIds.length >= 2 && activeTab === 'locations' && (
+                                    <button onClick={startMerge} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-opacity-90 font-medium text-sm animate-in fade-in">
+                                        <CheckCircle size={16} />
+                                        Unisci Selezionati ({selectedIds.length})
+                                    </button>
+                                )}
+                                <button onClick={() => setActiveTab('ai-tasks')} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg shadow-sm hover:bg-opacity-90 font-medium text-sm">
+                                    <Plus size={16} />
+                                    {activeTab === 'locations' ? 'Nuova Località' : 'Nuova Ricerca'}
+                                </button>
+                            </div>
+                        </header>
+
+                        {activeTab === 'locations' && (
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                {/* ... Search Bar ... */}
+                                <div className="p-4 border-b border-slate-100 flex gap-4">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <input
+                                            type="text"
+                                            placeholder="Cerca località..."
+                                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-primary"
+                                        />
+                                    </div>
+                                </div>
+
+                                {loadingLocs ? (
+                                    <div className="p-8 text-center text-slate-500">Caricamento località...</div>
+                                ) : locations.length === 0 ? (
+                                    // ... empty state ...
+                                    <div className="p-12 text-center">...</div>
+                                ) : (
+                                    <table className="w-full text-left">
+                                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+                                            <tr>
+                                                <th className="px-6 py-4 w-10">
+                                                    <input type="checkbox"
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) setSelectedIds(locations.map(l => l.id));
+                                                            else setSelectedIds([]);
+                                                        }}
+                                                        checked={selectedIds.length === locations.length && locations.length > 0}
+                                                        className="rounded border-slate-300"
+                                                    />
+                                                </th>
+                                                <th className="px-6 py-4">Nome</th>
+                                                <th className="px-6 py-4">Regione</th>
+                                                <th className="px-6 py-4">Stato</th>
+                                                <th className="px-6 py-4 text-right">Azioni</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {locations.map((loc) => (
+                                                <tr key={loc.id} className={`hover:bg-slate-50/50 ${selectedIds.includes(loc.id) ? 'bg-indigo-50/30' : ''}`}>
+                                                    <td className="px-6 py-4">
+                                                        <input type="checkbox"
+                                                            checked={selectedIds.includes(loc.id)}
+                                                            onChange={() => toggleSelection(loc.id)}
+                                                            className="rounded border-slate-300"
+                                                        />
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            {loc.coverImage ? (
+                                                                <img src={loc.coverImage} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                                                            ) : (
+                                                                <div className="w-10 h-10 rounded-lg bg-slate-200" />
+                                                            )}
+                                                            <span className="font-medium text-slate-900">{loc.name}</span>
+                                                            {loc.aiGenerationMetadata && (
+                                                                <span title="Generato da AI" className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200">AI</span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-slate-600 font-medium">
+                                                        {loc.region || 'N/A'}, {loc.country || 'IT'}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${loc.status === 'published'
+                                                            ? 'bg-green-50 text-green-700 border-green-100'
+                                                            : 'bg-yellow-50 text-yellow-700 border-yellow-100'
+                                                            }`}>
+                                                            <CheckCircle size={12} /> {loc.status === 'published' ? 'Pubblicato' : 'Bozza'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <button
+                                                                onClick={() => setEditingLocation(loc)}
+                                                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                                title="Modifica"
+                                                            >
+                                                                <Settings size={18} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteLocation(loc.id, loc.name)}
+                                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                                title="Elimina"
+                                                            >
+                                                                <Trash2 size={18} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'ai-tasks' && <AITaskRunner />}
+                        {activeTab === 'home-config' && <HomeConfigView />}
+                    </>
+                )}
+            </main>
+        </div>
+    );
+}
+
+// ... EditLocationView ...
+// ... AITaskRunner ...
+
+function MergeTool({ selectedLocations, onCancel, onComplete }: { selectedLocations: any[], onCancel: () => void, onComplete: () => void }) {
+    const [masterId, setMasterId] = useState<string>(selectedLocations[0]?.id);
+    const [fieldSelections, setFieldSelections] = useState<Record<string, string>>({});
+    const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
+
+    // Initialize selections when masterId changes
+    useEffect(() => {
+        if (!masterId) return;
+
+        // Default: all fields come from Master
+        const defaults: Record<string, string> = {};
+        CATEGORIES.forEach(cat => defaults[cat] = masterId);
+        setFieldSelections(defaults);
+
+        // Default: only Master services selected
+        const masterLoc = selectedLocations.find(l => l.id === masterId);
+        if (masterLoc && masterLoc.services) {
+            const ids = new Set(masterLoc.services.map((s: any) => s.id || s.name)); // fallback to name if ID missing
+            setSelectedServiceIds(ids as Set<string>);
+        }
+    }, [masterId, selectedLocations]);
+
+    const masterLoc = selectedLocations.find(l => l.id === masterId);
+    if (!masterLoc) return <div>Errore: Master non trovato</div>;
+
+    const sourceLocs = selectedLocations.filter(l => l.id !== masterId);
+
+    const handleMerge = async () => {
+        if (!confirm(`Confermi l'unione? \n- ${masterLoc.name} sarà aggiornata.\n- ${sourceLocs.length} località verranno ELIMINATE definitamente.`)) return;
+
+        try {
+            const { doc, updateDoc, deleteDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            // 1. Build Final Object
+            const finalData: any = { ...masterLoc };
+
+            // Merge Fields
+            Object.entries(fieldSelections).forEach(([category, sourceId]) => {
+                const source = selectedLocations.find(l => l.id === sourceId);
+                if (source) {
+                    finalData[category] = source[category];
+                }
+            });
+
+            // Merge Services
+            const allServices = selectedLocations.flatMap(l => l.services || []);
+            const finalServices = allServices.filter(s => selectedServiceIds.has(s.id || s.name));
+            finalData.services = finalServices;
+
+            // 2. Update Master
+            const { id, ...dataToSave } = finalData; // exclude ID
+            await updateDoc(doc(db, 'locations', masterId), dataToSave);
+
+            // 3. Delete Sources
+            for (const source of sourceLocs) {
+                await deleteDoc(doc(db, 'locations', source.id));
+            }
+
+            alert('Unione completata con successo!');
+            onComplete();
+
+        } catch (e) {
+            console.error("Merge Error:", e);
+            alert("Errore durante l'unione.");
+        }
+    };
+
+    const toggleService = (id: string) => {
+        const newSet = new Set(selectedServiceIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedServiceIds(newSet);
+    };
+
+    // Categories to merge
+    const CATEGORIES = [
+        'description', 'profile', 'technicalData', 'accessibility', 'parking', 'localMobility',
+        'infoPoints', 'medical', 'advancedSkiing', 'outdoorNonSki', 'family', 'rentals',
+        'eventsAndSeasonality', 'gastronomy', 'digital', 'practicalTips', 'openingHours',
+        'safety', 'sustainability'
+    ];
+
+    return (
+        <div className="max-w-6xl mx-auto animate-in fade-in">
+            <div className="flex items-center gap-4 mb-8">
+                <button onClick={onCancel} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                    <ArrowLeft size={24} className="text-slate-600" />
+                </button>
+                <div className="flex-1">
+                    <h1 className="text-2xl font-bold text-slate-900">Unisci Località</h1>
+                    <p className="text-slate-500">Seleziona i dati migliori da conservare.</p>
+                </div>
+                <button onClick={handleMerge} className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-sm flex items-center gap-2">
+                    <CheckCircle size={18} /> Completa Unione
+                </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-8">
+                {/* LEFT: Master Selection */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 col-span-1 h-fit sticky top-8">
+                    <h3 className="font-bold text-slate-900 mb-4">1. Scegli Località Master</h3>
+                    <p className="text-xs text-slate-500 mb-4">Questa è la località che verrà mantenuta (e aggiornata). Le altre verranno eliminate.</p>
+
+                    <div className="space-y-3">
+                        {selectedLocations.map(loc => (
+                            <label key={loc.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${masterId === loc.id ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300'}`}>
+                                <input
+                                    type="radio"
+                                    name="masterBlob"
+                                    checked={masterId === loc.id}
+                                    onChange={() => setMasterId(loc.id)}
+                                    className="text-indigo-600"
+                                />
+                                <div>
+                                    <div className="font-bold text-sm text-slate-900">{loc.name}</div>
+                                    <div className="text-xs text-slate-500">{loc.status} • {loc.services?.length || 0} servizi</div>
+                                </div>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+
+                {/* RIGHT: Data Selection */}
+                <div className="col-span-2 space-y-8">
+
+                    {/* Categories Comparison */}
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 className="font-bold text-slate-900 mb-6">2. Confronta e Scegli Dati</h3>
+
+                        <div className="space-y-6">
+                            {CATEGORIES.map(cat => (
+                                <div key={cat} className="p-4 border border-slate-100 rounded-lg bg-slate-50/50">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <span className="text-xs font-bold uppercase text-slate-400 bg-white px-2 py-1 rounded border border-slate-200">{cat}</span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {/* Master Option */}
+                                        <label className={`cursor-pointer border p-3 rounded-lg transition-all ${fieldSelections[cat] === masterId ? 'border-green-500 bg-green-50 ring-1 ring-green-500' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                                            <div className="flex justify-between mb-2">
+                                                <span className="text-xs font-bold text-slate-700">Master</span>
+                                                <input
+                                                    type="radio" checked={fieldSelections[cat] === masterId}
+                                                    onChange={() => setFieldSelections(prev => ({ ...prev, [cat]: masterId }))}
+                                                />
+                                            </div>
+                                            <div className="text-xs text-slate-600 line-clamp-3 overflow-hidden">
+                                                {JSON.stringify(masterLoc[cat] || 'N/A')}
+                                            </div>
+                                        </label>
+
+                                        {/* Source Option(s) - simplified to first source for now if multiple, or list logic needed */}
+                                        {sourceLocs.map(source => (
+                                            <label key={source.id} className={`cursor-pointer border p-3 rounded-lg transition-all ${fieldSelections[cat] === source.id ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                                                <div className="flex justify-between mb-2">
+                                                    <span className="text-xs font-bold text-slate-700">Source: {source.name}</span>
+                                                    <input
+                                                        type="radio" checked={fieldSelections[cat] === source.id}
+                                                        onChange={() => setFieldSelections(prev => ({ ...prev, [cat]: source.id }))}
+                                                    />
+                                                </div>
+                                                <div className="text-xs text-slate-600 line-clamp-3 overflow-hidden">
+                                                    {JSON.stringify(source[cat] || 'N/A')}
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Services Selection */}
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 className="font-bold text-slate-900 mb-6">3. Unisci Servizi ({selectedServiceIds.size})</h3>
+                        <p className="text-sm text-slate-500 mb-4">Seleziona i singoli servizi da includere nel risultato finale.</p>
+
+                        <div className="space-y-4">
+                            {selectedLocations.map(loc => (
+                                <div key={loc.id} className="border-t border-slate-100 pt-4">
+                                    <h4 className={`text-sm font-bold mb-3 ${loc.id === masterId ? 'text-green-700' : 'text-slate-700'}`}>
+                                        {loc.id === masterId ? 'Da Master' : `Da Source (${loc.name})`}
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {(loc.services || []).map((s: any, idx: number) => {
+                                            const sId = s.id || s.name; // Use ID or Fallback to Name
+                                            const isSelected = selectedServiceIds.has(sId);
+                                            return (
+                                                <label key={idx} className={`flex items-start gap-2 p-2 rounded border text-sm cursor-pointer hover:bg-slate-50 ${isSelected ? 'border-indigo-200 bg-indigo-50/50' : 'border-slate-100'}`}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => toggleService(sId)}
+                                                        className="mt-1 text-indigo-600 rounded"
+                                                    />
+                                                    <div>
+                                                        <div className="font-medium text-slate-900">{s.name}</div>
+                                                        <div className="text-xs text-slate-500 capitalize">{s.category}</div>
+                                                    </div>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// --- Sub-Components ---
+
+function EditLocationView({ location, onSave, onCancel }: { location: any, onSave: (data: any) => void, onCancel: () => void }) {
+    const [formData, setFormData] = useState({
+        ...location,
+        description: location.description || { winter: '', summer: '' },
+        services: location.services || [],
+        tags: location.tags || { vibe: [], target: [], highlights: [] },
+        seasonalImages: location.seasonalImages || {
+            winter: location.coverImage || '',
+            summer: location.coverImage || '',
+            spring: location.coverImage || '',
+            autumn: location.coverImage || ''
+        }
+    });
+
+    // UI State for Active Tab inside Editor
+    const [editTab, setEditTab] = useState<'general' | 'services'>('general');
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        if (name.startsWith('desc_')) {
+            const season = name.split('_')[1];
+            setFormData({
+                ...formData,
+                description: { ...formData.description, [season]: value }
+            });
+        } else if (name.startsWith('img_')) {
+            const season = name.split('_')[1];
+            setFormData({
+                ...formData,
+                seasonalImages: { ...formData.seasonalImages, [season]: value }
+            });
+        } else {
+            setFormData({ ...formData, [name]: value });
+        }
+    };
+
+    // Service Management
+    const handleServiceChange = (idx: number, field: string, value: any) => {
+        const updatedServices = [...formData.services];
+        updatedServices[idx] = { ...updatedServices[idx], [field]: value };
+        setFormData({ ...formData, services: updatedServices });
+    };
+
+    const handleSeasonToggle = (idx: number, season: string) => {
+        const updatedServices = [...formData.services];
+        const currentSeasons = updatedServices[idx].seasonAvailability || [];
+        if (currentSeasons.includes(season)) {
+            updatedServices[idx].seasonAvailability = currentSeasons.filter((s: string) => s !== season);
+        } else {
+            updatedServices[idx].seasonAvailability = [...currentSeasons, season];
+        }
+        setFormData({ ...formData, services: updatedServices });
+    };
+
+    const addService = () => {
+        const newService = {
+            id: crypto.randomUUID(),
+            name: 'Nuovo Servizio',
+            description: '',
+            category: 'other',
+            seasonAvailability: ['winter', 'summer']
+        };
+        setFormData({ ...formData, services: [newService, ...formData.services] });
+    };
+
+    const removeService = (idx: number) => {
+        if (!confirm('Eliminare questo servizio?')) return;
+        const updatedServices = [...formData.services];
+        updatedServices.splice(idx, 1);
+        setFormData({ ...formData, services: updatedServices });
+    };
+
+    // AI Tag Generation Logic
+    const [generatingTags, setGeneratingTags] = useState(false);
+    const generateTags = async () => {
+        setGeneratingTags(true);
+        try {
+            const res = await fetch('http://localhost:8000/api/ai/generate-tags', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ location_name: formData.name })
+            });
+
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`Server Error ${res.status}: ${errText}`);
+            }
+
+            const data = await res.json();
+            if (data.status === 'success' && data.data) {
+                setFormData((prev: any) => ({
+                    ...prev,
+                    tags: data.data
+                }));
+                alert('Tags generati con successo! Ricorda di salvare.');
+            } else {
+                alert(`Errore API: ${data.message || 'Sconosciuto'}`);
+            }
+        } catch (e: any) {
+            console.error(e);
+            alert(`Errore Generazione: ${e.message}`);
+        } finally {
+            setGeneratingTags(false);
+        }
+    };
+
+    return (
+        <div className="max-w-5xl mx-auto">
+            <div className="flex items-center gap-4 mb-8">
+                <button onClick={onCancel} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                    <ArrowLeft size={24} className="text-slate-600" />
+                </button>
+                <div className="flex-1">
+                    <h1 className="text-2xl font-bold text-slate-900">Modifica {location.name}</h1>
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={() => setEditTab('general')} className={`px-4 py-2 rounded-lg font-medium text-sm border ${editTab === 'general' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>Generale</button>
+                    <button onClick={() => setEditTab('services')} className={`px-4 py-2 rounded-lg font-medium text-sm border ${editTab === 'services' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>Servizi ({formData.services.length})</button>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+
+                {/* GENERAL TAB */}
+                {editTab === 'general' && (
+                    <div className="space-y-6 animate-in fade-in">
+                        <div className="grid grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Nome Località</label>
+                                <input name="name" value={formData.name} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Stato</label>
+                                    <select
+                                        value={formData.status || 'draft'}
+                                        onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                        className="w-full p-2 border rounded-lg"
+                                    >
+                                        <option value="draft">Bozza</option>
+                                        <option value="published">Pubblicato</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Visibilità Frontend</label>
+                                    <div className="flex items-center gap-3 mt-2">
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.visible ?? false}
+                                                onChange={e => setFormData({ ...formData, visible: e.target.checked })}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                            <span className="ml-3 text-sm font-medium text-slate-900">{formData.visible ? 'Visibile' : 'Nascosto'}</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Ordine Visualizzazione</label>
+                                    <input
+                                        type="number"
+                                        value={formData.order ?? 0}
+                                        onChange={e => setFormData({ ...formData, order: parseInt(e.target.value) })}
+                                        className="w-full p-2 border rounded-lg"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Regione</label>
+                                <input name="region" value={formData.region} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Paese</label>
+                                <input name="country" value={formData.country} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Altitudine (m)</label>
+                                <input
+                                    type="number"
+                                    value={formData.altitude || ''}
+                                    onChange={(e) => setFormData({ ...formData, altitude: parseInt(e.target.value) || 0 })}
+                                    className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                    placeholder="Es. 1200"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Coordinate (Gradi Decimali es. 46.1234)</label>
+                                <div className="flex gap-2">
+                                    <div className="flex-1 relative">
+                                        <input
+                                            type="number"
+                                            step="any"
+                                            value={formData.coordinates?.lat || ''}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                coordinates: { ...formData.coordinates, lat: parseFloat(e.target.value) || 0 }
+                                            })}
+                                            className="w-full pl-4 pr-8 py-2 border rounded-lg focus:border-primary outline-none"
+                                            placeholder="Lat (es. 46.55)"
+                                        />
+                                        <span className="absolute right-3 top-2 text-slate-400 text-xs font-bold">°N</span>
+                                    </div>
+                                    <div className="flex-1 relative">
+                                        <input
+                                            type="number"
+                                            step="any"
+                                            value={formData.coordinates?.lng || ''}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                coordinates: { ...formData.coordinates, lng: parseFloat(e.target.value) || 0 }
+                                            })}
+                                            className="w-full pl-4 pr-8 py-2 border rounded-lg focus:border-primary outline-none"
+                                            placeholder="Lng (es. 11.23)"
+                                        />
+                                        <span className="absolute right-3 top-2 text-slate-400 text-xs font-bold">°E</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="col-span-2">
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Immagini Stagionali (URL)</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {['winter', 'spring', 'summer', 'autumn'].map((season) => (
+                                        <div key={season}>
+                                            <label className="block text-xs uppercase font-bold text-slate-500 mb-1">{season === 'winter' ? 'Inverno' : season === 'spring' ? 'Primavera' : season === 'summer' ? 'Estate' : 'Autunno'}</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    name={`img_${season}`}
+                                                    value={formData.seasonalImages?.[season] || ''}
+                                                    onChange={handleChange}
+                                                    className="flex-1 px-3 py-2 border rounded-lg focus:border-primary outline-none text-xs font-mono text-slate-500"
+                                                    placeholder={`URL ${season}...`}
+                                                />
+                                                {(formData.seasonalImages?.[season]) && (
+                                                    <img src={formData.seasonalImages[season]} className="w-8 h-8 rounded object-cover border" alt={season} />
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-2">L'immagine 'Inverno' verrà usata come copertina principale se non diversamente specificato.</p>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-slate-100 pt-6">
+                            <h3 className="font-bold text-slate-900 mb-4">Descrizioni Stagionali</h3>
+                            <div className="grid gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Inverno (Winter)</label>
+                                    <textarea name="desc_winter" value={formData.description.winter} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg focus:border-primary outline-none h-32 resize-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Estate (Summer)</label>
+                                    <textarea name="desc_summer" value={formData.description.summer} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg focus:border-primary outline-none h-32 resize-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Autunno (Autumn)</label>
+                                    <textarea name="desc_autumn" value={formData.description.autumn || ''} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg focus:border-primary outline-none h-32 resize-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Primavera (Spring)</label>
+                                    <textarea name="desc_spring" value={formData.description.spring || ''} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg focus:border-primary outline-none h-32 resize-none" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-slate-100 pt-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 className="font-bold text-slate-900">Tags & Caratteristiche</h3>
+                                    <p className="text-xs text-slate-500">Inserisci i valori separati da virgola.</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={generateTags}
+                                    disabled={generatingTags}
+                                    className="text-xs bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg border border-purple-200 font-bold hover:bg-purple-200 flex items-center gap-2 transition-colors"
+                                >
+                                    {generatingTags ? 'Generazione...' : '✨ Genera con AI'}
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-3 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Vibe / Atmosfera</label>
+                                    <input
+                                        value={formData.tags?.vibe?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, vibe: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Chic, Tranquilla..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Target</label>
+                                    <input
+                                        value={formData.tags?.target?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, target: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Famiglie, Coppie..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Highlights</label>
+                                    <input
+                                        value={formData.tags?.highlights?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, highlights: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Spa, Ghiacciaio..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Attività (Tourism)</label>
+                                    <input
+                                        value={formData.tags?.tourism?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, tourism: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Freeride, MTB..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Ospitalità (Accom.)</label>
+                                    <input
+                                        value={formData.tags?.accommodation?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, accommodation: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Lusso, Glamping..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Impianti (Infrastr.)</label>
+                                    <input
+                                        value={formData.tags?.infrastructure?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, infrastructure: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Skibus, Funivia..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Sport</label>
+                                    <input
+                                        value={formData.tags?.sport?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, sport: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Tennis, Nuoto..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Info</label>
+                                    <input
+                                        value={formData.tags?.info?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, info: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. App, Guide..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Generali</label>
+                                    <input
+                                        value={formData.tags?.general?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, general: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Storico, Panoramico..."
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* SERVICES TAB */}
+                {editTab === 'services' && (
+                    <div className="space-y-6 animate-in fade-in">
+                        <div className="flex justify-between items-center bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4">
+                            <p className="text-sm text-slate-600">Gestisci i singoli servizi offerti dalla località.</p>
+                            <button onClick={addService} className="text-sm bg-slate-900 text-white px-3 py-2 rounded-lg font-bold hover:bg-slate-800 flex items-center gap-2">
+                                <Plus size={16} /> Aggiungi Servizio
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {formData.services.map((service: any, idx: number) => (
+                                <div key={idx} className="border border-slate-200 rounded-xl p-4 hover:border-primary/30 transition-colors bg-slate-50/30">
+                                    <div className="flex gap-4 items-start">
+                                        <div className="flex-1 grid grid-cols-2 gap-4">
+                                            <input
+                                                value={service.name}
+                                                onChange={(e) => handleServiceChange(idx, 'name', e.target.value)}
+                                                className="w-full px-3 py-2 border rounded-md text-sm font-bold placeholder-slate-400"
+                                                placeholder="Nome Servizio"
+                                            />
+                                            <select
+                                                value={service.category}
+                                                onChange={(e) => handleServiceChange(idx, 'category', e.target.value)}
+                                                className="w-full px-3 py-2 border rounded-md text-sm bg-white"
+                                            >
+                                                <option value="tourism">Attività / Turismo</option>
+                                                <option value="accommodation">Ospitalità</option>
+                                                <option value="infrastructure">Impianti / Trasporti</option>
+                                                <option value="essential">Servizi Essenziali</option>
+                                                <option value="sport">Sport</option>
+                                                <option value="info">Informazioni</option>
+                                                <option value="general">Generale</option>
+                                            </select>
+                                            <textarea
+                                                value={service.description}
+                                                onChange={(e) => handleServiceChange(idx, 'description', e.target.value)}
+                                                className="col-span-2 w-full px-3 py-2 border rounded-md text-sm h-16 resize-none placeholder-slate-400"
+                                                placeholder="Descrizione breve..."
+                                            />
+                                            <div className="col-span-2 flex gap-4 items-center">
+                                                <span className="text-xs font-bold uppercase text-slate-400">Stagioni:</span>
+                                                {['winter', 'summer', 'autumn', 'spring'].map(season => (
+                                                    <label key={season} className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={service.seasonAvailability?.includes(season)}
+                                                            onChange={() => handleSeasonToggle(idx, season)}
+                                                            className="rounded text-primary focus:ring-primary"
+                                                        />
+                                                        <span className="capitalize">{season}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <button onClick={() => removeService(idx)} className="text-slate-400 hover:text-red-600 p-2">
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex justify-end gap-4 pt-6 mt-6 border-t border-slate-100">
+                    <button onClick={onCancel} className="px-6 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors">
+                        Annulla
+                    </button>
+                    <button onClick={() => onSave(formData)} className="px-6 py-2 bg-primary text-white rounded-lg font-bold hover:bg-opacity-90 transition-colors flex items-center gap-2">
+                        <Save size={18} /> Salva Modifiche
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function AITaskRunner() {
+    const [targetLocation, setTargetLocation] = useState('');
+    const [customInstructions, setCustomInstructions] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState<any>(null);
+    const [timer, setTimer] = useState(0);
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (loading) {
+            setTimer(0);
+            interval = setInterval(() => {
+                setTimer((prev) => prev + 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [loading]);
+
+    const [showPromptPreview, setShowPromptPreview] = useState(false);
+    const [finalPrompt, setFinalPrompt] = useState('');
+    const [existingLocationId, setExistingLocationId] = useState<string | null>(null);
+
+    // Step 1: Check DB and Prepare Prompt
+    const prepareResearch = async () => {
+        if (!targetLocation) return;
+        setLoading(true); // Temporary loading state during check
+
+        try {
+            const { collection, getDocs, query, where } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            // Check if location exists
+            const q = query(collection(db, 'locations'), where('name', '==', targetLocation));
+            const snapshot = await getDocs(q);
+
+            let promptInstructions = customInstructions;
+
+            if (!snapshot.empty) {
+                const existingData = snapshot.docs[0].data();
+                setExistingLocationId(snapshot.docs[0].id);
+
+                // Alert handled by UI logic (showing preview with warning)
+                if (!confirm(`⚠️ ATTENZIONE: "${targetLocation}" è già presente nel DB!\n\nVuoi procedere analizzando SOLO i servizi mancanti?`)) {
+                    setLoading(false);
+                    return;
+                }
+
+                const existingServices = existingData.services?.map((s: any) => s.name) || [];
+
+                if (existingServices.length > 0) {
+                    const exclusionText = `\n\nIMPORTANTE - ESCLUSIONI:\nLa località è già presente nel database con alcuni servizi. \nNON includere o duplicare i seguenti servizi già salvati (ignorali completamente e trovane di nuovi o approfondisci categorie diverse):\n- ${existingServices.join('\n- ')}`;
+                    promptInstructions += exclusionText;
+                }
+            } else {
+                setExistingLocationId(null);
+            }
+
+            setFinalPrompt(promptInstructions);
+            setShowPromptPreview(true); // Show Preview Step
+
+        } catch (e: any) {
+            console.error("Error checking DB:", e);
+            alert(`Errore durante la verifica della località: ${e.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Step 2: Execute AI Request with Final Prompt
+    const executeResearch = async () => {
+        setShowPromptPreview(false);
+        setLoading(true);
+        setResult(null);
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 240000); // 240s
+
+            const res = await fetch('http://localhost:8000/api/ai/research', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    location_name: targetLocation,
+                    user_instructions: finalPrompt // Use the prepared prompt with exclusions
+                }),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            const data = await res.json();
+            if (data.status === 'error') throw new Error(data.message);
+            setResult(data);
+        } catch (error) {
+            console.error(error);
+            alert('Errore durante la ricerca AI.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const saveToDatabase = async () => {
+        if (!result || !result.data) return;
+        try {
+            const { collection, addDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            const mappedServices = (result.data.services || []).map((s: any) => ({
+                ...s,
+                id: crypto.randomUUID(),
+                locationId: 'temp_id',
+                metadata: { source: 'ai-generated' }
+            }));
+
+            const locationData = {
+                name: result.data.name,
+                region: 'Da verificare',
+                country: 'Italia',
+                coverImage: 'https://images.unsplash.com/photo-1519681393784-d120267933ba',
+                description: result.data.description || {},
+                services: mappedServices,
+                tags: result.data.tags || { vibe: [], target: [], highlights: [] },
+                createdAt: new Date().toISOString(),
+                status: 'draft',
+                visible: false,
+                order: 0,
+                dataVersion: result.data.version || 'v2.0',
+                aiGenerationMetadata: {
+                    userInstructions: customInstructions || 'Standard Full Analysis',
+                    generatedAt: new Date().toISOString(),
+                    engine: 'Gemini AI'
+                },
+                profile: result.data.profile || {},
+                technicalData: result.data.technicalData || {},
+                accessibility: result.data.accessibility || {},
+                parking: result.data.parking || {},
+                localMobility: result.data.localMobility || {},
+                infoPoints: result.data.infoPoints || {},
+                medical: result.data.medical || {},
+                advancedSkiing: result.data.advancedSkiing || {},
+                outdoorNonSki: result.data.outdoorNonSki || {},
+                family: result.data.family || {},
+                rentals: result.data.rentals || {},
+                eventsAndSeasonality: result.data.eventsAndSeasonality || {},
+                gastronomy: result.data.gastronomy || {},
+                digital: result.data.digital || {},
+                practicalTips: result.data.practicalTips || {},
+                openingHours: result.data.openingHours || {},
+                safety: result.data.safety || {},
+                sustainability: result.data.sustainability || {}
+            };
+
+            await addDoc(collection(db, 'locations'), locationData);
+            alert(`✅ ${result.data.name} salvata nel database.`);
+            setResult(null); setTargetLocation(''); setCustomInstructions('');
+
+        } catch (e) {
+            console.error("Error saving to DB:", e);
+            alert("Errore durante il salvataggio.");
+        }
+    }
+
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 max-w-2xl">
+            {/* ... inputs ... */}
+            <div className="mb-6">
+                <label className="block text-sm font-medium text-slate-700 mb-2">Località Target</label>
+                <input
+                    type="text"
+                    value={targetLocation}
+                    onChange={(e) => setTargetLocation(e.target.value)}
+                    placeholder="Es. Cortina d'Ampezzo..."
+                    className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-primary outline-none"
+                />
+            </div>
+            <div className="mb-6">
+                <label className="block text-sm font-medium text-slate-700 mb-2">Istruzioni Speciali per l'AI</label>
+                <textarea
+                    value={customInstructions}
+                    onChange={(e) => setCustomInstructions(e.target.value)}
+                    placeholder="Es. Focus su hotel..."
+                    className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-primary outline-none h-24 resize-none"
+                />
+                <p className="text-xs text-slate-500 mt-1">Lascia vuoto per standard.</p>
+            </div>
+            <button
+                onClick={prepareResearch}
+                disabled={!targetLocation || loading}
+                className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-opacity-90 transition-all disabled:opacity-50 flex justify-center items-center gap-2"
+            >
+                {loading ? (
+                    <span className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Analisi in corso... {timer}s
+                    </span>
+                ) : 'Avvia Analisi AI'}
+            </button>
+
+            {/* PROMPT PREVIEW MODAL */}
+            {showPromptPreview && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-8 flex flex-col max-h-[90vh]">
+                        <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <CheckCircle className="text-blue-600" size={24} /> Conferma Prompt AI
+                        </h3>
+                        <p className="text-slate-600 mb-4">Ecco le istruzioni esatte che verranno inviate all'IA. Puoi modificarle se necessario.</p>
+
+                        <div className="flex-1 overflow-y-auto min-h-[200px] border rounded-xl p-4 bg-slate-50 mb-6 font-mono text-sm leading-relaxed whitespace-pre-wrap">
+                            <textarea
+                                value={finalPrompt}
+                                onChange={(e) => setFinalPrompt(e.target.value)}
+                                className="w-full h-full bg-transparent outline-none resize-none"
+                                rows={10}
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowPromptPreview(false)}
+                                className="px-6 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                            >
+                                Annulla
+                            </button>
+                            <button
+                                onClick={executeResearch}
+                                className="px-6 py-3 rounded-xl font-bold bg-primary text-white hover:bg-opacity-90 transition-colors flex items-center gap-2"
+                            >
+                                <CheckCircle size={18} /> Conferma e Invia
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {result && result.data && (
+                <div className="mt-8 p-6 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                <CheckCircle className="text-green-500" size={20} />
+                                Analisi Completata
+                            </h3>
+                            <p className="text-slate-500 text-sm">
+                                Estratti {result.data.services?.length || 0} servizi.
+                            </p>
+                        </div>
+                        <button
+                            onClick={saveToDatabase}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors"
+                        >
+                            Salva nel DB
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function HomeConfigView() {
+    const [config, setConfig] = useState<any>({
+        heroTitle: '',
+        heroSubtitle: '',
+        heroImages: {
+            winter: '',
+            summer: '',
+            spring: '',
+            autumn: ''
+        }
+    });
+
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const { doc, getDoc } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase');
+                const docRef = doc(db, 'settings', 'home');
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    setConfig(docSnap.data() as any);
+                } else {
+                    // Defaults
+                    setConfig({
+                        heroTitle: 'Scopri la tua <br /> Montagna Ideale',
+                        heroSubtitle: 'Il primo comparatore intelligente per località montane.',
+                        heroImages: {
+                            winter: 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?auto=format&fit=crop&q=80',
+                            summer: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80',
+                            spring: 'https://images.unsplash.com/photo-1490750967868-58cb75065ed2?auto=format&fit=crop&q=80',
+                            autumn: 'https://images.unsplash.com/photo-1507041957456-9c3d40e84758?auto=format&fit=crop&q=80'
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("Error fetching home config:", e);
+            }
+        };
+        fetchConfig();
+    }, []);
+
+    const handleSave = async () => {
+        try {
+            const { doc, setDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await setDoc(doc(db, 'settings', 'home'), config);
+            alert('Configurazione Home salvata con successo!');
+        } catch (e) {
+            console.error("Error saving home config:", e);
+            alert("Errore durante il salvataggio.");
+        }
+    };
+
+    return (
+        <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+            <h2 className="text-lg font-bold text-slate-900 mb-6">Configurazione Hero (Slide)</h2>
+
+            <div className="space-y-6">
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Titolo Principale (HTML supportato, es. &lt;br/&gt;)</label>
+                    <input
+                        value={config.heroTitle}
+                        onChange={e => setConfig({ ...config, heroTitle: e.target.value })}
+                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Sottotitolo</label>
+                    <textarea
+                        value={config.heroSubtitle}
+                        onChange={e => setConfig({ ...config, heroSubtitle: e.target.value })}
+                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none h-20 resize-none"
+                    />
+                </div>
+
+                <div className="border-t border-slate-100 pt-6">
+                    <h3 className="font-bold text-slate-900 mb-4">Sfondi Stagionali (URL)</h3>
+                    <div className="grid grid-cols-2 gap-6">
+                        {['winter', 'spring', 'summer', 'autumn'].map((season) => (
+                            <div key={season}>
+                                <label className="block text-xs uppercase font-bold text-slate-500 mb-2 capitalize">{season}</label>
+                                <div className="space-y-2">
+                                    <input
+                                        value={config.heroImages?.[season] || ''}
+                                        onChange={e => setConfig({
+                                            ...config,
+                                            heroImages: { ...config.heroImages, [season]: e.target.value }
+                                        })}
+                                        className="w-full px-3 py-2 border rounded-lg text-sm text-slate-600 font-mono"
+                                        placeholder={`URL per ${season}`}
+                                    />
+                                    {config.heroImages?.[season] && (
+                                        <div className="aspect-video bg-slate-100 rounded-lg overflow-hidden border">
+                                            <img src={config.heroImages[season]} className="w-full h-full object-cover" alt={season} />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex justify-end pt-6 border-t border-slate-100">
+                    <button
+                        onClick={handleSave}
+                        className="bg-slate-900 text-white font-bold px-6 py-3 rounded-xl hover:bg-slate-800 transition-all flex items-center gap-2"
+                    >
+                        <Save size={18} /> Salva Configurazione
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
