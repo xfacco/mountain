@@ -154,7 +154,7 @@ export default function MapPage() {
                 )}
 
                 {/* Sidebar Overlay List */}
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-white/50 max-w-xs hidden md:block max-h-[calc(100vh-120px)] flex flex-col">
+                <div className="absolute top-28 left-4 bg-white/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-white/50 max-w-xs hidden md:block max-h-[calc(100vh-200px)] flex flex-col">
                     <h1 className="font-bold text-slate-900 flex items-center gap-2 mb-2">
                         <MapPin className="text-primary" size={20} /> Destinazioni
                     </h1>

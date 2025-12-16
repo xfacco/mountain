@@ -61,12 +61,6 @@ export function Navbar() {
                         >
                             Map
                         </Link>
-                        <Link
-                            href="/blog"
-                            className="text-slate-600 hover:text-primary transition-colors font-medium"
-                        >
-                            Journal
-                        </Link>
                     </div>
 
                     {/* Actions */}

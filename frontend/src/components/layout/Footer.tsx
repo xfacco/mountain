@@ -58,7 +58,6 @@ export function Footer() {
                             <li><Link href="/locations" className="hover:text-primary transition-colors">Destinazioni</Link></li>
                             <li><Link href="/compare" className="hover:text-primary transition-colors">Confronta</Link></li>
                             <li><Link href="/search" className="hover:text-primary transition-colors">Ricerca Avanzata</Link></li>
-                            <li><Link href="/blog" className="hover:text-primary transition-colors">Journal & Guide</Link></li>
                         </ul>
                     </div>
 

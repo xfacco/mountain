@@ -133,7 +133,7 @@ export default function LocationDetailPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                     {/* LEFT COLUMN: Identity Card (Image + Summary + Compare) + Sidebar Widgets */}
-                    <div className="space-y-8 h-fit lg:sticky lg:top-24">
+                    <div className="space-y-8 h-fit lg:sticky lg:bottom-8 self-end">
                         {/* Identity Card */}
                         <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                             <div className="aspect-[4/3] rounded-2xl overflow-hidden mb-6 relative">
@@ -142,9 +142,7 @@ export default function LocationDetailPage() {
                                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
                                     alt={location.name}
                                 />
-                                <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-slate-900 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
-                                    {location.status === 'published' ? 'Pubblicato' : 'Bozza'}
-                                </div>
+
                             </div>
 
                             <div className="px-2">
@@ -159,9 +157,17 @@ export default function LocationDetailPage() {
                                         </span>
                                     )}
                                     {location.coordinates && (
-                                        <span className="flex items-center gap-1 text-xs font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">
+                                        <a
+                                            href={`https://www.google.com/maps/search/?api=1&query=${location.coordinates.lat},${location.coordinates.lng}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-xs font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100 hover:bg-blue-100 hover:border-blue-200 transition-colors cursor-pointer"
+                                            title="Apri in Google Maps"
+                                        >
+                                            <MapPin size={12} />
                                             {location.coordinates.lat.toFixed(4)}, {location.coordinates.lng.toFixed(4)}
-                                        </span>
+                                            <ArrowRight size={10} className="-rotate-45" />
+                                        </a>
                                     )}
                                 </div>
 
@@ -265,19 +271,6 @@ export default function LocationDetailPage() {
                             </div>
                         </div>
 
-
-
-                        {/* AI Metadata */}
-                        {location.aiGenerationMetadata && (
-                            <div className="bg-purple-50/50 p-6 rounded-3xl border border-purple-100/50">
-                                <div className="flex items-center gap-2 text-purple-900 font-bold mb-2 text-xs uppercase tracking-wider">
-                                    <Quote size={12} /> AI Generated Insight
-                                </div>
-                                <p className="text-xs text-purple-700/80 italic leading-relaxed">
-                                    Contenuto generato il {new Date(location.aiGenerationMetadata.generatedAt).toLocaleDateString()} basato su analisi web automatica.
-                                </p>
-                            </div>
-                        )}
                     </div>
 
                     {/* RIGHT COLUMN (Main): Tabs & Content */}
