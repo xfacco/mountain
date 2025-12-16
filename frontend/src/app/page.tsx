@@ -56,18 +56,17 @@ export default function Home() {
             style={{
               backgroundImage: homeConfig?.heroImages?.[currentSeason]
                 ? `url("${homeConfig.heroImages[currentSeason]}")`
-                : undefined
+                : (() => {
+                  const defaults: any = {
+                    winter: 'https://images.hdqwalls.com/wallpapers/dolomite-mountains-in-italy-4k-gs.jpg',
+                    summer: 'https://images.hdqwalls.com/wallpapers/dolomite-mountains-in-italy-4k-gs.jpg',
+                    autumn: 'https://images.hdqwalls.com/wallpapers/dolomite-mountains-in-italy-4k-gs.jpg',
+                    spring: 'https://images.hdqwalls.com/wallpapers/dolomite-mountains-in-italy-4k-gs.jpg'
+                  };
+                  return `url("${defaults[currentSeason] || defaults.winter}")`;
+                })()
             }}
           />
-          {/* Default Fallbacks if no config - standard classes handled via conditional classNames if needed, or just let the style override */}
-          {!homeConfig?.heroImages?.[currentSeason] && (
-            <div className={`absolute inset-0 bg-cover bg-center transition-all duration-1000 transform scale-105
-                ${currentSeason === 'winter' ? 'bg-[url("https://images.unsplash.com/photo-1491553895911-0055eca6402d?auto=format&fit=crop&q=80")]' : ''}
-                ${currentSeason === 'summer' ? 'bg-[url("https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80")]' : ''}
-                ${currentSeason === 'autumn' ? 'bg-[url("https://images.unsplash.com/photo-1507041957456-9c3d40e84758?auto=format&fit=crop&q=80")]' : ''}
-                ${currentSeason === 'spring' ? 'bg-[url("https://images.unsplash.com/photo-1490750967868-58cb75065ed2?auto=format&fit=crop&q=80")]' : ''}
-             `} />
-          )}
 
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
         </div>
