@@ -5,7 +5,12 @@ import { SeasonSelector } from '@/components/ui/SeasonSelector';
 import { useState } from 'react';
 import { Menu, Search, X } from 'lucide-react';
 
+import { useTranslations } from 'next-intl';
+
+// ...
+
 export function Navbar() {
+    const t = useTranslations('Navbar');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     return (
@@ -28,9 +33,9 @@ export function Navbar() {
 
                     {/* Desktop Nav */}
                     <div className="hidden md:flex items-center space-x-8">
-                        <Link href="/locations" className="text-slate-600 hover:text-primary transition-colors font-medium">Destinations</Link>
-                        <Link href="/compare" className="text-slate-600 hover:text-primary transition-colors font-medium">Compare</Link>
-                        <Link href="/map" className="text-slate-600 hover:text-primary transition-colors font-medium">Map</Link>
+                        <Link href="/locations" className="text-slate-600 hover:text-primary transition-colors font-medium">{t('destinations')}</Link>
+                        <Link href="/compare" className="text-slate-600 hover:text-primary transition-colors font-medium">{t('compare')}</Link>
+                        <Link href="/map" className="text-slate-600 hover:text-primary transition-colors font-medium">{t('map')}</Link>
                     </div>
 
                     {/* Actions */}
@@ -57,21 +62,21 @@ export function Navbar() {
                         className="p-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700 hover:text-primary transition-colors"
                         onClick={() => setIsMenuOpen(false)}
                     >
-                        Destinations
+                        {t('destinations')}
                     </Link>
                     <Link
                         href="/compare"
                         className="p-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700 hover:text-primary transition-colors"
                         onClick={() => setIsMenuOpen(false)}
                     >
-                        Compare
+                        {t('compare')}
                     </Link>
                     <Link
                         href="/map"
                         className="p-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700 hover:text-primary transition-colors"
                         onClick={() => setIsMenuOpen(false)}
                     >
-                        Map
+                        {t('map')}
                     </Link>
                 </div>
             )}

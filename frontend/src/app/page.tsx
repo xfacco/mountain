@@ -6,9 +6,12 @@ import { motion } from 'framer-motion';
 import { Search, Map, BarChart3, ArrowRight } from 'lucide-react';
 import { useSeasonStore } from "@/store/season-store";
 import { useEffect, useState } from "react";
+import { useTranslations } from 'next-intl';
 
 export default function Home() {
   const { currentSeason } = useSeasonStore();
+  const t = useTranslations('Home');
+  const tNav = useTranslations('Navbar');
   const [featuredLocations, setFeaturedLocations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [homeConfig, setHomeConfig] = useState<any>(null);
@@ -77,7 +80,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             className="text-5xl md:text-7xl font-display font-bold mb-6 tracking-tight"
             dangerouslySetInnerHTML={{
-              __html: homeConfig?.heroTitle || 'Scopri la tua <br /> Montagna Ideale'
+              __html: t.raw('hero_title')
             }}
           />
           <motion.p
@@ -86,7 +89,7 @@ export default function Home() {
             transition={{ delay: 0.2 }}
             className="text-xl md:text-2xl opacity-90 mb-10 max-w-2xl mx-auto font-light"
           >
-            {homeConfig?.heroSubtitle || 'Il primo comparatore intelligente per località montane. Trova la destinazione perfetta per Sci, Trekking, Relax e Famiglia.'}
+            {t('hero_subtitle')}
           </motion.p>
 
           <motion.div
@@ -96,10 +99,10 @@ export default function Home() {
             className="flex justify-center gap-4"
           >
             <Link href="/search" className="px-8 py-4 bg-white text-slate-900 font-bold rounded-full hover:bg-slate-100 transition-all flex items-center gap-2">
-              <Search size={20} /> Cerca Destinazione
+              <Search size={20} /> {t('search_destination')}
             </Link>
             <Link href="/compare" className="px-8 py-4 bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold rounded-full hover:bg-white/20 transition-all flex items-center gap-2">
-              <BarChart3 size={20} /> Confronta
+              <BarChart3 size={20} /> {t('compare_action')}
             </Link>
           </motion.div>
         </div>
@@ -110,11 +113,11 @@ export default function Home() {
         <div className="container mx-auto px-6">
           <div className="flex justify-between items-end mb-12">
             <div>
-              <h2 className="text-3xl font-display font-bold text-slate-900 mb-2">Destinazioni in Evidenza</h2>
-              <p className="text-slate-600">Le località più ricercate del momento.</p>
+              <h2 className="text-3xl font-display font-bold text-slate-900 mb-2">{t('featured_title')}</h2>
+              <p className="text-slate-600">{t('featured_subtitle')}</p>
             </div>
             <Link href="/locations" className="text-primary font-bold hover:underline flex items-center gap-1">
-              Vedi tutte <ArrowRight size={18} />
+              {t('see_all')} <ArrowRight size={18} />
             </Link>
           </div>
 
@@ -124,7 +127,7 @@ export default function Home() {
             </div>
           ) : featuredLocations.length === 0 ? (
             <div className="text-center py-10 bg-white rounded-xl border border-dashed text-slate-400">
-              Nessuna destinazione in evidenza al momento.
+              {t('no_featured')}
             </div>
           ) : (
             <div className="grid md:grid-cols-3 gap-8">
@@ -137,10 +140,10 @@ export default function Home() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <div className="absolute bottom-0 left-0 p-8 text-white w-full">
-                    <div className="text-sm font-medium opacity-80 mb-2 uppercase tracking-widest">{loc.region || 'Alpi Italiane'}</div>
+                    <div className="text-sm font-medium opacity-80 mb-2 uppercase tracking-widest">{loc.region || 'Alti Italiane'}</div>
                     <h3 className="text-3xl font-display font-bold mb-2">{loc.name}</h3>
                     <p className="text-white/80 line-clamp-2 text-sm">
-                      {loc.description?.[currentSeason] || loc.description?.['winter'] || 'Scopri questa fantastica meta.'}
+                      {loc.description?.[currentSeason] || loc.description?.['winter'] || 'Discover this amazing destination.'}
                     </p>
                   </div>
                 </Link>
@@ -154,9 +157,9 @@ export default function Home() {
       <section className="py-24 bg-white">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-display font-bold text-slate-900 mb-4">Perché usare MountainComparator?</h2>
+            <h2 className="text-3xl font-display font-bold text-slate-900 mb-4">{t('why_use_title')}</h2>
             <p className="text-slate-600 max-w-2xl mx-auto">
-              Analizziamo centinaia di dati per offrirti confronti imparziali e dettagliati.
+              {t('why_use_subtitle')}
             </p>
           </div>
 
@@ -164,18 +167,18 @@ export default function Home() {
             {[
               {
                 icon: <Map className="w-8 h-8 text-primary" />,
-                title: "Dati Multipiattaforma",
-                desc: "Raccogliamo informazioni verificate su piste, hotel e servizi da fonti multiple."
+                title: t('value_prop_1_title'),
+                desc: t('value_prop_1_desc')
               },
               {
                 icon: <BarChart3 className="w-8 h-8 text-primary" />,
-                title: "Confronto Intelligente",
-                desc: "Metti a confronto fino a 4 località fianco a fianco per scegliere senza dubbi."
+                title: t('value_prop_2_title'),
+                desc: t('value_prop_2_desc')
               },
               {
                 icon: <ArrowRight className="w-8 h-8 text-primary" />,
-                title: "Stagionalità Reale",
-                desc: "Visualizza solo le informazioni rilevanti per la stagione che ti interessa."
+                title: t('value_prop_3_title'),
+                desc: t('value_prop_3_desc')
               }
             ].map((item, i) => (
               <motion.div

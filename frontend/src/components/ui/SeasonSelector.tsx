@@ -7,15 +7,17 @@ import { Season } from '@/types';
 import { Sun, Snowflake, CloudRain, Wind } from 'lucide-react';
 import { clsx } from 'clsx';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 
 export function SeasonSelector() {
     const { currentSeason, setSeason } = useSeasonStore();
+    const t = useTranslations('Seasons');
 
     const seasons: { id: Season; icon: React.ReactNode; label: string }[] = [
-        { id: 'winter', icon: <Snowflake size={18} />, label: 'Winter' },
-        { id: 'spring', icon: <CloudRain size={18} />, label: 'Spring' },
-        { id: 'summer', icon: <Sun size={18} />, label: 'Summer' },
-        { id: 'autumn', icon: <Wind size={18} />, label: 'Autumn' },
+        { id: 'winter', icon: <Snowflake size={18} />, label: t('winter') },
+        { id: 'spring', icon: <CloudRain size={18} />, label: t('spring') },
+        { id: 'summer', icon: <Sun size={18} />, label: t('summer') },
+        { id: 'autumn', icon: <Wind size={18} />, label: t('autumn') },
     ];
 
     const [isOpen, setIsOpen] = useState(false);

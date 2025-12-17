@@ -1,7 +1,11 @@
 import Link from 'next/link';
 import { Facebook, Instagram, Twitter, Linkedin, Mail, MapPin, Phone } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export function Footer() {
+    const t = useTranslations('Footer');
+    const tNav = useTranslations('Navbar'); // Reuse some nav terms
+
     return (
         <footer className="bg-slate-900 text-slate-300 py-16 border-t border-slate-800">
             <div className="container mx-auto px-6">
@@ -39,8 +43,7 @@ export function Footer() {
                             </span>
                         </Link>
                         <p className="text-sm leading-relaxed text-slate-400 mb-6">
-                            Il primo comparatore intelligente per le tue vacanze in montagna.
-                            Analizziamo dati reali per aiutarti a scegliere la destinazione perfetta, stagione dopo stagione.
+                            {t('description')}
                         </p>
                         <div className="flex gap-4">
                             <a href="#" className="hover:text-white transition-colors"><Facebook size={20} /></a>
@@ -52,34 +55,34 @@ export function Footer() {
 
                     {/* Navigation */}
                     <div>
-                        <h4 className="font-bold text-white mb-6">Esplora</h4>
+                        <h4 className="font-bold text-white mb-6">{t('explore')}</h4>
                         <ul className="space-y-3 text-sm">
                             <li><Link href="/" className="hover:text-primary transition-colors">Home</Link></li>
-                            <li><Link href="/locations" className="hover:text-primary transition-colors">Destinazioni</Link></li>
-                            <li><Link href="/compare" className="hover:text-primary transition-colors">Confronta</Link></li>
-                            <li><Link href="/search" className="hover:text-primary transition-colors">Ricerca Avanzata</Link></li>
+                            <li><Link href="/locations" className="hover:text-primary transition-colors">{tNav('destinations')}</Link></li>
+                            <li><Link href="/compare" className="hover:text-primary transition-colors">{tNav('compare')}</Link></li>
+                            <li><Link href="/search" className="hover:text-primary transition-colors">{tNav('search_placeholder')}</Link></li>
                         </ul>
                     </div>
 
                     {/* Company */}
                     <div>
-                        <h4 className="font-bold text-white mb-6">Azienda</h4>
+                        <h4 className="font-bold text-white mb-6">{t('company')}</h4>
                         <ul className="space-y-3 text-sm">
-                            <li><Link href="/about" className="hover:text-primary transition-colors">Chi Siamo</Link></li>
-                            <li><Link href="/contact" className="hover:text-primary transition-colors">Contatti</Link></li>
-                            <li><Link href="/partners" className="hover:text-primary transition-colors">Lavora con Noi</Link></li>
-                            <li><Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
-                            <li><Link href="/terms" className="hover:text-primary transition-colors">Termini di Servizio</Link></li>
+                            <li><Link href="/about" className="hover:text-primary transition-colors">{t('about')}</Link></li>
+                            <li><Link href="/contact" className="hover:text-primary transition-colors">{t('contact')}</Link></li>
+                            <li><Link href="/partners" className="hover:text-primary transition-colors">{t('work_with_us')}</Link></li>
+                            <li><Link href="/privacy" className="hover:text-primary transition-colors">{t('privacy')}</Link></li>
+                            <li><Link href="/terms" className="hover:text-primary transition-colors">{t('terms')}</Link></li>
                         </ul>
                     </div>
 
                     {/* Contacts & Data */}
                     <div>
-                        <h4 className="font-bold text-white mb-6">Contatti</h4>
+                        <h4 className="font-bold text-white mb-6">{t('contact')}</h4>
                         <ul className="space-y-4 text-sm text-slate-400">
                             <li className="flex items-start gap-3">
                                 <MapPin size={18} className="text-primary flex-shrink-0 mt-0.5" />
-                                <span>Via Alpina 12, 38100 Trento (TN), Italia</span>
+                                <span>Via Alpina 12, 38100 Trento (TN), Italy</span>
                             </li>
                             <li className="flex items-center gap-3">
                                 <Mail size={18} className="text-primary flex-shrink-0" />
@@ -93,7 +96,7 @@ export function Footer() {
                         <div className="mt-8 pt-8 border-t border-slate-800 text-xs text-slate-500">
                             <p>© 2024 MountComp S.r.l.</p>
                             <p>P.IVA: IT01234567890</p>
-                            <p>Tutti i diritti riservati.</p>
+                            <p>{t('rights_reserved')}</p>
                         </div>
                     </div>
                 </div>
