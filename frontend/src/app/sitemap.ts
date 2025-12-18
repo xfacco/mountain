@@ -1,42 +1,82 @@
 import { MetadataRoute } from 'next';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://mountain-comparator.vercel.app';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.alpematch.com';
 
-    // Static routes
-    const routes = [
+    // Static pages
+    const staticPages = [
         '',
+        '/locations',
         '/search',
         '/compare',
+        '/match',
         '/map',
-        '/locations',
-    ].map((route) => ({
+        '/about',
+        '/contact',
+        '/directory'
+    ].map(route => ({
         url: `${baseUrl}${route}`,
         lastModified: new Date(),
-        changeFrequency: 'daily' as const,
+        changeFrequency: 'weekly' as const,
         priority: route === '' ? 1 : 0.8,
     }));
 
-    // Dynamic routes (Locations)
-    let locationRoutes: MetadataRoute.Sitemap = [];
+    // Dynamic pages
+    let dynamicPages: MetadataRoute.Sitemap = [];
     try {
-        const q = query(collection(db, 'locations'), where('status', '==', 'published'));
+        const locationsRef = collection(db, 'locations');
+        const q = query(locationsRef);
         const querySnapshot = await getDocs(q);
 
-        locationRoutes = querySnapshot.docs.map((doc) => {
-            const data = doc.data();
-            return {
-                url: `${baseUrl}/locations/${encodeURIComponent(data.name)}`,
-                lastModified: new Date(data.updatedAt || Date.now()),
-                changeFrequency: 'weekly' as const,
-                priority: 0.9,
-            };
+        querySnapshot.docs.forEach(doc => {
+            const data = doc.data() as any;
+
+            // Filtering logic consistent with Directory & LocationsClient
+            if (data.status === 'published' || data.published === true || !data.status) {
+                const locationName = data.name;
+
+                // Full Location Page
+                dynamicPages.push({
+                    url: `${baseUrl}/locations/${encodeURIComponent(locationName)}`,
+                    lastModified: new Date(),
+                    changeFrequency: 'monthly' as const,
+                    priority: 0.8,
+                });
+
+                // Insight: Seasons
+                if (data.description) {
+                    Object.keys(data.description).forEach(season => {
+                        if (data.description[season]) {
+                            dynamicPages.push({
+                                url: `${baseUrl}/insights/${encodeURIComponent(locationName)}/seasons/${season}`,
+                                lastModified: new Date(),
+                                changeFrequency: 'monthly' as const,
+                                priority: 0.6,
+                            });
+                        }
+                    });
+                }
+
+                // Insight: Services
+                if (data.services) {
+                    data.services.forEach((service: any) => {
+                        if (service.description) {
+                            dynamicPages.push({
+                                url: `${baseUrl}/insights/${encodeURIComponent(locationName)}/services/${encodeURIComponent(service.name)}`,
+                                lastModified: new Date(),
+                                changeFrequency: 'monthly' as const,
+                                priority: 0.5,
+                            });
+                        }
+                    });
+                }
+            }
         });
     } catch (error) {
-        console.error('Error generating sitemap locations:', error);
+        console.error("Error generating sitemap:", error);
     }
 
-    return [...routes, ...locationRoutes];
+    return [...staticPages, ...dynamicPages];
 }

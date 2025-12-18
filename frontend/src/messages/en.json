@@ -3,25 +3,78 @@
         "destinations": "Destinations",
         "compare": "Compare",
         "map": "Map",
+        "match": "Match Wizard",
         "search_placeholder": "Search...",
         "menu": "Menu"
     },
     "Footer": {
         "rights_reserved": "All rights reserved.",
-        "quick_links": "Quick Links",
         "legal": "Legal",
-        "contact": "Contact",
-        "description": "The smart comparator for mountain resorts. Find your perfect destination for Skiing, Trekking, Relax, and Family.",
+        "description": "The smart comparator for mountain resorts. Find the perfect destination for your needs.",
         "explore": "Explore",
         "company": "Company",
         "about": "About Us",
-        "work_with_us": "Work with Us",
         "privacy": "Privacy Policy",
-        "terms": "Terms of Service"
+        "terms": "Terms of Service",
+        "contact": "Contact"
+    },
+    "Contact": {
+        "title": "Contact Us",
+        "subtitle": "Have a question or a suggestion? We'd love to hear from you.",
+        "form": {
+            "first_name": "First Name",
+            "last_name": "Last Name",
+            "email": "Email Address",
+            "reason": "Reason for Contact",
+            "description": "Message",
+            "passions": "Your Passions",
+            "passions_hint": "Skiing, Trekking, Spa, etc...",
+            "submit": "Send Message",
+            "success": "Message sent successfully! We will get back to you soon.",
+            "error": "Error sending message. Please try again."
+        },
+        "reasons": {
+            "bug": "Report a bug or error",
+            "info": "General information",
+            "new_location": "Suggest a new location",
+            "other": "Other"
+        }
+    },
+    "About": {
+        "title": "About Alpe Match",
+        "subtitle": "Discover the vision behind the smartest mountain comparator.",
+        "mission_title": "Our Mission",
+        "mission_desc": "Alpe Match was born from a passion for the mountains and the need for a truly intelligent tool to compare Alpine destinations. Our goal is to provide a free, impartial, and data-driven service to help every mountain lover find their perfect match.",
+        "free_service": "100% Free Service",
+        "free_desc": "We believe that information should be accessible. Alpe Match is and will always be a free resource for the community.",
+        "creator_title": "The Creator",
+        "creator_name": "Corrado Facchini",
+        "creator_role": "Visionary & Developer",
+        "creator_desc": "Passionate about technology and the outdoors, Corrado created this platform to simplify the holiday planning process using modern AI and real-time data.",
+        "linkedin": "Connect on LinkedIn",
+        "tech_title": "Smart Tech",
+        "tech_desc": "We use advanced AI to analyze thousands of data points, ensuring that our recommendations are accurate and always up to date.",
+        "passion": "Passion",
+        "community": "Community"
+    },
+    "Directory": {
+        "title": "Mountain Index & Insights",
+        "subtitle": "Complete SEO index of all descriptions and services analyzed by Alpe Match. Each link leads to a deep-dive on specific mountain characteristics.",
+        "full_destination": "Full Destination",
+        "seasonal_overviews": "Seasonal Overviews",
+        "specific_insights": "Specific Insights & Services",
+        "no_data": "No data found in the index.",
+        "read_more": "READ MORE"
+    },
+    "Insights": {
+        "not_found": "Insight not found",
+        "content_not_found": "Content not found.",
+        "view_full_profile": "View Full Destination Profile",
+        "seasonal_experience": "Seasonal Experience"
     },
     "Home": {
         "hero_title": "Discover Your <br /> Ideal Mountain",
-        "hero_subtitle": "The first intelligent comparator for mountain resorts. Find your perfect destination for Skiing, Trekking, Relax, and Family.",
+        "hero_subtitle": "The first intelligent comparator for mountain resorts, created to create the perfect match between each person and their ideal destination.",
         "search_destination": "Search Destination",
         "compare_action": "Compare",
         "featured_title": "Featured Destinations",
@@ -135,12 +188,17 @@
         "locations_found": "{count} locations found.",
         "explore": "Explore Destination",
         "destinations_title": "Destinations",
+        "search_placeholder": "Search here...",
         "altitude": "Altitude"
     },
     "Search": {
-        "title": "Advanced Search",
+        "title": "Find an Alpine resort",
         "placeholder": "Search by name, region, tag...",
         "filters": "Filters",
+        "show_filters": "Show Filters",
+        "hide_filters": "Hide Filters",
+        "active_filters": "Active Filters:",
+        "clear_all": "Clear all",
         "results_found": "{count} results found",
         "no_results": "No results found matching your criteria.",
         "hero_title": "Find your next destination",
@@ -148,10 +206,23 @@
         "more_tags": "+{count} more",
         "reset_filters": "Reset filters",
         "no_results_title": "No results",
-        "no_results_desc": "Try searching for something else or remove filters."
+        "no_results_desc": "Try searching for something else or remove filters.",
+        "recommended": "Recommended",
+        "reset_and_retry": "Reset everything and try again",
+        "categories": {
+            "vibe": "Vibe",
+            "target": "Target",
+            "highlights": "Highlights",
+            "tourism": "Activities",
+            "accommodation": "Accommodation",
+            "infrastructure": "Lifts & Transport",
+            "sport": "Sport & Wellness",
+            "info": "Useful Info",
+            "general": "General"
+        }
     },
     "Metadata": {
-        "default_title": "MountComp - The Mountain Resort Comparator",
+        "default_title": "Compare or Match Alpine Destinations",
         "default_description": "Compare the best ski and mountain resorts. Discover features, services, prices and seasonality for your perfect holiday in the Alps.",
         "keywords": [
             "mountain",
@@ -165,15 +236,15 @@
             "trentino",
             "south tyrol"
         ],
-        "og_title": "MountComp - Find Your Ideal Mountain",
+        "og_title": "Find Your Ideal Mountain",
         "og_description": "Analyze and compare hundreds of mountain destinations. Updated data on lifts, accommodation and activities.",
-        "twitter_title": "MountComp - The Alpine Comparator",
+        "twitter_title": "The Alpine Comparator",
         "twitter_description": "Compare mountain destinations for every season.",
         "compare_title": "Compare Locations",
         "compare_description": "Compare slopes, prices, services and reviews of different ski resorts side-by-side.",
         "map_title": "Interactive Map of the Alps",
         "map_description": "Explore the interactive map of mountain resorts. View location, altitude and geographic features.",
-        "search_title": "Advanced Search",
+        "search_title": "Find an Alpine resort",
         "search_description": "Filter locations by tags, services, region, and features. Find the perfect destination with our advanced search engine.",
         "locations_title": "All Destinations",
         "locations_description": "Browse the complete list of the best mountain resorts. Discover hidden gems and famous destinations in the Alps."
@@ -183,5 +254,47 @@
         "spring": "Spring",
         "summer": "Summer",
         "autumn": "Autumn"
+    },
+    "Match": {
+        "title": "Find Your Perfect Match with the mountain",
+        "subtitle": "Answer a few simple questions and let our AI find the ideal mountain destination for you.",
+        "start_button": "Start Matching",
+        "restart": "Start Over",
+        "steps": {
+            "target": "Who are you traveling with?",
+            "season": "When are you planning to go?",
+            "vibe": "What's the vibe you're looking for?",
+            "activities": "What do you love to do?",
+            "nation": "Do you have a preferred country?",
+            "results": "Here are your top matches!"
+        },
+        "options": {
+            "winter": "Winter",
+            "spring": "Spring",
+            "summer": "Summer",
+            "autumn": "Autumn",
+            "family": "Family",
+            "couple": "Couple",
+            "friends": "Friends",
+            "solo": "Solo",
+            "relax": "Relax & Wellness",
+            "sport": "Sport & Adrenaline",
+            "party": "Party & Fun",
+            "luxury": "Luxury & Comfort",
+            "nature": "Nature & Silence",
+            "ski": "Skiing & Snowboarding",
+            "hiking": "Hiking & Trekking",
+            "wellness": "Spa & Wellness",
+            "food": "Food & Wine",
+            "culture": "Culture & History",
+            "italy": "Italy",
+            "austria": "Austria",
+            "switzerland": "Switzerland",
+            "france": "France",
+            "any": "Anywhere"
+        },
+        "no_matches": "We couldn't find a perfect match, but here are some popular destinations.",
+        "match_score": "Match Score",
+        "view_details": "View Details"
     }
 }

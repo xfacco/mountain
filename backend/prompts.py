@@ -41,7 +41,7 @@ Struttura JSON richiesta in output:
       "accessToResort": "Info specifiche arrivo in auto"
   }
 }
-All details must be in Italian.
+All details must be in English
 
 ISTRUZIONI PER CATEGORIA DI SERVIZIO:
 

@@ -18,6 +18,8 @@ export default function MapClient() {
     const [locations, setLocations] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedLocation, setSelectedLocation] = useState<any>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [mapBounds, setMapBounds] = useState<google.maps.LatLngBounds | null>(null);
     const t = useTranslations('Map');
 
     // API Key
@@ -44,6 +46,19 @@ export default function MapClient() {
 
         fetchLocations();
     }, []);
+
+    const filteredLocations = useMemo(() => {
+        return locations.filter(loc => {
+            // Text filter
+            const matchesSearch = loc.name.toLowerCase().includes(searchTerm.toLowerCase());
+            if (!matchesSearch) return false;
+
+            // Viewport filter
+            if (!mapBounds) return true; // Show all if bounds not yet ready
+            const point = new google.maps.LatLng(loc.coordinates.lat, loc.coordinates.lng);
+            return mapBounds.contains(point);
+        });
+    }, [locations, searchTerm, mapBounds]);
 
     // Calculate dynamic center based on locations, or fallback
     const startPosition = useMemo(() => {
@@ -88,7 +103,7 @@ export default function MapClient() {
         <div className="min-h-screen bg-slate-50 flex flex-col h-screen overflow-hidden">
             <Navbar />
 
-            <div className="relative flex-1 bg-slate-200 w-full h-full">
+            <div className="relative flex-1 bg-slate-200 w-full h-full overflow-hidden">
                 {loading ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-slate-50 z-10">
                         <div className="flex flex-col items-center gap-4">
@@ -103,6 +118,7 @@ export default function MapClient() {
                             defaultZoom={9}
                             mapId="78e2144e4744279358a7cdc0"
                             style={{ width: '100%', height: 'calc(100vh - 64px)' }}
+                            onBoundsChanged={(ev) => setMapBounds(ev.map.getBounds() || null)}
                         >
                             {locations.map((loc) => (
                                 <AdvancedMarker
@@ -155,32 +171,46 @@ export default function MapClient() {
                     </APIProvider>
                 )}
 
-                {/* Sidebar Overlay List */}
-                <div className="absolute top-28 left-4 bg-white/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-white/50 max-w-xs hidden md:block max-h-[calc(100vh-200px)] flex flex-col">
-                    <h1 className="font-bold text-slate-900 flex items-center gap-2 mb-2">
-                        <MapPin className="text-primary" size={20} /> {t('destinations_title')}
-                    </h1>
-                    <p className="text-xs text-slate-600 mb-4 border-b border-slate-100 pb-2">
-                        {t('locations_found', { count: locations.length })}
-                    </p>
-                    <div className="overflow-y-auto space-y-2 pr-1 flex-1 custom-scrollbar">
-                        {locations.map(loc => (
+                {/* Sidebar Overlay List - Desktop Only */}
+                <div className="hidden lg:flex absolute top-24 left-4 bg-white/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-white/50 w-72 h-[calc(100vh-120px)] flex-col z-10 transition-all duration-300">
+                    <div className="shrink-0 mb-4">
+                        <h1 className="font-bold text-slate-900 flex items-center gap-2 mb-3">
+                            <MapPin className="text-primary" size={20} /> {t('destinations_title')}
+                        </h1>
+
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder={t('search_placeholder') || "Search here..."}
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-1 focus:ring-primary outline-none transition-all"
+                            />
+                        </div>
+
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-2">
+                            Showing {filteredLocations.length} visible locations
+                        </p>
+                    </div>
+
+                    <div className="overflow-y-auto space-y-2 pr-1 flex-1 custom-scrollbar mt-4">
+                        {filteredLocations.map(loc => (
                             <button
                                 key={loc.id}
                                 onClick={() => setSelectedLocation(loc)}
                                 className={`w-full text-left flex items-center gap-3 p-2 rounded-lg transition-colors group ${selectedLocation?.id === loc.id ? 'bg-slate-100 ring-1 ring-slate-200' : 'hover:bg-slate-50'
                                     }`}
                             >
-                                <img src={loc.coverImage} className="w-10 h-10 rounded-lg object-cover bg-slate-200 border border-slate-100" alt="" />
+                                <img src={loc.seasonalImages?.[currentSeason] || loc.coverImage} className="w-11 h-11 rounded-lg object-cover bg-slate-200 border border-slate-100" alt="" />
                                 <div>
-                                    <div className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">{loc.name}</div>
-                                    <div className="text-[10px] text-slate-400">{loc.region}</div>
+                                    <div className="text-xs font-bold text-slate-800 group-hover:text-primary transition-colors">{loc.name}</div>
+                                    <div className="text-[10px] text-slate-400 font-medium">{loc.region}</div>
                                 </div>
                             </button>
                         ))}
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     );
 }

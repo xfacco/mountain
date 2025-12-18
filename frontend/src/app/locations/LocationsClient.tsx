@@ -24,7 +24,7 @@ export default function LocationsClient() {
 
                 const docs = querySnapshot.docs
                     .map(doc => ({ id: doc.id, ...doc.data() } as any))
-                    .filter(loc => loc.status === 'published'); // Only show published
+                    .filter(loc => loc.status === 'published' && (loc.language === 'en' || !loc.language)); // Show English or Legacy (undefined)
 
                 setLocations(docs);
             } catch (e) {

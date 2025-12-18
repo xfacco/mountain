@@ -4,7 +4,7 @@ export async function generateMetadata({ params: { locale } }: { params: { local
     const t = await getTranslations({ locale, namespace: 'Metadata' });
 
     return {
-        title: `${t('map_title')} | MountComp`,
+        title: `${t('map_title')} | Alpe Match`,
         description: t('map_description'),
     };
 }

@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv() # Load env vars from .env file
 
-app = FastAPI(title="MountComp AI Engine", description="AI Scraper & Data Processor for Mountain Services")
+app = FastAPI(title="AlpeMatch AI Engine", description="AI Scraper & Data Processor for Mountain Services")
 
 # Allow Frontend to communicate with Backend
 app.add_middleware(
@@ -27,7 +27,7 @@ class ScrapeRequest(BaseModel):
 
 @app.get("/")
 def health_check():
-    return {"status": "ok", "service": "MountComp AI Backend", "version": "0.1.0"}
+    return {"status": "ok", "service": "AlpeMatch AI Backend", "version": "0.1.0"}
 
 @app.post("/api/ai/research")
 async def research_location(request: ScrapeRequest):
@@ -186,23 +186,25 @@ async def generate_tags(request: ScrapeRequest):
         model = genai.GenerativeModel('gemini-2.5-flash')
         
         prompt = f"""
-        Analizza la località turistica di montagna: "{request.location_name}".
+        Analyze the mountain tourism location: "{request.location_name}".
         
-        Genera un set di TAG per categorizzarla in JSON.
-        Format richiesto (rigorosamente JSON):
+        CRITICAL INSTRUCTION: Output ALL tag values in ENGLISH language only. Do NOT use Italian or any other language.
+        
+        Generate a set of TAGS to categorize it in JSON format.
+        Required format (strictly JSON):
         {{
-            "vibe": ["Aggettivo 1", "Aggettivo 2"],
+            "vibe": ["Adjective 1", "Adjective 2"],
             "target": ["Target 1", "Target 2"],
             "highlights": ["Highlight 1", "Highlight 2"],
-            "tourism": ["Tag Attività es. Freeride, Ciaspole, MTB"],
-            "accommodation": ["Tag Ospitalità es. Lusso, Glamping, Rifugi"],
-            "infrastructure": ["Tag Impianti es. Funivia, Skibus, Noleggio"],
-            "sport": ["Tag Sport es. Padel, Tennis, Nuoto"],
-            "info": ["Tag Info es. Ufficio Guide, App, WiFi"],
-            "general": ["Tag Generali es. Panoramico, Storico, Enogastronomia"]
+            "tourism": ["Activity Tags e.g. Freeride, Snowshoeing, MTB"],
+            "accommodation": ["Hospitality Tags e.g. Luxury, Glamping, Mountain Huts"],
+            "infrastructure": ["Infrastructure Tags e.g. Cable Car, Ski Bus, Rental"],
+            "sport": ["Sport Tags e.g. Padel, Tennis, Swimming"],
+            "info": ["Info Tags e.g. Guide Office, App, WiFi"],
+            "general": ["General Tags e.g. Panoramic, Historic, Food & Wine"]
         }}
         
-        Rispondi SOLO con il JSON valido. Nessun markdown.
+        Respond ONLY with valid JSON in ENGLISH. No markdown.
         """
         
         response = model.generate_content(prompt)
@@ -222,6 +224,63 @@ async def generate_tags(request: ScrapeRequest):
 
     except Exception as e:
         print(f"Tag Gen Error: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+class TranslateRequest(BaseModel):
+    content: dict
+    target_language: str = "Italian"
+
+@app.post("/api/ai/translate")
+async def translate_content(request: TranslateRequest):
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        return {"status": "error", "message": "API Key missing"}
+
+    try:
+        import google.generativeai as genai
+        import json
+        
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        
+        # Serialize content to string for the prompt
+        content_str = json.dumps(request.content, ensure_ascii=False)
+        
+        prompt = f"""
+        You are a professional translator for a mountain tourism portal.
+        
+        Task: Translate the following JSON content into {request.target_language}.
+        
+        Rules:
+        1. Translate ALL values (descriptions, names where appropriate, labels).
+        2. DO NOT translate Keys. Keep the JSON structure exactly the same.
+        3. If a value is a URL or a number, keep it as is.
+        4. Output ONLY valid JSON. No markdown.
+        
+        Content to translate:
+        {content_str}
+        """
+        
+        response = model.generate_content(prompt)
+        text_response = response.text
+        
+        print(f"DEBUG - TRANSLATE Raw Response: {text_response}")
+        
+        import re
+        clean_text = re.sub(r'```[a-zA-Z]*', '', text_response).replace('```', '').strip()
+        start_idx = clean_text.find('{')
+        end_idx = clean_text.rfind('}')
+        if start_idx != -1 and end_idx != -1:
+            clean_text = clean_text[start_idx:end_idx+1]
+            
+        data = json.loads(clean_text)
+        
+        return {"status": "success", "data": data}
+
+    except Exception as e:
+        print(f"Translation Error: {e}")
         return {"status": "error", "message": str(e)}
 
 

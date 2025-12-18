@@ -18,32 +18,34 @@ export function Navbar() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
                     {/* Logo */}
-                    <Link href="/" className="flex-shrink-0 flex items-center gap-2 group">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white shadow-md group-hover:shadow-lg transition-shadow">
-                            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 3L2 20H22L12 3Z" fill="currentColor" fillOpacity="0.2" />
-                                <path d="M12 3L2 20H22L12 3ZM12 3L16 11H8L12 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M12 7L14.5 12H9.5L12 7Z" fill="currentColor" />
-                            </svg>
-                        </div>
+                    <Link href="/" className="flex-shrink-0 flex items-center gap-3 group">
+                        <img
+                            src="/logo_alpematch.png"
+                            alt="Alpe Match Logo"
+                            className="h-12 w-auto object-contain group-hover:scale-105 transition-transform"
+                        />
                         <span className="font-display font-bold text-xl text-slate-800 group-hover:text-primary transition-colors">
-                            MountComp
+                            Alpe Match
                         </span>
                     </Link>
 
                     {/* Desktop Nav */}
                     <div className="hidden md:flex items-center space-x-8">
+                        <Link href="/match" className="text-primary font-bold hover:text-primary-dark transition-colors flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /></svg>
+                            Match
+                        </Link>
                         <Link href="/locations" className="text-slate-600 hover:text-primary transition-colors font-medium">{t('destinations')}</Link>
                         <Link href="/compare" className="text-slate-600 hover:text-primary transition-colors font-medium">{t('compare')}</Link>
                         <Link href="/map" className="text-slate-600 hover:text-primary transition-colors font-medium">{t('map')}</Link>
+                        <Link href="/search" className="text-slate-600 hover:text-primary transition-colors" title="Search">
+                            <Search size={20} />
+                        </Link>
                     </div>
 
                     {/* Actions */}
                     <div className="flex items-center gap-4">
                         <SeasonSelector />
-                        <Link href="/search" className="p-2 text-slate-500 hover:text-primary transition-colors">
-                            <Search size={20} />
-                        </Link>
                         <button
                             className="md:hidden p-2 text-slate-500 hover:text-slate-900 transition-colors"
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -57,6 +59,14 @@ export function Navbar() {
             {/* Mobile Menu Overlay */}
             {isMenuOpen && (
                 <div className="md:hidden absolute top-16 left-0 right-0 bg-white border-b border-slate-100 shadow-xl p-4 flex flex-col gap-2 animate-in slide-in-from-top-2 duration-200">
+                    <Link
+                        href="/match"
+                        className="p-3 rounded-lg hover:bg-slate-50 font-bold text-primary flex items-center gap-2 transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /></svg>
+                        Match
+                    </Link>
                     <Link
                         href="/locations"
                         className="p-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700 hover:text-primary transition-colors"
@@ -77,6 +87,13 @@ export function Navbar() {
                         onClick={() => setIsMenuOpen(false)}
                     >
                         {t('map')}
+                    </Link>
+                    <Link
+                        href="/search"
+                        className="p-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700 hover:text-primary transition-colors flex items-center gap-2"
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                        <Search size={18} /> Cerca
                     </Link>
                 </div>
             )}

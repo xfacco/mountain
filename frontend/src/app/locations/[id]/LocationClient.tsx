@@ -9,13 +9,16 @@ import { useSeasonStore } from '@/store/season-store';
 import { useCompareStore } from '@/store/compare-store';
 import { useTranslations } from 'next-intl';
 
-export default function LocationDetailClient() {
+export default function LocationDetailClient({ initialData }: { initialData?: any }) {
     const params = useParams();
     const router = useRouter(); // Initialize router
     const { currentSeason, setSeason } = useSeasonStore();
     const { selectedLocations, addLocation, removeLocation } = useCompareStore();
-    const [location, setLocation] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    const [location, setLocation] = useState<any>(initialData || null);
+    const [loading, setLoading] = useState(!initialData);
+    const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+    const [isMobileTagsOpen, setIsMobileTagsOpen] = useState(false);
+    const [isSinglePageMode, setIsSinglePageMode] = useState(false);
     const t = useTranslations('LocationDetail');
     const tSeasons = useTranslations('Seasons');
 
@@ -132,7 +135,7 @@ export default function LocationDetailClient() {
         <div className="min-h-screen bg-slate-50">
             <Navbar />
 
-            <div className="pt-32 pb-12 container mx-auto px-6">
+            <div className="pt-32 pb-32 lg:pb-12 container mx-auto px-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                     {/* LEFT COLUMN: Identity Card (Image + Summary + Compare) + Sidebar Widgets */}
@@ -174,8 +177,8 @@ export default function LocationDetailClient() {
                                     )}
                                 </div>
 
-                                {/* Quick Search (Local Content) */}
-                                <div className="mb-6 relative z-10">
+                                {/* Quick Search (Local Content) - Desktop Only */}
+                                <div className="hidden lg:block mb-6 relative z-10">
                                     <div className="relative">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                         <input
@@ -199,81 +202,96 @@ export default function LocationDetailClient() {
                                     </p>
                                 </div>
 
-                                {/* Compare Action - Moved back to Sidebar */}
-                                <div className="mb-6">
-                                    {selectedLocations.find(l => l.id === location.id) ? (
-                                        <button
-                                            onClick={() => removeLocation(location.id)}
-                                            className="w-full bg-green-50 hover:bg-red-50 text-green-700 hover:text-red-700 font-bold py-3 rounded-xl transition-all border border-green-200 hover:border-red-200 flex items-center justify-center gap-2 group shadow-sm"
-                                        >
-                                            <span className="group-hover:hidden flex items-center gap-2"><Check size={18} /> {t('added_to_compare')}</span>
-                                            <span className="hidden group-hover:flex items-center gap-2"><X size={18} /> {t('remove_from_compare')}</span>
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => {
-                                                if (selectedLocations.length >= 3) {
-                                                    alert(t('max_compare_alert'));
-                                                    return;
-                                                }
-                                                addLocation(location);
-                                                router.push('/compare');
-                                            }}
-                                            className={`w-full font-bold py-3 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2  ${selectedLocations.length >= 3 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-200'}`}
-                                        >
-                                            <Star size={18} className="group-hover:fill-current transition-colors" />
-                                            {selectedLocations.length >= 3 ? t('max_compare_button') : t('add_to_compare')}
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* Categories / Tabs - Moved above Seasons */}
-                                <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-2 mb-6">
-                                    {tabs.map((tab) => {
-                                        const Icon = tab.icon;
-                                        const isActive = activeTab === tab.id;
-                                        return (
+                                {/* Desktop Only Controls */}
+                                <div className="hidden lg:block space-y-6">
+                                    {/* Compare Action */}
+                                    <div>
+                                        {selectedLocations.find(l => l.id === location.id) ? (
                                             <button
-                                                key={tab.id}
-                                                onClick={() => setActiveTab(tab.id)}
-                                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${isActive
-                                                    ? 'bg-slate-900 text-white shadow-md'
-                                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
-                                                    }`}
+                                                onClick={() => removeLocation(location.id)}
+                                                className="w-full bg-green-50 hover:bg-red-50 text-green-700 hover:text-red-700 font-bold py-3 rounded-xl transition-all border border-green-200 hover:border-red-200 flex items-center justify-center gap-2 group shadow-sm"
                                             >
-                                                <Icon size={14} />
-                                                {tab.label}
+                                                <span className="group-hover:hidden flex items-center gap-2"><Check size={18} /> {t('added_to_compare')}</span>
+                                                <span className="hidden group-hover:flex items-center gap-2"><X size={18} /> {t('remove_from_compare')}</span>
                                             </button>
-                                        );
-                                    })}
-                                </div>
-
-                                {/* Season Selector - Moved below Categories */}
-                                <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-2">
-                                    {seasons.map(s => {
-                                        const Icon = s.icon;
-                                        const isActive = currentSeason === s.id;
-                                        const hasContent = location.description?.[s.id];
-                                        if (!hasContent && (s.id === 'autumn' || s.id === 'spring')) return null;
-
-                                        return (
+                                        ) : (
                                             <button
-                                                key={s.id}
-                                                onClick={() => setSeason((s.id as any))}
-                                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${isActive
-                                                    ? 'bg-slate-900 text-white shadow-md'
-                                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
-                                                    }`}
+                                                onClick={() => {
+                                                    if (selectedLocations.length >= 3) {
+                                                        alert(t('max_compare_alert'));
+                                                        return;
+                                                    }
+                                                    addLocation(location);
+                                                    router.push('/compare');
+                                                }}
+                                                className={`w-full font-bold py-3 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2  ${selectedLocations.length >= 3 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-200'}`}
                                             >
-                                                <Icon size={14} />
-                                                {s.label}
+                                                <Star size={18} className="group-hover:fill-current transition-colors" />
+                                                {selectedLocations.length >= 3 ? t('max_compare_button') : t('add_to_compare')}
                                             </button>
-                                        );
-                                    })}
+                                        )}
+                                    </div>
+
+                                    {/* Categories / Tabs */}
+                                    <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-2">
+                                        {tabs.map((tab) => {
+                                            const Icon = tab.icon;
+                                            const isActive = activeTab === tab.id;
+                                            return (
+                                                <button
+                                                    key={tab.id}
+                                                    onClick={() => {
+                                                        setActiveTab(tab.id);
+                                                        setIsSinglePageMode(false);
+                                                    }}
+                                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${isActive
+                                                        ? 'bg-slate-900 text-white shadow-md'
+                                                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                                                        }`}
+                                                >
+                                                    <Icon size={14} />
+                                                    {tab.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Season Selector */}
+                                    <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-2">
+                                        {seasons.map(s => {
+                                            const Icon = s.icon;
+                                            const isActive = currentSeason === s.id;
+                                            const hasContent = location.description?.[s.id];
+                                            if (!hasContent && (s.id === 'autumn' || s.id === 'spring')) return null;
+
+                                            return (
+                                                <button
+                                                    key={s.id}
+                                                    onClick={() => setSeason((s.id as any))}
+                                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${isActive
+                                                        ? 'bg-slate-900 text-white shadow-md'
+                                                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                                                        }`}
+                                                >
+                                                    <Icon size={14} />
+                                                    {s.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* SEO Index Link */}
+                                    <div className="pt-6 border-t border-slate-100">
+                                        <Link
+                                            href={`/directory?location=${encodeURIComponent(location.name)}`}
+                                            className="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors py-2"
+                                        >
+                                            <List size={12} /> See the details in reduced format
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
                     </div>
 
                     {/* RIGHT COLUMN (Main): Tabs & Content */}
@@ -299,8 +317,8 @@ export default function LocationDetailClient() {
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 min-h-[500px]">
 
                             {/* OVERVIEW TAB */}
-                            {(activeTab === 'overview' || activeTab === 'all') && (searchTerm === '' || location.description?.[currentSeason]?.toLowerCase().includes(searchTerm.toLowerCase())) && (
-                                <div className="mobile-fade-in space-y-8 mb-12">
+                            {(activeTab === 'overview' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || location.description?.[currentSeason]?.toLowerCase().includes(searchTerm.toLowerCase())) && (
+                                <div id="section-overview" className="mobile-fade-in space-y-8 mb-12 scroll-mt-24 lg:scroll-mt-32">
                                     <div className="flex items-center justify-between">
                                         <h2 className="text-2xl font-bold text-slate-900">{t('seasonal_overview')}</h2>
                                     </div>
@@ -315,8 +333,8 @@ export default function LocationDetailClient() {
 
                             {/* TOURISM TAB */}
                             {(activeTab === 'overview' || activeTab === 'all') ? null : null}
-                            {(activeTab === 'tourism' || activeTab === 'all') && (searchTerm === '' || getFilteredServices('tourism').length > 0) && (
-                                <div className="mobile-fade-in space-y-6 mb-12">
+                            {(activeTab === 'tourism' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('tourism').length > 0) && (
+                                <div id="section-tourism" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
                                     <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
                                         <Mountain className="text-green-600" size={28} /> {t('sections.tourism')}
                                     </h2>
@@ -352,8 +370,8 @@ export default function LocationDetailClient() {
                             )}
 
                             {/* ACCOMMODATION TAB */}
-                            {(activeTab === 'accommodation' || activeTab === 'all') && (searchTerm === '' || getFilteredServices('accommodation').length > 0) && (
-                                <div className="mobile-fade-in space-y-6 mb-12">
+                            {(activeTab === 'accommodation' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('accommodation').length > 0) && (
+                                <div id="section-accommodation" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
                                     <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
                                         <Home className="text-orange-500" size={28} /> {t('sections.accommodation')}
                                     </h2>
@@ -389,8 +407,8 @@ export default function LocationDetailClient() {
                             )}
 
                             {/* INFRASTRUCTURE TAB */}
-                            {(activeTab === 'infrastructure' || activeTab === 'all') && (searchTerm === '' || getFilteredServices('infrastructure').length > 0) && (
-                                <div className="mobile-fade-in space-y-6 mb-12">
+                            {(activeTab === 'infrastructure' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('infrastructure').length > 0) && (
+                                <div id="section-infrastructure" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
                                     <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
                                         <Bus className="text-slate-600" size={28} /> {t('sections.infrastructure')}
                                     </h2>
@@ -420,8 +438,8 @@ export default function LocationDetailClient() {
                             )}
 
                             {/* SPORT TAB */}
-                            {(activeTab === 'sport' || activeTab === 'all') && (searchTerm === '' || getFilteredServices('sport').length > 0) && (
-                                <div className="mobile-fade-in space-y-6 mb-12">
+                            {(activeTab === 'sport' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('sport').length > 0) && (
+                                <div id="section-sport" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
                                     <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
                                         <Accessibility className="text-red-500" size={28} /> {t('sections.sport')}
                                     </h2>
@@ -447,8 +465,8 @@ export default function LocationDetailClient() {
                             )}
 
                             {/* INFO TAB */}
-                            {(activeTab === 'info' || activeTab === 'all') && (searchTerm === '' || getFilteredServices('info').length > 0) && (
-                                <div className="mobile-fade-in space-y-6 mb-12">
+                            {(activeTab === 'info' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('info').length > 0) && (
+                                <div id="section-info" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
                                     <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
                                         <HelpCircle className="text-indigo-500" size={28} /> {t('sections.info')}
                                     </h2>
@@ -470,8 +488,8 @@ export default function LocationDetailClient() {
                             )}
 
                             {/* GENERAL TAB */}
-                            {(activeTab === 'general' || activeTab === 'all') && (searchTerm === '' || getFilteredServices('general').length > 0) && (
-                                <div className="mobile-fade-in space-y-6 mb-12">
+                            {(activeTab === 'general' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('general').length > 0) && (
+                                <div id="section-general" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
                                     <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
                                         <Layers className="text-slate-500" size={28} /> {t('sections.general')}
                                     </h2>
@@ -492,6 +510,126 @@ export default function LocationDetailClient() {
                                 </div>
                             )}
 
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile Sticky Footer */}
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-md border-t border-slate-200 pb-4">
+                <div className="flex flex-col">
+                    {/* Expandable Tags Area (Expanding Upwards) */}
+                    {isMobileTagsOpen && (
+                        <div className="px-4 py-6 border-b border-slate-100 animate-in slide-in-from-bottom-4 duration-300 max-h-[60vh] overflow-y-auto">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 px-1">{t('tabs.all')}</h3>
+                            <div className="grid grid-cols-2 gap-2">
+                                {tabs.filter(t => t.id !== 'all').map((tab) => {
+                                    const isActive = activeTab === tab.id;
+                                    const Icon = tab.icon;
+                                    return (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => {
+                                                setActiveTab(tab.id);
+                                                setIsSinglePageMode(true);
+                                                setIsMobileTagsOpen(false);
+                                                setIsMobileSearchOpen(false);
+                                                setTimeout(() => {
+                                                    document.getElementById(`section-${tab.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                }, 10);
+                                            }}
+                                            className={`flex items-center gap-2.5 px-4 py-3.5 rounded-2xl text-[11px] font-bold uppercase tracking-wide transition-all ${isActive
+                                                ? 'bg-slate-900 text-white shadow-lg'
+                                                : 'bg-slate-50 text-slate-600 border border-slate-100'
+                                                }`}
+                                        >
+                                            <Icon size={14} />
+                                            <span className="truncate">{tab.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Expandable Search Area */}
+                    {isMobileSearchOpen && (
+                        <div className="px-4 py-3 border-b border-slate-100 animate-in slide-in-from-bottom-2 duration-200">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder={t('search_local_placeholder')}
+                                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    autoFocus
+                                />
+                                <button
+                                    onClick={() => { setIsMobileSearchOpen(false); setSearchTerm(''); }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 p-1 bg-slate-200/50 rounded-full"
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Main Agile Bar (Single Line) */}
+                    <div className="flex items-center justify-between px-3 py-3 gap-2">
+                        {/* Search Trigger */}
+                        <button
+                            onClick={() => {
+                                setIsMobileSearchOpen(!isMobileSearchOpen);
+                                setIsMobileTagsOpen(false);
+                            }}
+                            className={`p-3 rounded-2xl transition-all ${isMobileSearchOpen ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 bg-slate-50'}`}
+                        >
+                            <Search size={22} />
+                        </button>
+
+                        {/* Tags Expand Trigger */}
+                        <button
+                            onClick={() => {
+                                setIsMobileTagsOpen(!isMobileTagsOpen);
+                                setIsMobileSearchOpen(false);
+                            }}
+                            className={`flex-1 flex items-center justify-between px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all ${isMobileTagsOpen
+                                ? 'bg-slate-900 text-white shadow-lg'
+                                : 'text-slate-700 bg-slate-50 border border-slate-100'
+                                }`}
+                        >
+                            <span className="flex items-center gap-2">
+                                <List size={16} />
+                                {tabs.find(t => t.id === activeTab)?.label || t('tabs.all')}
+                            </span>
+                            {isMobileTagsOpen ? <ChevronLeft className="-rotate-90" size={16} /> : <ChevronLeft className="rotate-90" size={16} />}
+                        </button>
+
+                        {/* Compare Action */}
+                        <div className="flex items-center gap-2">
+                            {selectedLocations.find(l => l.id === location.id) ? (
+                                <button
+                                    onClick={() => removeLocation(location.id)}
+                                    className="p-3 bg-green-50 text-green-700 rounded-2xl border border-green-200 shadow-sm"
+                                >
+                                    <Check size={22} />
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        if (selectedLocations.length >= 3) {
+                                            alert(t('max_compare_alert'));
+                                            return;
+                                        }
+                                        addLocation(location);
+                                        router.push('/compare');
+                                    }}
+                                    className={`p-3 rounded-2xl transition-all shadow-sm ${selectedLocations.length >= 3 ? 'bg-slate-100 text-slate-300' : 'bg-slate-900 text-white shadow-slate-200'}`}
+                                >
+                                    <Star size={22} />
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

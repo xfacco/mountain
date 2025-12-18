@@ -12,10 +12,16 @@ import {
     Save,
     X,
     ArrowLeft,
-    Home
+    Home,
+    Sparkles,
+    ExternalLink,
+    Layers,
+    MessageSquare,
+    Mail
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function AdminDashboard() {
     const router = useRouter();
@@ -141,6 +147,14 @@ export default function AdminDashboard() {
                         <Home size={18} />
                         Configura Home
                     </button>
+                    <button
+                        onClick={() => { setActiveTab('messages'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'messages' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <MessageSquare size={18} />
+                        Messaggi
+                    </button>
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
@@ -171,10 +185,10 @@ export default function AdminDashboard() {
                         <header className="flex justify-between items-center mb-8">
                             <div>
                                 <h1 className="text-2xl font-bold text-slate-900">
-                                    {activeTab === 'locations' ? 'Località' : 'Motore AI Ricerca'}
+                                    {activeTab === 'locations' ? 'Località' : activeTab === 'messages' ? 'Messaggi Utenti' : 'Motore AI Ricerca'}
                                 </h1>
                                 <p className="text-slate-500 text-sm mt-1">
-                                    {activeTab === 'locations' ? 'Gestisci le destinazioni pubblicate.' : activeTab === 'ai-tasks' ? 'Estrai nuovi dati dal web tramite Gemini.' : 'Modifica i contenuti della Home Page.'}
+                                    {activeTab === 'locations' ? 'Gestisci le destinazioni pubblicate.' : activeTab === 'messages' ? 'Leggi le segnalazioni e le richieste degli utenti.' : activeTab === 'ai-tasks' ? 'Estrai nuovi dati dal web tramite Gemini.' : 'Modifica i contenuti della Home Page.'}
                                 </p>
                             </div>
                             <div className="flex gap-3">
@@ -225,6 +239,7 @@ export default function AdminDashboard() {
                                                     />
                                                 </th>
                                                 <th className="px-6 py-4">Nome</th>
+                                                <th className="px-6 py-4 text-center">Servizi</th>
                                                 <th className="px-6 py-4">Regione</th>
                                                 <th className="px-6 py-4">Stato</th>
                                                 <th className="px-6 py-4 text-right">Azioni</th>
@@ -251,6 +266,15 @@ export default function AdminDashboard() {
                                                             {loc.aiGenerationMetadata && (
                                                                 <span title="Generato da AI" className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200">AI</span>
                                                             )}
+                                                            <span title="Lingua" className={`text-xs px-1.5 py-0.5 rounded border uppercase font-bold ${loc.language === 'en' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                                                                {loc.language || 'IT'}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-bold border border-slate-200" title="Totale servizi/attività">
+                                                            <Layers size={12} />
+                                                            {loc.services?.length || 0}
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-slate-600 font-medium">
@@ -266,6 +290,14 @@ export default function AdminDashboard() {
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <div className="flex justify-end gap-2">
+                                                            <Link
+                                                                href={`/locations/${loc.name}`}
+                                                                target="_blank"
+                                                                className="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
+                                                                title="Visualizza sul sito"
+                                                            >
+                                                                <ExternalLink size={18} />
+                                                            </Link>
                                                             <button
                                                                 onClick={() => setEditingLocation(loc)}
                                                                 className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -290,6 +322,7 @@ export default function AdminDashboard() {
                             </div>
                         )}
 
+                        {activeTab === 'messages' && <MessagesView />}
                         {activeTab === 'ai-tasks' && <AITaskRunner />}
                         {activeTab === 'home-config' && <HomeConfigView />}
                     </>
@@ -298,9 +331,121 @@ export default function AdminDashboard() {
         </div>
     );
 }
+function MessagesView() {
+    const [messages, setMessages] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
-// ... EditLocationView ...
-// ... AITaskRunner ...
+    useEffect(() => {
+        const fetchMessages = async () => {
+            try {
+                const { collection, getDocs, orderBy, query } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase');
+
+                const q = query(collection(db, 'contacts'), orderBy('createdAt', 'desc'));
+                const querySnapshot = await getDocs(q);
+                const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setMessages(docs);
+            } catch (e) {
+                console.error("Error fetching messages:", e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchMessages();
+    }, []);
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Eliminare questo messaggio?')) return;
+        try {
+            const { doc, deleteDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await deleteDoc(doc(db, 'contacts', id));
+            setMessages(prev => prev.filter(m => m.id !== id));
+        } catch (e) {
+            alert('Errore eliminazione');
+        }
+    };
+
+    const getReasonLabel = (reason: string) => {
+        const labels: any = {
+            bug: 'Errore/Bug',
+            info: 'Informazioni',
+            new_location: 'Nuova Località',
+            other: 'Altro'
+        };
+        return labels[reason] || reason;
+    };
+
+    const getReasonColor = (reason: string) => {
+        const colors: any = {
+            bug: 'bg-red-50 text-red-700 border-red-100',
+            info: 'bg-blue-50 text-blue-700 border-blue-100',
+            new_location: 'bg-green-50 text-green-700 border-green-100',
+            other: 'bg-slate-50 text-slate-700 border-slate-100'
+        };
+        return colors[reason] || colors.other;
+    };
+
+    if (loading) return <div className="text-center py-20 text-slate-500">Caricamento messaggi...</div>;
+
+    if (messages.length === 0) return (
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
+            <Mail size={48} className="mx-auto text-slate-200 mb-4" />
+            <h3 className="text-lg font-bold text-slate-900">Nessun messaggio</h3>
+            <p className="text-slate-500">I messaggi degli utenti appariranno qui.</p>
+        </div>
+    );
+
+    return (
+        <div className="grid gap-6">
+            {messages.map(msg => (
+                <div key={msg.id} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="flex gap-4 items-center">
+                            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold uppercase">
+                                {msg.firstName?.[0]}{msg.lastName?.[0]}
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-900">{msg.firstName} {msg.lastName}</h3>
+                                <p className="text-sm text-slate-500">{msg.email}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${getReasonColor(msg.reason)}`}>
+                                {getReasonLabel(msg.reason)}
+                            </span>
+                            <button
+                                onClick={() => handleDelete(msg.id)}
+                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                                <Trash2 size={18} />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Passioni</span>
+                            <p className="text-sm text-slate-700 font-medium">{msg.passions || 'Nessuna passione indicata'}</p>
+                        </div>
+                        <div>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Messaggio</span>
+                            <p className="text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">{msg.description}</p>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 pt-4 border-t border-slate-50 flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                        <span>{msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleString() : 'Data non disponibile'}</span>
+                        <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                            Ricevuto
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
 
 function MergeTool({ selectedLocations, onCancel, onComplete }: { selectedLocations: any[], onCancel: () => void, onComplete: () => void }) {
     const [masterId, setMasterId] = useState<string>(selectedLocations[0]?.id);
@@ -596,7 +741,8 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
     const generateTags = async () => {
         setGeneratingTags(true);
         try {
-            const res = await fetch('http://localhost:8000/api/ai/generate-tags', {
+            const { API_BASE_URL } = await import('@/lib/api');
+            const res = await fetch(`${API_BASE_URL}/api/ai/generate-tags`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ location_name: formData.name })
@@ -625,6 +771,76 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
         }
     };
 
+    // Duplicate & Translate Logic
+    const [translating, setTranslating] = useState(false);
+
+    const handleDuplicateTranslate = async () => {
+        if (!confirm('Vuoi duplicare questa località e tradurla automaticamente in ITALIANO usando l\'AI?')) return;
+        setTranslating(true);
+        try {
+            // Prepare content to translate
+            const contentToTranslate = {
+                description: formData.description,
+                services: formData.services,
+                tags: formData.tags,
+                profile: formData.profile || {},
+                practicalTips: formData.practicalTips || {},
+                safety: formData.safety || {},
+                // Add more fields as needed for full translation
+            };
+
+            const { API_BASE_URL } = await import('@/lib/api');
+            const res = await fetch(`${API_BASE_URL}/api/ai/translate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: contentToTranslate,
+                    target_language: "Italian"
+                })
+            });
+
+            if (!res.ok) throw new Error('Translation API failed');
+            const result = await res.json();
+
+            if (result.status === 'error') throw new Error(result.message);
+
+            const translatedData = result.data;
+
+            // Create new duplicated location
+            const newLocation = {
+                ...formData,
+                ...translatedData, // Overwrite with translated fields
+                id: crypto.randomUUID(), // New ID
+                name: `${formData.name} (IT)`,
+                language: 'it',
+                status: 'draft',
+                createdAt: new Date().toISOString(),
+                aiGenerationMetadata: {
+                    ...formData.aiGenerationMetadata,
+                    translatedFrom: formData.id,
+                    translationEngine: 'Gemini AI',
+                    translatedAt: new Date().toISOString()
+                }
+            };
+
+            // Allow parent component to handle the save of the NEW location
+            // Since onSave usually updates the CURRENT one, we might need a direct save here
+            const { collection, addDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            const docRef = await addDoc(collection(db, 'locations'), newLocation);
+
+            alert('✅ Località duplicata e tradotta! La troverai nella lista come bozza.');
+            onCancel(); // Close current editor
+
+        } catch (e: any) {
+            console.error("Translation error:", e);
+            alert(`Errore traduzione: ${e.message}`);
+        } finally {
+            setTranslating(false);
+        }
+    };
+
     return (
         <div className="max-w-5xl mx-auto">
             <div className="flex items-center gap-4 mb-8">
@@ -635,6 +851,14 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                     <h1 className="text-2xl font-bold text-slate-900">Modifica {location.name}</h1>
                 </div>
                 <div className="flex gap-2">
+                    <button
+                        onClick={handleDuplicateTranslate}
+                        disabled={translating}
+                        className={`px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors ${translating ? 'bg-purple-100 text-purple-400 cursor-not-allowed' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'}`}
+                    >
+                        {translating ? <span className="animate-spin">⏳</span> : <Sparkles size={16} />}
+                        {translating ? 'Traduzione...' : 'Duplica (IT)'}
+                    </button>
                     <button onClick={() => setEditTab('general')} className={`px-4 py-2 rounded-lg font-medium text-sm border ${editTab === 'general' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>Generale</button>
                     <button onClick={() => setEditTab('services')} className={`px-4 py-2 rounded-lg font-medium text-sm border ${editTab === 'services' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>Servizi ({formData.services.length})</button>
                 </div>
@@ -695,6 +919,22 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Paese</label>
                                 <input name="country" value={formData.country} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none" />
                             </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Lingua</label>
+                                <select
+                                    name="language"
+                                    value={formData.language || 'it'}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none bg-white"
+                                >
+                                    <option value="it">Italiano (IT)</option>
+                                    <option value="en">English (EN)</option>
+                                    <option value="de">Deutsch (DE)</option>
+                                    <option value="fr">Français (FR)</option>
+                                </select>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Altitudine (m)</label>
                                 <input
@@ -968,6 +1208,8 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
 function AITaskRunner() {
     const [targetLocation, setTargetLocation] = useState('');
     const [customInstructions, setCustomInstructions] = useState('');
+    // const [language, setLanguage] = useState<'it' | 'en'>('it'); // Removed: Force EN by default via Backend Prompt
+    const language = 'en'; // Hardcode internal logic to EN for consistency
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [timer, setTimer] = useState(0);
@@ -997,17 +1239,29 @@ function AITaskRunner() {
             const { db } = await import('@/lib/firebase');
 
             // Check if location exists
+            // Check if location exists for the SELECTED LANGUAGE
+            // Note: If 'language' is undefined in DB, we assume it's IT (legacy)
             const q = query(collection(db, 'locations'), where('name', '==', targetLocation));
             const snapshot = await getDocs(q);
 
+            // Client-side filtering for language to handle missing fields (legacy data)
+            const exactMatch = snapshot.docs.find(doc => {
+                const data = doc.data();
+                const dbLang = data.language || 'it'; // Default to 'it' if missing
+                return dbLang === language;
+            });
+
             let promptInstructions = customInstructions;
 
-            if (!snapshot.empty) {
-                const existingData = snapshot.docs[0].data();
-                setExistingLocationId(snapshot.docs[0].id);
+            // Language Directive REMOVED (Handled by Backend Default Prompt now)
+            // if (language === 'en') ...
+
+            if (exactMatch) {
+                const existingData = exactMatch.data();
+                setExistingLocationId(exactMatch.id);
 
                 // Alert handled by UI logic (showing preview with warning)
-                if (!confirm(`⚠️ ATTENZIONE: "${targetLocation}" è già presente nel DB!\n\nVuoi procedere analizzando SOLO i servizi mancanti?`)) {
+                if (!confirm(`⚠️ ATTENZIONE: "${targetLocation}" è già presente nel DB (Lingua: ${language.toUpperCase()})!\n\nVuoi procedere analizzando SOLO i servizi mancanti?`)) {
                     setLoading(false);
                     return;
                 }
@@ -1042,7 +1296,8 @@ function AITaskRunner() {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 240000); // 240s
 
-            const res = await fetch('http://localhost:8000/api/ai/research', {
+            const { API_BASE_URL } = await import('@/lib/api');
+            const res = await fetch(`${API_BASE_URL}/api/ai/research`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1111,7 +1366,8 @@ function AITaskRunner() {
                 practicalTips: result.data.practicalTips || {},
                 openingHours: result.data.openingHours || {},
                 safety: result.data.safety || {},
-                sustainability: result.data.sustainability || {}
+                sustainability: result.data.sustainability || {},
+                language: language // Save the selected language (it or en)
             };
 
             await addDoc(collection(db, 'locations'), locationData);
@@ -1137,6 +1393,9 @@ function AITaskRunner() {
                     className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-primary outline-none"
                 />
             </div>
+
+
+
             <div className="mb-6">
                 <label className="block text-sm font-medium text-slate-700 mb-2">Istruzioni Speciali per l'AI</label>
                 <textarea

@@ -2,12 +2,32 @@ import { getTranslations } from 'next-intl/server';
 import SearchClient from './SearchClient';
 import { Suspense } from 'react';
 
-export async function generateMetadata({ params: { locale } }: { params: { locale: string } }) {
+export async function generateMetadata({
+    params: { locale },
+    searchParams
+}: {
+    params: { locale: string },
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
     const t = await getTranslations({ locale, namespace: 'Metadata' });
+    const resolvedSearchParams = await searchParams;
+    const tag = resolvedSearchParams?.tag as string;
+    const query = resolvedSearchParams?.q as string;
+
+    const baseTitle = t('search_title');
+    let dynamicTitle = baseTitle;
+
+    if (tag) {
+        dynamicTitle = `${tag} - ${baseTitle}`;
+    } else if (query) {
+        dynamicTitle = `${query} - ${baseTitle}`;
+    }
 
     return {
-        title: `${t('search_title')} | MountComp`,
-        description: t('search_description'),
+        title: `${dynamicTitle} | Alpe Match`,
+        description: tag
+            ? `Discover all mountain destinations tagged with ${tag}. Compare features and find your ideal spot on Alpe Match.`
+            : t('search_description'),
     };
 }
 

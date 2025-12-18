@@ -3,42 +3,48 @@ import './globals.css';
 import SeasonProvider from '@/components/providers/SeasonProvider';
 import { Outfit, Inter } from 'next/font/google';
 import { Footer } from '@/components/layout/Footer';
+import Script from 'next/script';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-display' });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://mountain-comparator.vercel.app'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://www.alpematch.com'),
   title: {
-    default: 'MountComp - Il Comparatore di Località Montane',
-    template: '%s | MountComp'
+    default: 'Alpe Match - Find Your Ideal Mountain - The Smart Mountain Comparator',
+    template: '%s | Alpe Match'
   },
-  description: 'Confronta le migliori località sciistiche e montane. Scopri caratteristiche, servizi, prezzi e stagionalità per la tua vacanza perfetta sulle Alpi.',
-  keywords: ['montagna', 'sci', 'trekking', 'dolomiti', 'alpi', 'comparatore', 'vacanze', 'turismo', 'trentino', 'alto adige'],
-  authors: [{ name: 'MountComp Team' }],
-  creator: 'MountComp',
-  publisher: 'MountComp',
+  description: 'Compare the best ski and mountain resorts. Discover features, services, prices, and seasonality for your perfect Alpine holiday.',
+  keywords: ['mountain', 'ski', 'trekking', 'dolomites', 'alps', 'comparator', 'holidays', 'tourism', 'alpe match'],
+  authors: [{ name: 'Alpe Match Team' }],
+  creator: 'Alpe Match',
+  publisher: 'Alpe Match',
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
   openGraph: {
     type: 'website',
-    locale: 'it_IT',
+    locale: 'en_US',
     url: '/',
-    title: 'MountComp - Trova la tua Montagna Ideale',
-    description: 'Analizza e confronta centinaia di destinazioni montane. Dati aggiornati su impianti, ospitalità e attività.',
-    siteName: 'MountComp',
+    title: 'Alpe Match - Find Your Ideal Mountain - The Smart Mountain Comparator',
+    description: 'Analyze and compare hundreds of mountain destinations. Updated data on facilities, hospitality, and activities.',
+    siteName: 'Alpe Match',
     images: [
       {
-        url: '/og-image.jpg', // Ensure this file exists or will exist in public/
+        url: '/alpe_match_logo.png',
         width: 1200,
         height: 630,
-        alt: 'MountComp Preview',
+        alt: 'Alpe Match Preview',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'MountComp - Il Comparatore Alpino',
-    description: 'Confronta destinazioni montane per ogni stagione.',
-    images: ['/og-image.jpg'],
+    title: 'Alpe Match - The Alpine Comparator',
+    description: 'Compare mountain destinations for every season.',
+    images: ['/alpe_match_logo.png'],
   },
   robots: {
     index: true,
@@ -68,6 +74,20 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${outfit.variable} antialiased`}>
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-FWTMGB9GWC"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-FWTMGB9GWC');
+          `}
+        </Script>
         <NextIntlClientProvider messages={messages}>
           <SeasonProvider>
             {children}

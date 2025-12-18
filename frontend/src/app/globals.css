@@ -126,3 +126,33 @@ h6 {
 .border-primary {
     border-color: var(--primary);
 }
+
+/* Utilities */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scroll-mask-h {
+    mask-image: linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent);
+}
+
+@keyframes mobile-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mobile-fade-in {
+    animation: mobile-fade-in 0.4s ease-out forwards;
+}

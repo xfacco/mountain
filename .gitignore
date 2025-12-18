@@ -1,0 +1,37 @@
+# Libraries and Dependencies
+**/node_modules/
+**/venv/
+**/__pycache__/
+*.pyc
+
+# Next.js build output
+**/.next/
+**/out/
+
+# Environment variables (Sensitive Data)
+**/.env
+**/.env.local
+**/.env.production
+**/.env.*.local
+
+# Debug logs
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/.pnpm-debug.log*
+**/*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+**/Thumbs.db
+
+# Backup and temporary files
+**/.git_backup/
+**/*.bak
+**/*.swp
+
+# IDE files
+.vscode/
+.idea/
+*.tsbuildinfo
