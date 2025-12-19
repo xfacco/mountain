@@ -6,9 +6,10 @@ import { motion } from 'framer-motion';
 import { Navbar } from '@/components/layout/Navbar';
 import { useSeasonStore } from '@/store/season-store';
 import Link from 'next/link';
-import { ChevronRight, ChevronLeft, Check, Sparkles, MapPin, User, Users, Heart, PartyPopper, Coffee, Activity, Music, Gem, Trees, Snowflake, Mountain, Droplets, Utensils, Landmark, Flag, Globe, Sun, Leaf } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Sparkles, MapPin, User, Users, Heart, PartyPopper, Coffee, Activity, Music, Gem, Trees, Snowflake, Mountain, Droplets, Utensils, Landmark, Flag, Globe, Sun, Leaf, History, Laptop, Moon, Zap, ShoppingBag, Camera } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { TAG_CATEGORIES } from '@/lib/tags-config';
 
 // Helper for classes 
 function cn(...inputs: (string | undefined | null | false)[]) {
@@ -143,6 +144,20 @@ export default function MatchWizard() {
                 if (isNationMatch) score += 15;
                 maxScore += 15;
             }
+
+            // 5. Explicit Tag Matching (1-to-1) based on categories
+            // Check if ANY of the location's specific tags match the preferences exactly
+            // This reinforces the relationship between wizard selections and DB content
+            const categoriesToMatch: (keyof Preferences)[] = ['vibe', 'target', 'activities'];
+            categoriesToMatch.forEach(cat => {
+                const prefs = preferences[cat];
+                const locTags = loc.tags?.[cat] || [];
+                if (prefs.length > 0) {
+                    const matches = prefs.filter(p => locTags.includes(p));
+                    // Additional boost for exact structured match
+                    score += matches.length * 5;
+                }
+            });
 
             // 5. Seasonality Boost (if location explicitly mentions season in description or data)
             // Simulating this by checking if description exists for the selected season
@@ -378,47 +393,55 @@ export default function MatchWizard() {
         },
         target: {
             title: t('steps.target'),
-            options: [
-                { id: 'family', Icon: Users, label: t('options.family') },
-                { id: 'couple', Icon: Heart, label: t('options.couple') },
-                { id: 'friends', Icon: PartyPopper, label: t('options.friends') },
-                { id: 'solo', Icon: User, label: t('options.solo') },
-            ],
+            options: TAG_CATEGORIES.target.map(opt => ({
+                ...opt,
+                label: t(`options.${opt.id}`),
+                Icon: opt.id === 'family' ? Users : opt.id === 'couple' ? Heart : opt.id === 'friends' ? PartyPopper : User
+            })),
             multi: false,
             stateKey: 'target'
         },
         vibe: {
             title: t('steps.vibe'),
-            options: [
-                { id: 'relax', Icon: Coffee, label: t('options.relax') },
-                { id: 'sport', Icon: Activity, label: t('options.sport') },
-                { id: 'party', Icon: Music, label: t('options.party') },
-                { id: 'luxury', Icon: Gem, label: t('options.luxury') },
-                { id: 'nature', Icon: Trees, label: t('options.nature') },
-            ],
+            options: TAG_CATEGORIES.vibe.map(opt => {
+                const icons: Record<string, any> = {
+                    relax: Coffee,
+                    sport: Activity,
+                    party: Music,
+                    luxury: Gem,
+                    nature: Trees,
+                    tradition: History,
+                    work: Laptop,
+                    silence: Moon
+                };
+                return { ...opt, label: t(`options.${opt.id}`), Icon: icons[opt.id] || Sparkles };
+            }),
             multi: true,
             stateKey: 'vibe'
         },
         activities: {
             title: t('steps.activities'),
-            options: [
-                { id: 'ski', Icon: Snowflake, label: t('options.ski') },
-                { id: 'hiking', Icon: Mountain, label: t('options.hiking') },
-                { id: 'wellness', Icon: Droplets, label: t('options.wellness') },
-                { id: 'food', Icon: Utensils, label: t('options.food') },
-                { id: 'culture', Icon: Landmark, label: t('options.culture') },
-            ],
+            options: TAG_CATEGORIES.activities.map(opt => {
+                const icons: Record<string, any> = {
+                    ski: Snowflake,
+                    hiking: Mountain,
+                    wellness: Droplets,
+                    food: Utensils,
+                    culture: Landmark,
+                    adrenaline: Zap,
+                    shopping: ShoppingBag,
+                    photography: Camera
+                };
+                return { ...opt, label: t(`options.${opt.id}`), Icon: icons[opt.id] || Sparkles };
+            }),
             multi: true,
             stateKey: 'activities'
         },
         nation: {
             title: t('steps.nation'),
             options: [
-                { id: 'italy', Icon: Flag, label: t('options.italy') },
-                { id: 'austria', Icon: Flag, label: t('options.austria') },
-                { id: 'switzerland', Icon: Flag, label: t('options.switzerland') },
-                { id: 'france', Icon: Flag, label: t('options.france') },
-                { id: 'any', Icon: Globe, label: t('options.any') },
+                ...TAG_CATEGORIES.nations.map(opt => ({ ...opt, label: t(`options.${opt.id}`), Icon: Flag })),
+                { id: 'any', Icon: Globe, label: t('options.any') }
             ],
             multi: false,
             stateKey: 'nation'

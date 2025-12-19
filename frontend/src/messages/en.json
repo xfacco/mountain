@@ -104,7 +104,8 @@
         "sort_alphabetical": "Alphabetical",
         "sort_altitude": "Altitude",
         "sort_services": "Services",
-        "sort_country": "Country"
+        "sort_country": "Country",
+        "match_cta": "Find your Match"
     },
     "LocationDetail": {
         "not_found": "Location not found",
@@ -148,6 +149,7 @@
         "subtitle": "Compare side-by-side to choose your destination.",
         "empty_state": "No locations selected for comparison.",
         "add_location": "Add Location",
+        "close_selector": "Close Selection",
         "clear_all": "Clear All",
         "differences": "Differences",
         "season_analysis": "Data analysis for season:",
@@ -262,7 +264,7 @@
         "autumn": "Autumn"
     },
     "Match": {
-        "title": "Find Your Perfect Match with the mountain",
+        "title": "Find your ideal mountain destination",
         "subtitle": "Answer a few simple questions and let our AI find the ideal mountain destination for you.",
         "start_button": "Start Matching",
         "restart": "Start Over",
@@ -288,11 +290,17 @@
             "party": "Party & Fun",
             "luxury": "Luxury & Comfort",
             "nature": "Nature & Silence",
+            "tradition": "Authenticity & Tradition",
+            "work": "Smart Working & Long Stay",
+            "silence": "Silence & Contemplation",
             "ski": "Skiing & Snowboarding",
             "hiking": "Hiking & Trekking",
             "wellness": "Spa & Wellness",
             "food": "Food & Wine",
             "culture": "Culture & History",
+            "adrenaline": "Extreme Sports & Experience",
+            "shopping": "Retail & Shopping",
+            "photography": "Photography & Sightseeing",
             "italy": "Italy",
             "austria": "Austria",
             "switzerland": "Switzerland",

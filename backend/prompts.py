@@ -28,11 +28,17 @@ Struttura JSON richiesta in output:
       "seasonAvailability": ["winter", "summer"]
     }
   ],
-  "profile": {
-      "target": "famiglie / coppie / luxury / sportivi / giovani",
-      "priceLevel": "€ / €€ / €€€ / €€€€",
-      "style": "tradizionale alpino / glamour / sportivo / wild",
-      "vibe": "Descrizione breve dell'atmosfera"
+  "tags": {
+     "vibe": ["relax", "sport", "party", "luxury", "nature"],
+     "target": ["family", "couple", "friends", "solo"],
+     "activities": ["ski", "hiking", "wellness", "food", "culture"],
+     "highlights": ["Highlight 1", "Highlight 2"]
+  },
+  "technicalData": {
+      "totalSkiKm": 0,
+      "minAltitude": 0,
+      "maxAltitude": 0,
+      "totalLifts": 0
   },
   "accessibility": {
       "airports": ["Aeroporto 1 (distanza)", "Aeroporto 2 (distanza)"],
@@ -41,7 +47,13 @@ Struttura JSON richiesta in output:
       "accessToResort": "Info specifiche arrivo in auto"
   }
 }
-All details must be in English
+All details must be in English.
+
+IMPORTANT: For the "tags" section, use ONLY the following IDs (lowercase) if applicable:
+- Vibe: relax, sport, party, luxury, nature, tradition, work, silence
+- Target: family, couple, friends, solo
+- Activities: ski, hiking, wellness, food, culture, adrenaline, shopping, photography
+- Country: Use ONLY "Italy", "Austria", "Switzerland", or "France"
 
 ISTRUZIONI PER CATEGORIA DI SERVIZIO:
 

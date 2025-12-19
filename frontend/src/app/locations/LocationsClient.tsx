@@ -5,7 +5,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { useSeasonStore } from '@/store/season-store';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Search, SortAsc, TrendingUp, Layers, ArrowRight, Globe } from 'lucide-react';
+import { Search, SortAsc, TrendingUp, Layers, ArrowRight, Globe, Sparkles } from 'lucide-react';
 
 export default function LocationsClient() {
     const { currentSeason } = useSeasonStore();
@@ -62,11 +62,11 @@ export default function LocationsClient() {
                             </p>
                         </div>
                         <Link
-                            href="/search"
-                            className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 group"
+                            href="/match"
+                            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-lg shadow-primary/20 group"
                         >
-                            <Search size={18} />
-                            {t('advanced_search')}
+                            <Sparkles size={18} />
+                            {t('match_cta')}
                             <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
                         </Link>
                     </div>

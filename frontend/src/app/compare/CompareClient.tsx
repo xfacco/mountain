@@ -120,10 +120,10 @@ export default function CompareClient() {
                     </div>
                     <button
                         onClick={() => setIsSelectorOpen(!isSelectorOpen)}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-all font-medium"
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow-sm transition-all font-medium ${isSelectorOpen ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-primary text-white hover:bg-opacity-90'}`}
                     >
-                        <Plus size={18} />
-                        {t('add_location')}
+                        {isSelectorOpen ? <X size={18} /> : <Plus size={18} />}
+                        {isSelectorOpen ? t('close_selector') : t('add_location')}
                     </button>
                 </div>
 

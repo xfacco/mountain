@@ -22,6 +22,7 @@ import {
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { TAG_CATEGORIES } from '@/lib/tags-config';
 
 export default function AdminDashboard() {
     const router = useRouter();
@@ -34,6 +35,16 @@ export default function AdminDashboard() {
 
     // Load locations from Firestore
     useEffect(() => {
+        // Handle URL parameters for deep linking
+        const queryParams = new URLSearchParams(window.location.search);
+        const tabParam = queryParams.get('tab');
+        const locParam = queryParams.get('location');
+
+        if (tabParam === 'ai-tasks') {
+            setActiveTab('ai-tasks');
+            // We'll handle the location pre-fill via state or passing it down
+        }
+
         const fetchLocations = async () => {
             try {
                 const { collection, getDocs, orderBy, query } = await import('firebase/firestore');
@@ -239,6 +250,7 @@ export default function AdminDashboard() {
                                                     />
                                                 </th>
                                                 <th className="px-6 py-4">Nome</th>
+                                                <th className="px-6 py-4 text-center">Tag Status</th>
                                                 <th className="px-6 py-4 text-center">Servizi</th>
                                                 <th className="px-6 py-4">Regione</th>
                                                 <th className="px-6 py-4">Stato</th>
@@ -272,6 +284,20 @@ export default function AdminDashboard() {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
+                                                        <div className="flex justify-center gap-1">
+                                                            {['vibe', 'target', 'highlights'].map(tagType => {
+                                                                const count = loc.tags?.[tagType]?.length || 0;
+                                                                return (
+                                                                    <div
+                                                                        key={tagType}
+                                                                        title={`${tagType}: ${count} tags`}
+                                                                        className={`w-2.5 h-2.5 rounded-full ${count > 0 ? 'bg-primary' : 'bg-slate-200'}`}
+                                                                    />
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
                                                         <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-bold border border-slate-200" title="Totale servizi/attività">
                                                             <Layers size={12} />
                                                             {loc.services?.length || 0}
@@ -297,6 +323,14 @@ export default function AdminDashboard() {
                                                                 title="Visualizza sul sito"
                                                             >
                                                                 <ExternalLink size={18} />
+                                                            </Link>
+                                                            <Link
+                                                                href={`/admin?tab=ai-tasks&location=${encodeURIComponent(loc.name)}`}
+                                                                target="_blank"
+                                                                className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                                                title="Analisi AI (Nuova Scheda)"
+                                                            >
+                                                                <Sparkles size={18} />
                                                             </Link>
                                                             <button
                                                                 onClick={() => setEditingLocation(loc)}
@@ -669,7 +703,7 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
         ...location,
         description: location.description || { winter: '', summer: '' },
         services: location.services || [],
-        tags: location.tags || { vibe: [], target: [], highlights: [] },
+        tags: location.tags || { vibe: [], target: [], highlights: [], activities: [] },
         seasonalImages: location.seasonalImages || {
             winter: location.coverImage || '',
             summer: location.coverImage || '',
@@ -698,6 +732,20 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
         } else {
             setFormData({ ...formData, [name]: value });
         }
+    };
+
+    const toggleTag = (category: string, tagId: string) => {
+        const currentTags = formData.tags?.[category] || [];
+        const newTags = currentTags.includes(tagId)
+            ? currentTags.filter((t: string) => t !== tagId)
+            : [...currentTags, tagId];
+        setFormData({
+            ...formData,
+            tags: {
+                ...formData.tags,
+                [category]: newTags
+            }
+        });
     };
 
     // Service Management
@@ -917,7 +965,21 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Paese</label>
-                                <input name="country" value={formData.country} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none" />
+                                <select
+                                    name="country"
+                                    value={formData.country || ''}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none bg-white"
+                                >
+                                    <option value="">Seleziona...</option>
+                                    {TAG_CATEGORIES.nations.map(n => (
+                                        <option key={n.id} value={n.label}>{n.label}</option>
+                                    ))}
+                                    <option value="Austria">Austria</option>
+                                    <option value="Francia">Francia</option>
+                                    <option value="Svizzera">Svizzera</option>
+                                    <option value="Germania">Germania</option>
+                                </select>
                             </div>
 
                             <div>
@@ -1060,87 +1122,145 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                     {generatingTags ? 'Generazione...' : '✨ Genera con AI'}
                                 </button>
                             </div>
-                            <div className="grid grid-cols-3 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Vibe / Atmosfera</label>
-                                    <input
-                                        value={formData.tags?.vibe?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, vibe: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Chic, Tranquilla..."
-                                    />
+                            <div className="space-y-8">
+                                {/* Wizard Match Tags (Strict 1-to-1) */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                                    <div className="col-span-full mb-2">
+                                        <h4 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                            <Sparkles size={16} /> Configurazione Match Wizard (1-a-1)
+                                        </h4>
+                                        <p className="text-xs text-slate-500 mt-1">Questi tag attivano direttamente l'algoritmo di abbinamento intelligente.</p>
+                                    </div>
+
+                                    {/* Vibe Selection */}
+                                    <div>
+                                        <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Vibe / Atmosfera</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {TAG_CATEGORIES.vibe.map(tag => (
+                                                <button
+                                                    key={tag.id}
+                                                    type="button"
+                                                    onClick={() => toggleTag('vibe', tag.id)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${formData.tags?.vibe?.includes(tag.id)
+                                                        ? 'bg-primary text-white border-primary shadow-md'
+                                                        : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
+                                                        }`}
+                                                >
+                                                    {tag.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Target Selection */}
+                                    <div>
+                                        <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Target Utente</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {TAG_CATEGORIES.target.map(tag => (
+                                                <button
+                                                    key={tag.id}
+                                                    type="button"
+                                                    onClick={() => toggleTag('target', tag.id)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${formData.tags?.target?.includes(tag.id)
+                                                        ? 'bg-primary text-white border-primary shadow-md'
+                                                        : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
+                                                        }`}
+                                                >
+                                                    {tag.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Activities Match */}
+                                    <div>
+                                        <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Attività Chiave</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {TAG_CATEGORIES.activities.map(tag => (
+                                                <button
+                                                    key={tag.id}
+                                                    type="button"
+                                                    onClick={() => toggleTag('activities', tag.id)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${formData.tags?.activities?.includes(tag.id)
+                                                        ? 'bg-primary text-white border-primary shadow-md'
+                                                        : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
+                                                        }`}
+                                                >
+                                                    {tag.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Target</label>
-                                    <input
-                                        value={formData.tags?.target?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, target: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Famiglie, Coppie..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Highlights</label>
-                                    <input
-                                        value={formData.tags?.highlights?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, highlights: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Spa, Ghiacciaio..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Attività (Tourism)</label>
-                                    <input
-                                        value={formData.tags?.tourism?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, tourism: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Freeride, MTB..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Ospitalità (Accom.)</label>
-                                    <input
-                                        value={formData.tags?.accommodation?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, accommodation: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Lusso, Glamping..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Impianti (Infrastr.)</label>
-                                    <input
-                                        value={formData.tags?.infrastructure?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, infrastructure: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Skibus, Funivia..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Sport</label>
-                                    <input
-                                        value={formData.tags?.sport?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, sport: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Tennis, Nuoto..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Info</label>
-                                    <input
-                                        value={formData.tags?.info?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, info: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. App, Guide..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Generali</label>
-                                    <input
-                                        value={formData.tags?.general?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, general: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Storico, Panoramico..."
-                                    />
+
+                                {/* SEO & Extra Tags (Free Text) */}
+                                <div className="grid grid-cols-3 gap-6">
+                                    <div className="col-span-full">
+                                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 border-b border-slate-100 pb-2">Tag SEO & Approfondimenti (Testo Libero)</h4>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Highlights</label>
+                                        <input
+                                            value={formData.tags?.highlights?.join(', ') || ''}
+                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, highlights: e.target.value.split(',').map(s => s.trim()) } })}
+                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                            placeholder="Es. Spa, Ghiacciaio..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Tag Attività (Tourism)</label>
+                                        <input
+                                            value={formData.tags?.tourism?.join(', ') || ''}
+                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, tourism: e.target.value.split(',').map(s => s.trim()) } })}
+                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                            placeholder="Es. Freeride, MTB..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Tag Ospitalità (Accom.)</label>
+                                        <input
+                                            value={formData.tags?.accommodation?.join(', ') || ''}
+                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, accommodation: e.target.value.split(',').map(s => s.trim()) } })}
+                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                            placeholder="Es. Lusso, Glamping..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Tag Impianti (Infrastr.)</label>
+                                        <input
+                                            value={formData.tags?.infrastructure?.join(', ') || ''}
+                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, infrastructure: e.target.value.split(',').map(s => s.trim()) } })}
+                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                            placeholder="Es. Skibus, Funivia..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Tag Sport</label>
+                                        <input
+                                            value={formData.tags?.sport?.join(', ') || ''}
+                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, sport: e.target.value.split(',').map(s => s.trim()) } })}
+                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                            placeholder="Es. Tennis, Nuoto..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Tag Info</label>
+                                        <input
+                                            value={formData.tags?.info?.join(', ') || ''}
+                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, info: e.target.value.split(',').map(s => s.trim()) } })}
+                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                            placeholder="Es. App, Guide..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Tag Generali</label>
+                                        <input
+                                            value={formData.tags?.general?.join(', ') || ''}
+                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, general: e.target.value.split(',').map(s => s.trim()) } })}
+                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                            placeholder="Es. Storico, Panoramico..."
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1227,6 +1347,16 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
 
 function AITaskRunner() {
     const [targetLocation, setTargetLocation] = useState('');
+
+    // Handle pre-filled location from URL
+    useEffect(() => {
+        const queryParams = new URLSearchParams(window.location.search);
+        const locParam = queryParams.get('location');
+        if (locParam) {
+            setTargetLocation(locParam);
+        }
+    }, []);
+
     const [customInstructions, setCustomInstructions] = useState('');
     // const [language, setLanguage] = useState<'it' | 'en'>('it'); // Removed: Force EN by default via Backend Prompt
     const language = 'en'; // Hardcode internal logic to EN for consistency

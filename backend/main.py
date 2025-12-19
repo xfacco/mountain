@@ -188,23 +188,29 @@ async def generate_tags(request: ScrapeRequest):
         prompt = f"""
         Analyze the mountain tourism location: "{request.location_name}".
         
-        CRITICAL INSTRUCTION: Output ALL tag values in ENGLISH language only. Do NOT use Italian or any other language.
+        CRITICAL INSTRUCTION: Output ONLY specific TAG IDs from the list below if they apply to the location. 
+        Output format MUST be strictly JSON in ENGLISH.
         
-        Generate a set of TAGS to categorize it in JSON format.
+        ALLOWED IDs (MUST be lowercase):
+        - vibe: relax, sport, party, luxury, nature, tradition, work, silence
+        - target: family, couple, friends, solo
+        - activities: ski, hiking, wellness, food, culture, adrenaline, shopping, photography
+        
         Required format (strictly JSON):
         {{
-            "vibe": ["Adjective 1", "Adjective 2"],
-            "target": ["Target 1", "Target 2"],
-            "highlights": ["Highlight 1", "Highlight 2"],
-            "tourism": ["Activity Tags e.g. Freeride, Snowshoeing, MTB"],
-            "accommodation": ["Hospitality Tags e.g. Luxury, Glamping, Mountain Huts"],
-            "infrastructure": ["Infrastructure Tags e.g. Cable Car, Ski Bus, Rental"],
-            "sport": ["Sport Tags e.g. Padel, Tennis, Swimming"],
-            "info": ["Info Tags e.g. Guide Office, App, WiFi"],
-            "general": ["General Tags e.g. Panoramic, Historic, Food & Wine"]
+            "vibe": ["id1", "id2"],
+            "target": ["id1", "id2"],
+            "activities": ["id1", "id2"],
+            "highlights": ["English description 1", "English description 2"],
+            "tourism": ["Fuzzy Activity Tags e.g. Freeride, MTB"],
+            "accommodation": ["Hotel Tags e.g. Luxury, Spa"],
+            "infrastructure": ["e.g. Cable Car, Ski Bus"],
+            "sport": ["e.g. Tennis, Padel"],
+            "info": ["e.g. App, WiFi"],
+            "general": ["e.g. Panoramic"]
         }}
         
-        Respond ONLY with valid JSON in ENGLISH. No markdown.
+        Respond ONLY with valid JSON. No markdown code blocks.
         """
         
         response = model.generate_content(prompt)
