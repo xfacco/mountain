@@ -98,7 +98,13 @@
         "services": "Services",
         "read_more": "Read more",
         "region": "Region",
-        "no_description": "Description not available."
+        "no_description": "Description not available.",
+        "advanced_search": "Advanced Search",
+        "sort_by": "Sort by",
+        "sort_alphabetical": "Alphabetical",
+        "sort_altitude": "Altitude",
+        "sort_services": "Services",
+        "sort_country": "Country"
     },
     "LocationDetail": {
         "not_found": "Location not found",

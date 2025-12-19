@@ -946,7 +946,17 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Coordinate (Gradi Decimali es. 46.1234)</label>
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-sm font-medium text-slate-700">Coordinate (Gradi Decimali es. 46.1234)</label>
+                                    <a
+                                        href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' altitudine longitudine latitudine gradi decimali')}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold"
+                                    >
+                                        <Search size={10} /> Cerca dati
+                                    </a>
+                                </div>
                                 <div className="flex gap-2">
                                     <div className="flex-1 relative">
                                         <input
@@ -979,7 +989,17 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                 </div>
                             </div>
                             <div className="col-span-2">
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Immagini Stagionali (URL)</label>
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-sm font-medium text-slate-700">Immagini Stagionali (URL)</label>
+                                    <a
+                                        href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' immagini alta definizione')}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold"
+                                    >
+                                        <Search size={10} /> Cerca immagini HD
+                                    </a>
+                                </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     {['winter', 'spring', 'summer', 'autumn'].map((season) => (
                                         <div key={season}>

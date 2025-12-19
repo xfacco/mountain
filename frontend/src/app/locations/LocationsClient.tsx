@@ -5,11 +5,13 @@ import { Navbar } from '@/components/layout/Navbar';
 import { useSeasonStore } from '@/store/season-store';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { Search, SortAsc, TrendingUp, Layers, ArrowRight, Globe } from 'lucide-react';
 
 export default function LocationsClient() {
     const { currentSeason } = useSeasonStore();
     const [locations, setLocations] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [sortBy, setSortBy] = useState<'name' | 'altitude' | 'services' | 'country'>('name');
     const t = useTranslations('Locations');
 
     useEffect(() => {
@@ -36,19 +38,66 @@ export default function LocationsClient() {
         fetchLocations();
     }, []);
 
+    const sortedLocations = [...locations].sort((a, b) => {
+        if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+        if (sortBy === 'altitude') return (b.altitude || 0) - (a.altitude || 0);
+        if (sortBy === 'services') return (b.services?.length || 0) - (a.services?.length || 0);
+        if (sortBy === 'country') return (a.country || '').localeCompare(b.country || '');
+        return 0;
+    });
+
     return (
         <div className="min-h-screen bg-slate-50">
             <Navbar />
 
             <main className="pt-24 pb-16 px-6 lg:px-12 max-w-7xl mx-auto">
-                <header className="mb-12">
-                    <h1 className="text-4xl font-display font-bold text-slate-900 mb-4">
-                        {t('title')}
-                    </h1>
-                    <p className="text-lg text-slate-600 max-w-2xl">
-                        {t('subtitle')}
-                    </p>
+                <header className="mb-8">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                        <div>
+                            <h1 className="text-4xl font-display font-bold text-slate-900 mb-4">
+                                {t('title')}
+                            </h1>
+                            <p className="text-lg text-slate-600 max-w-2xl">
+                                {t('subtitle')}
+                            </p>
+                        </div>
+                        <Link
+                            href="/search"
+                            className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 group"
+                        >
+                            <Search size={18} />
+                            {t('advanced_search')}
+                            <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
+                        </Link>
+                    </div>
                 </header>
+
+                <div className="flex flex-wrap items-center gap-4 mb-8 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-2 text-slate-400">
+                        <SortAsc size={18} />
+                        <span className="text-sm font-bold uppercase tracking-wider">{t('sort_by')}:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {[
+                            { id: 'name', label: t('sort_alphabetical'), icon: <SortAsc size={14} /> },
+                            { id: 'country', label: t('sort_country'), icon: <Globe size={14} /> },
+                            { id: 'altitude', label: t('sort_altitude'), icon: <TrendingUp size={14} /> },
+                            { id: 'services', label: t('sort_services'), icon: <Layers size={14} /> }
+                        ].map((option) => (
+                            <button
+                                key={option.id}
+                                onClick={() => setSortBy(option.id as any)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all border ${sortBy === option.id
+                                    ? 'bg-slate-900 text-white border-slate-900 shadow-md'
+                                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'
+                                    }`}
+                            >
+                                {option.icon}
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -62,7 +111,7 @@ export default function LocationsClient() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {locations.map((location) => (
+                        {sortedLocations.map((location) => (
                             <Link
                                 key={location.id}
                                 href={`/locations/${location.name}`}
