@@ -31,12 +31,23 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('locations');
     const [locations, setLocations] = useState<any[]>([]);
     const [loadingLocs, setLoadingLocs] = useState(true);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    useEffect(() => {
+        const user = sessionStorage.getItem('mountcomp_admin_user');
+        if (!user) {
+            router.push('/admin/login');
+        } else {
+            setIsAuthenticated(true);
+        }
+    }, [router]);
 
     // Edit Mode State
     const [editingLocation, setEditingLocation] = useState<any>(null);
 
     // Load locations from Firestore
     useEffect(() => {
+        if (!isAuthenticated) return;
         // Handle URL parameters for deep linking
         const queryParams = new URLSearchParams(window.location.search);
         const tabParam = queryParams.get('tab');
@@ -129,6 +140,8 @@ export default function AdminDashboard() {
         }
     };
 
+    if (!isAuthenticated) return null;
+
     return (
         <div className="min-h-screen bg-slate-50 flex">
             {/* Sidebar */}
@@ -187,6 +200,14 @@ export default function AdminDashboard() {
                         <Columns size={18} />
                         Log Comparazioni
                     </button>
+                    <button
+                        onClick={() => { setActiveTab('search-data'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'search-data' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <Search size={18} />
+                        Dati Search
+                    </button>
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
@@ -221,15 +242,17 @@ export default function AdminDashboard() {
                                         : activeTab === 'messages' ? 'Messaggi Utenti'
                                             : activeTab === 'match-logs' ? 'Log Match AI'
                                                 : activeTab === 'compare_logs' ? 'Log Comparazioni'
-                                                    : 'Motore AI Ricerca'}
+                                                    : activeTab === 'search-data' ? 'Dati per Motori di Ricerca'
+                                                        : 'Motore AI Ricerca'}
                                 </h1>
                                 <p className="text-slate-500 text-sm mt-1">
                                     {activeTab === 'locations' ? 'Gestisci le destinazioni pubblicate.'
                                         : activeTab === 'messages' ? 'Leggi le segnalazioni e le richieste degli utenti.'
                                             : activeTab === 'match-logs' ? 'Vedi cosa cercano gli utenti nel Wizard.'
                                                 : activeTab === 'compare-logs' ? 'Vedi quali località vengono messe a confronto.'
-                                                    : activeTab === 'ai-tasks' ? 'Estrai nuovi dati dal web tramite Gemini.'
-                                                        : 'Modifica i contenuti della Home Page.'}
+                                                    : activeTab === 'search-data' ? 'Elenco località e nazioni (Copia & Incolla).'
+                                                        : activeTab === 'ai-tasks' ? 'Estrai nuovi dati dal web tramite Gemini.'
+                                                            : 'Modifica i contenuti della Home Page.'}
                                 </p>
                             </div>
                             <div className="flex gap-3">
@@ -425,6 +448,7 @@ export default function AdminDashboard() {
                         {activeTab === 'messages' && <MessagesView />}
                         {activeTab === 'match-logs' && <MatchLogsView />}
                         {activeTab === 'compare-logs' && <CompareLogsView />}
+                        {activeTab === 'search-data' && <SearchDataView locations={locations} />}
                         {activeTab === 'ai-tasks' && <AITaskRunner />}
                         {activeTab === 'home-config' && <HomeConfigView />}
                     </>
@@ -2098,6 +2122,79 @@ function CompareLogsView() {
                     ))}
                 </tbody>
             </table>
+        </div>
+    );
+}
+
+function SearchDataView({ locations }: { locations: any[] }) {
+    const [selectedCountry, setSelectedCountry] = useState<string>('all');
+
+    const countries = useMemo(() => {
+        const unique = new Set(locations.map(loc => loc.country || 'Italia'));
+        return Array.from(unique).sort();
+    }, [locations]);
+
+    const filteredLocations = useMemo(() => {
+        if (selectedCountry === 'all') return locations;
+        return locations.filter(loc => (loc.country || 'Italia') === selectedCountry);
+    }, [locations, selectedCountry]);
+
+    const textData = useMemo(() => {
+        return filteredLocations
+            .map(loc => `${loc.name}, ${loc.country || 'Italia'}`)
+            .sort((a, b) => a.localeCompare(b)) // Alphabetical order
+            .join('\n');
+    }, [filteredLocations]);
+
+    const handleCopy = () => {
+        if (!textData) return;
+        navigator.clipboard.writeText(textData);
+        alert(`Copiati ${filteredLocations.length} risultati negli appunti!`);
+    };
+
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 h-[calc(100vh-250px)] flex flex-col">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div>
+                        <h3 className="font-bold text-slate-800 text-lg">Elenco Località</h3>
+                        <p className="text-sm text-slate-500">Formato: Nome, Nazione</p>
+                    </div>
+
+                    <select
+                        value={selectedCountry}
+                        onChange={(e) => setSelectedCountry(e.target.value)}
+                        className="px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-primary"
+                    >
+                        <option value="all">Tutti i paesi ({locations.length})</option>
+                        {countries.map(country => (
+                            <option key={country} value={country}>
+                                {country} ({locations.filter(l => (l.country || 'Italia') === country).length})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        {filteredLocations.length} Risultati
+                    </span>
+                    <button
+                        onClick={handleCopy}
+                        disabled={filteredLocations.length === 0}
+                        className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50"
+                    >
+                        <Save size={18} /> Copia questi dati
+                    </button>
+                </div>
+            </div>
+
+            <textarea
+                readOnly
+                value={textData}
+                placeholder="Nessun dato disponibile per questa selezione."
+                className="flex-1 w-full p-6 bg-slate-50 rounded-2xl border border-slate-200 font-mono text-sm leading-relaxed focus:outline-none resize-none"
+            />
         </div>
     );
 }

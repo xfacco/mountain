@@ -98,6 +98,11 @@ export default function MatchWizard() {
         }
     }, [currentStep, locations]);
 
+    // Scroll to top on step change
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [currentStep]);
+
     // Initialize season preference based on current store if empty
     useEffect(() => {
         if (preferences.season.length === 0) {
@@ -564,7 +569,7 @@ export default function MatchWizard() {
                             lat: position.coords.latitude,
                             lng: position.coords.longitude,
                             mode: 'current',
-                            name: 'Mia posizione attuale'
+                            name: 'My current location'
                         }
                     }));
                 }, (error) => {

@@ -22,7 +22,7 @@ export default function LoginPage() {
             const { db } = await import('@/lib/firebase');
 
             // Check if admin document exists with this email (using email as Doc ID)
-            const adminDocRef = doc(db, 'admins', email);
+            const adminDocRef = doc(db, 'Admins', email);
             const adminDoc = await getDoc(adminDocRef);
 
             if (adminDoc.exists()) {
