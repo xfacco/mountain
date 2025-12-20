@@ -32,12 +32,25 @@ export default function Home() {
         const q = query(collection(db, 'locations'), orderBy('createdAt', 'desc'));
         const querySnapshot = await getDocs(q);
 
-        const docs = querySnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as any))
+        const lightDocs = querySnapshot.docs
+          .map(snap => ({ id: snap.id, ...snap.data() } as any))
           .filter(loc => loc.status === 'published')
           .slice(0, 3);
 
-        setFeaturedLocations(docs);
+        // Fetch details for these 3 featured locations to get descriptions and images
+        const fullDocs = await Promise.all(lightDocs.map(async (loc) => {
+          try {
+            const detailsSnap = await getDoc(doc(db, 'location_details', loc.id));
+            if (detailsSnap.exists()) {
+              return { ...loc, ...detailsSnap.data() };
+            }
+          } catch (e) {
+            console.error("Error fetching details for featured loc:", loc.name, e);
+          }
+          return loc;
+        }));
+
+        setFeaturedLocations(fullDocs);
       } catch (e) {
         console.error(e);
       } finally {

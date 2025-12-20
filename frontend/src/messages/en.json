@@ -184,7 +184,8 @@
         "details_info": "Info Details",
         "general_services": "General Services",
         "tag_general": "General Tags",
-        "details_general": "General Details"
+        "details_general": "General Details",
+        "loading_details": "Updating data..."
     },
     "Map": {
         "config_required": "Configuration Required",

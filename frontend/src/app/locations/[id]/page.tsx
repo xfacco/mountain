@@ -10,18 +10,36 @@ type Props = {
 
 async function getLocationData(name: string) {
     try {
+        const { doc, getDoc } = await import('firebase/firestore');
         const locationsRef = collection(db, 'locations');
         const q = query(locationsRef, where('name', '==', name));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
-            const data = querySnapshot.docs[0].data();
-            // Convert to plain object to avoid "Only plain objects can be passed to Client Components" error
-            // This handles Firestore Timestamps and other non-serializable objects
-            return JSON.parse(JSON.stringify(data));
+            const snap = querySnapshot.docs[0];
+            const lightData = snap.data();
+            const locId = snap.id;
+
+            // Fetch details from the split collection
+            try {
+                const detailsDoc = await getDoc(doc(db, 'location_details', locId));
+                if (detailsDoc.exists()) {
+                    const combined = {
+                        ...lightData,
+                        ...detailsDoc.data(),
+                        id: locId
+                    };
+                    return JSON.parse(JSON.stringify(combined));
+                }
+            } catch (e) {
+                console.error("Error fetching details for", name, e);
+            }
+
+            // Fallback if details don't exist yet (migration period)
+            return JSON.parse(JSON.stringify({ ...lightData, id: locId }));
         }
     } catch (error) {
-        console.error("Error fetching location for metadata:", error);
+        console.error("Error fetching location data:", error);
     }
     return null;
 }

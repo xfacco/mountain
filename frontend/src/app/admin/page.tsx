@@ -16,10 +16,12 @@ import {
     Sparkles,
     ExternalLink,
     Layers,
-    MessageSquare,
-    Mail,
     Activity,
-    Columns
+    Columns,
+    ChevronUp,
+    ChevronDown,
+    MessageSquare,
+    Mail
 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -32,6 +34,53 @@ export default function AdminDashboard() {
     const [locations, setLocations] = useState<any[]>([]);
     const [loadingLocs, setLoadingLocs] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+
+    const handleSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const sortedAndFilteredLocations = useMemo(() => {
+        let items = [...locations];
+
+        // Search filter
+        if (searchTerm) {
+            const lowSearch = searchTerm.toLowerCase();
+            items = items.filter(loc =>
+                (loc.name?.toLowerCase().includes(lowSearch)) ||
+                (loc.region?.toLowerCase().includes(lowSearch)) ||
+                (loc.country?.toLowerCase().includes(lowSearch))
+            );
+        }
+
+        // Sort
+        if (sortConfig) {
+            items.sort((a, b) => {
+                let aVal = a[sortConfig.key];
+                let bVal = b[sortConfig.key];
+
+                // Handle special cases
+                if (sortConfig.key === 'updatedAt') {
+                    aVal = a.updatedAt?.seconds || a.createdAt?.seconds || 0;
+                    bVal = b.updatedAt?.seconds || b.createdAt?.seconds || 0;
+                } else if (sortConfig.key === 'services') {
+                    aVal = a.services?.length || 0;
+                    bVal = b.services?.length || 0;
+                }
+
+                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        return items;
+    }, [locations, searchTerm, sortConfig]);
 
     useEffect(() => {
         const user = sessionStorage.getItem('mountcomp_admin_user');
@@ -81,7 +130,7 @@ export default function AdminDashboard() {
         if (!editingLocation) {
             fetchLocations();
         }
-    }, [activeTab, editingLocation]);
+    }, [activeTab, editingLocation, isAuthenticated]);
 
     // Selection & Merge State
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -102,13 +151,38 @@ export default function AdminDashboard() {
         router.push('/admin/login');
     };
 
+    const handleStartEdit = async (loc: any) => {
+        try {
+            const { doc, getDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            // Fetch heavy data
+            const heavyDocSnap = await getDoc(doc(db, 'location_details', loc.id));
+
+            if (heavyDocSnap.exists()) {
+                const heavyData = heavyDocSnap.data();
+                setEditingLocation({ ...loc, ...heavyData });
+            } else {
+                // If it doesn't exist (legacy/existing data not yet split), just use loc data
+                // This allows smooth transition for existing records
+                setEditingLocation(loc);
+            }
+        } catch (e) {
+            console.error("Error fetching heavy data:", e);
+            setEditingLocation(loc);
+        }
+    };
+
     const handleDeleteLocation = async (id: string, name: string) => {
         if (!confirm(`Sei sicuro di voler eliminare "${name}"? Questa azione è irreversibile.`)) return;
 
         try {
             const { doc, deleteDoc } = await import('firebase/firestore');
             const { db } = await import('@/lib/firebase');
+
+            // Delete both light and heavy documents
             await deleteDoc(doc(db, 'locations', id));
+            await deleteDoc(doc(db, 'location_details', id));
 
             setLocations(prev => prev.filter(l => l.id !== id));
             alert('Località eliminata con successo.');
@@ -120,20 +194,40 @@ export default function AdminDashboard() {
 
     const handleSaveEdit = async (updatedData: any) => {
         try {
-            const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+            const { doc, updateDoc, setDoc, serverTimestamp } = await import('firebase/firestore');
             const { db } = await import('@/lib/firebase');
 
-            const finalData = {
-                ...updatedData,
-                updatedAt: serverTimestamp()
-            };
-            delete finalData.id; // Don't save ID inside the doc
+            const heavyFields = [
+                'services', 'technicalData', 'accessibility',
+                'parking', 'localMobility', 'infoPoints', 'medical',
+                'advancedSkiing', 'outdoorNonSki', 'family', 'rentals',
+                'eventsAndSeasonality', 'gastronomy', 'digital', 'practicalTips',
+                'openingHours', 'safety', 'sustainability',
+                'aiGenerationMetadata', 'profile'
+            ];
 
-            await updateDoc(doc(db, 'locations', updatedData.id), finalData);
+            const lightData: any = { updatedAt: serverTimestamp() };
+            const heavyData: any = { updatedAt: serverTimestamp() };
 
-            setEditingLocation(null); // Close editor
-            setActiveTab('locations'); // Refresh list
-            alert('Modifiche salvate con successo!');
+            Object.entries(updatedData).forEach(([key, value]) => {
+                if (key === 'id') return;
+                if (heavyFields.includes(key)) {
+                    heavyData[key] = value;
+                } else {
+                    lightData[key] = value;
+                }
+            });
+
+            // Update main document (light)
+            await updateDoc(doc(db, 'locations', updatedData.id), lightData);
+
+            // Update or Create heavy document
+            // We use setDoc with merge to ensure it exists or updates
+            await setDoc(doc(db, 'location_details', updatedData.id), heavyData, { merge: true });
+
+            setEditingLocation(null);
+            setActiveTab('locations');
+            alert('Modifiche salvate con successo (Struttura Thin/Full)!');
         } catch (e) {
             console.error("Update Error:", e);
             alert("Errore durante il salvataggio delle modifiche.");
@@ -277,7 +371,9 @@ export default function AdminDashboard() {
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                         <input
                                             type="text"
-                                            placeholder="Cerca località..."
+                                            placeholder="Cerca località per nome, regione o stato..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
                                             className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-primary"
                                         />
                                     </div>
@@ -295,24 +391,73 @@ export default function AdminDashboard() {
                                                 <th className="px-6 py-4 w-10">
                                                     <input type="checkbox"
                                                         onChange={(e) => {
-                                                            if (e.target.checked) setSelectedIds(locations.map(l => l.id));
+                                                            if (e.target.checked) setSelectedIds(sortedAndFilteredLocations.map(l => l.id));
                                                             else setSelectedIds([]);
                                                         }}
-                                                        checked={selectedIds.length === locations.length && locations.length > 0}
+                                                        checked={selectedIds.length === sortedAndFilteredLocations.length && sortedAndFilteredLocations.length > 0}
                                                         className="rounded border-slate-300"
                                                     />
                                                 </th>
-                                                <th className="px-6 py-4">Nome</th>
-                                                <th className="px-6 py-4 text-center">Tag Status</th>
-                                                <th className="px-6 py-4 text-center">Servizi</th>
-                                                <th className="px-6 py-4">Regione</th>
-                                                <th className="px-6 py-4">Stato</th>
-                                                <th className="px-6 py-4">Ultima Modifica</th>
+                                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-200 transition-all group border-r border-slate-200" onClick={() => handleSort('name')}>
+                                                    <div className="flex items-center justify-between">
+                                                        <span>Nome</span>
+                                                        <div className="flex flex-col -gap-1">
+                                                            <ChevronUp size={10} className={sortConfig?.key === 'name' && sortConfig.direction === 'asc' ? 'text-primary' : 'text-slate-300 opacity-0 group-hover:opacity-100'} />
+                                                            <ChevronDown size={10} className={sortConfig?.key === 'name' && sortConfig.direction === 'desc' ? 'text-primary' : 'text-slate-300 opacity-0 group-hover:opacity-100'} />
+                                                        </div>
+                                                    </div>
+                                                </th>
+                                                <th className="px-6 py-4 text-center text-slate-400">Tag Status</th>
+                                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-200 transition-all group border-x border-slate-200" onClick={() => handleSort('services')}>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span>Servizi</span>
+                                                        <div className="flex flex-col -gap-1">
+                                                            <ChevronUp size={10} className={sortConfig?.key === 'services' && sortConfig.direction === 'asc' ? 'text-primary' : 'text-slate-300 opacity-0 group-hover:opacity-100'} />
+                                                            <ChevronDown size={10} className={sortConfig?.key === 'services' && sortConfig.direction === 'desc' ? 'text-primary' : 'text-slate-300 opacity-0 group-hover:opacity-100'} />
+                                                        </div>
+                                                    </div>
+                                                </th>
+                                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-200 transition-all group border-r border-slate-200" onClick={() => handleSort('region')}>
+                                                    <div className="flex items-center justify-between">
+                                                        <span>Regione</span>
+                                                        <div className="flex flex-col -gap-1">
+                                                            <ChevronUp size={10} className={sortConfig?.key === 'region' && sortConfig.direction === 'asc' ? 'text-primary' : 'text-slate-300 opacity-0 group-hover:opacity-100'} />
+                                                            <ChevronDown size={10} className={sortConfig?.key === 'region' && sortConfig.direction === 'desc' ? 'text-primary' : 'text-slate-300 opacity-0 group-hover:opacity-100'} />
+                                                        </div>
+                                                    </div>
+                                                </th>
+                                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-200 transition-all group border-r border-slate-200" onClick={() => handleSort('country')}>
+                                                    <div className="flex items-center justify-between">
+                                                        <span>Stato</span>
+                                                        <div className="flex flex-col -gap-1">
+                                                            <ChevronUp size={10} className={sortConfig?.key === 'country' && sortConfig.direction === 'asc' ? 'text-primary' : 'text-slate-300 opacity-0 group-hover:opacity-100'} />
+                                                            <ChevronDown size={10} className={sortConfig?.key === 'country' && sortConfig.direction === 'desc' ? 'text-primary' : 'text-slate-300 opacity-0 group-hover:opacity-100'} />
+                                                        </div>
+                                                    </div>
+                                                </th>
+                                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-200 transition-all group border-r border-slate-200" onClick={() => handleSort('status')}>
+                                                    <div className="flex items-center justify-between">
+                                                        <span>Status</span>
+                                                        <div className="flex flex-col -gap-1">
+                                                            <ChevronUp size={10} className={sortConfig?.key === 'status' && sortConfig.direction === 'asc' ? 'text-primary' : 'text-slate-300 opacity-0 group-hover:opacity-100'} />
+                                                            <ChevronDown size={10} className={sortConfig?.key === 'status' && sortConfig.direction === 'desc' ? 'text-primary' : 'text-slate-300 opacity-0 group-hover:opacity-100'} />
+                                                        </div>
+                                                    </div>
+                                                </th>
+                                                <th className="px-6 py-4 cursor-pointer hover:bg-slate-200 transition-all group border-r border-slate-200" onClick={() => handleSort('updatedAt')}>
+                                                    <div className="flex items-center justify-between">
+                                                        <span>Aggiornata</span>
+                                                        <div className="flex flex-col -gap-1">
+                                                            <ChevronUp size={10} className={sortConfig?.key === 'updatedAt' && sortConfig.direction === 'asc' ? 'text-primary' : 'text-slate-300 opacity-0 group-hover:opacity-100'} />
+                                                            <ChevronDown size={10} className={sortConfig?.key === 'updatedAt' && sortConfig.direction === 'desc' ? 'text-primary' : 'text-slate-300 opacity-0 group-hover:opacity-100'} />
+                                                        </div>
+                                                    </div>
+                                                </th>
                                                 <th className="px-6 py-4 text-right">Azioni</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {locations.map((loc) => (
+                                            {sortedAndFilteredLocations.map((loc) => (
                                                 <tr key={loc.id} className={`hover:bg-slate-50/50 ${selectedIds.includes(loc.id) ? 'bg-indigo-50/30' : ''}`}>
                                                     <td className="px-6 py-4">
                                                         <input type="checkbox"
@@ -370,7 +515,10 @@ export default function AdminDashboard() {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-slate-600 font-medium">
-                                                        {loc.region || 'N/A'}, {loc.country || 'IT'}
+                                                        {loc.region || 'N/A'}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-slate-600 font-medium">
+                                                        {loc.country || 'IT'}
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${loc.status === 'published'
@@ -422,7 +570,7 @@ export default function AdminDashboard() {
                                                                 <Sparkles size={18} />
                                                             </Link>
                                                             <button
-                                                                onClick={() => setEditingLocation(loc)}
+                                                                onClick={() => handleStartEdit(loc)}
                                                                 className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                                                 title="Modifica"
                                                             >
@@ -1668,8 +1816,17 @@ function AITaskRunner() {
     const saveToDatabase = async () => {
         if (!result || !result.data) return;
         try {
-            const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+            const { collection, addDoc, doc, setDoc, serverTimestamp } = await import('firebase/firestore');
             const { db } = await import('@/lib/firebase');
+
+            const heavyFields = [
+                'services', 'technicalData', 'accessibility',
+                'parking', 'localMobility', 'infoPoints', 'medical',
+                'advancedSkiing', 'outdoorNonSki', 'family', 'rentals',
+                'eventsAndSeasonality', 'gastronomy', 'digital', 'practicalTips',
+                'openingHours', 'safety', 'sustainability',
+                'aiGenerationMetadata', 'profile'
+            ];
 
             const mappedServices = (result.data.services || []).map((s: any) => ({
                 ...s,
@@ -1678,7 +1835,7 @@ function AITaskRunner() {
                 metadata: { source: 'ai-generated' }
             }));
 
-            const locationData = {
+            const fullData: any = {
                 name: result.data.name,
                 region: 'Da verificare',
                 country: 'Italia',
@@ -1715,11 +1872,27 @@ function AITaskRunner() {
                 openingHours: result.data.openingHours || {},
                 safety: result.data.safety || {},
                 sustainability: result.data.sustainability || {},
-                language: language // Save the selected language (it or en)
+                language: language
             };
 
-            await addDoc(collection(db, 'locations'), locationData);
-            alert(`✅ ${result.data.name} salvata nel database.`);
+            const lightData: any = {};
+            const heavyData: any = {};
+
+            Object.entries(fullData).forEach(([key, value]) => {
+                if (heavyFields.includes(key)) {
+                    heavyData[key] = value;
+                } else {
+                    lightData[key] = value;
+                }
+            });
+
+            // 1. Create light doc and get ID
+            const lightDocRef = await addDoc(collection(db, 'locations'), lightData);
+
+            // 2. Create heavy doc with same ID
+            await setDoc(doc(db, 'location_details', lightDocRef.id), heavyData);
+
+            alert(`✅ \${result.data.name} salvata nel database (Struttura Split).`);
             setResult(null); setTargetLocation(''); setCustomInstructions('');
 
         } catch (e) {

@@ -621,7 +621,7 @@ export default function MatchWizard() {
                             <h2 className="text-3xl md:text-4xl font-display font-bold text-slate-900 text-center mb-4">
                                 {t('steps.location')}
                             </h2>
-                            <p className="text-slate-500 text-center mb-12">Dicci da dove parti per calcolare le distanze.</p>
+                            <p className="text-slate-500 text-center mb-12">Tell us where you start from to calculate the distances.</p>
 
                             <div className="max-w-xl mx-auto space-y-6">
                                 {/* Mode Selection */}

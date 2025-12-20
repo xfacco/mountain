@@ -13,19 +13,52 @@ export default function CompareClient() {
     const { currentSeason } = useSeasonStore();
     const { selectedLocations, addLocation, removeLocation } = useCompareStore();
     const [locationOptions, setLocationOptions] = useState<any[]>([]);
+    const [fullSelectedLocations, setFullSelectedLocations] = useState<any[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [loadingDetails, setLoadingDetails] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const headerRef = useRef<HTMLDivElement>(null);
     const t = useTranslations('Compare');
     const tSeasons = useTranslations('Seasons');
     const tNav = useTranslations('Navbar');
 
-    // Merge stored locations with fresh data from Firestore to ensure images/data are up-to-date
-    const freshSelectedLocations = selectedLocations.map(storedLoc => {
-        const freshLoc = locationOptions.find(opt => opt.id === storedLoc.id);
-        return freshLoc || storedLoc;
-    });
+    // Fetch details for selected locations whenever the selection changes
+    useEffect(() => {
+        const fetchDetails = async () => {
+            if (selectedLocations.length === 0) {
+                setFullSelectedLocations([]);
+                return;
+            }
+
+            setLoadingDetails(true);
+            try {
+                const { doc, getDoc } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase');
+
+                const detailedLocs = await Promise.all(selectedLocations.map(async (loc) => {
+                    try {
+                        const detailsSnap = await getDoc(doc(db, 'location_details', loc.id));
+                        if (detailsSnap.exists()) {
+                            return { ...loc, ...detailsSnap.data() };
+                        }
+                    } catch (e) {
+                        console.error("Error fetching details for comparison:", loc.name, e);
+                    }
+                    return loc;
+                }));
+                setFullSelectedLocations(detailedLocs);
+            } catch (e) {
+                console.error("Error in fetchDetails:", e);
+            } finally {
+                setLoadingDetails(false);
+            }
+        };
+
+        fetchDetails();
+    }, [selectedLocations, currentSeason]);
+
+    const freshSelectedLocations = fullSelectedLocations;
 
     // Sync horizontal scroll between header and content
     useEffect(() => {
@@ -232,6 +265,19 @@ export default function CompareClient() {
                     </div>
                 ) : (
                     <div className="relative group/table">
+                        {/* Loading Details Overlay */}
+                        {loadingDetails && (
+                            <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-[60] flex items-center justify-center">
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="bg-slate-900 text-white px-8 py-4 rounded-full font-bold shadow-2xl flex items-center gap-3"
+                                >
+                                    <Sparkles size={20} className="text-yellow-400 animate-pulse" />
+                                    <span>{t('loading_details') || 'Aggiornamento dati...'}</span>
+                                </motion.div>
+                            </div>
+                        )}
                         {/* Fixed Scroll Controls (Mobile/Tablet) - Attached to edges at 3/4 height */}
                         <div className="fixed top-[75%] -translate-y-1/2 left-0 right-0 flex justify-between pointer-events-none z-[100] lg:hidden">
                             <button
