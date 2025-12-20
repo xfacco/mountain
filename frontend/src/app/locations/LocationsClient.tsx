@@ -6,6 +6,7 @@ import { useSeasonStore } from '@/store/season-store';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Search, SortAsc, TrendingUp, Layers, ArrowRight, Globe, Sparkles } from 'lucide-react';
+import { SuggestLocationBanner } from '@/components/ui/SuggestLocationBanner';
 
 export default function LocationsClient() {
     const { currentSeason } = useSeasonStore();
@@ -157,6 +158,8 @@ export default function LocationsClient() {
                         ))}
                     </div>
                 )}
+
+                <SuggestLocationBanner />
             </main>
         </div>
     );

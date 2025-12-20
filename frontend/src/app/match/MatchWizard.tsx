@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { Navbar } from '@/components/layout/Navbar';
 import { useSeasonStore } from '@/store/season-store';
 import Link from 'next/link';
-import { ChevronRight, ChevronLeft, Check, Sparkles, MapPin, User, Users, Heart, PartyPopper, Coffee, Activity, Music, Gem, Trees, Snowflake, Mountain, Droplets, Utensils, Landmark, Flag, Globe, Sun, Leaf, History, Laptop, Moon, Zap, ShoppingBag, Camera } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Sparkles, MapPin, User, Users, Heart, PartyPopper, Coffee, Activity, Music, Gem, Trees, Snowflake, Mountain, Droplets, Utensils, Landmark, Flag, Globe, Sun, Leaf, History, Laptop, Moon, Zap, ShoppingBag, Camera, Search, CheckCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
@@ -17,7 +17,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 }
 
 // Types for the wizard
-type Step = 'intro' | 'season' | 'target' | 'vibe' | 'activities' | 'nation' | 'results';
+type Step = 'intro' | 'season' | 'target' | 'vibe' | 'activities' | 'nation' | 'location' | 'results';
 
 interface Preferences {
     season: string[];
@@ -25,6 +25,13 @@ interface Preferences {
     vibe: string[];
     activities: string[];
     nation: string[];
+    location: {
+        lat: number;
+        lng: number;
+        name: string;
+        mode: 'current' | 'custom' | 'none';
+        maxDistance: number; // in km, 0 for unlimited
+    };
 }
 
 export default function MatchWizard() {
@@ -33,12 +40,28 @@ export default function MatchWizard() {
     const { currentSeason, setSeason } = useSeasonStore();
 
     const [currentStep, setCurrentStep] = useState<Step>('intro');
+    const [searching, setSearching] = useState(false);
+
+    // Calculate progress width
+    const getProgress = () => {
+        const stepOrder = ['season', 'target', 'vibe', 'activities', 'nation', 'location'];
+        const index = stepOrder.indexOf(currentStep);
+        if (index === -1) return 0;
+        return ((index + 1) / stepOrder.length) * 100 + '%';
+    };
     const [preferences, setPreferences] = useState<Preferences>({
         season: [],
         target: [],
         vibe: [],
         activities: [],
-        nation: []
+        nation: [],
+        location: {
+            lat: 45.4642, // Default Milano
+            lng: 9.1899,
+            name: '',
+            mode: 'none',
+            maxDistance: 0
+        }
     });
 
     // Results
@@ -92,7 +115,7 @@ export default function MatchWizard() {
 
         // This is a simple scoring algorithm. 
         // In a real production app, this could be more sophisticated or use vector search.
-        const scoredLocations = locations.map(loc => {
+        const initialScored = locations.map((loc: any) => {
             let score = 0;
             let maxScore = 0;
 
@@ -146,11 +169,9 @@ export default function MatchWizard() {
             }
 
             // 5. Explicit Tag Matching (1-to-1) based on categories
-            // Check if ANY of the location's specific tags match the preferences exactly
-            // This reinforces the relationship between wizard selections and DB content
-            const categoriesToMatch: (keyof Preferences)[] = ['vibe', 'target', 'activities'];
+            const categoriesToMatch: (keyof Omit<Preferences, 'location'>)[] = ['vibe', 'target', 'activities'];
             categoriesToMatch.forEach(cat => {
-                const prefs = preferences[cat];
+                const prefs = preferences[cat] as string[];
                 const locTags = loc.tags?.[cat] || [];
                 if (prefs.length > 0) {
                     const matches = prefs.filter(p => locTags.includes(p));
@@ -169,12 +190,58 @@ export default function MatchWizard() {
                 }
             }
 
-            // Normalize score to 100%
-            const totalMax = maxScore || 1; // avoid div by 0
-            const percentage = Math.round((score / totalMax) * 100);
+            // 6. Location & Distance Match
+            let distanceInKm: number | null = null;
+            if (preferences.location.mode !== 'none') {
+                const locLat = loc.coordinates?.lat;
+                const locLng = loc.coordinates?.lng;
 
-            return { ...loc, matchScore: percentage };
+                if (locLat && locLng) {
+                    distanceInKm = getDistance(
+                        preferences.location.lat,
+                        preferences.location.lng,
+                        locLat,
+                        locLng
+                    );
+
+                    // If distance is set, exclude if outside range
+                    if (preferences.location.maxDistance > 0 && distanceInKm > preferences.location.maxDistance) {
+                        score = -100; // Drop it
+                    } else if (preferences.location.maxDistance > 0) {
+                        // Bonus for proximity if range is specified
+                        const proximityBonus = Math.max(0, 20 * (1 - distanceInKm / preferences.location.maxDistance));
+                        score += proximityBonus;
+                        maxScore += 20;
+                    }
+                } else {
+                    // If we have a location filter but loc has no coords, slight penalty
+                    // but don't exclude unless we want to be strict
+                }
+            }
+
+            return { ...loc, matchScore: 0, distance: distanceInKm, score, maxScore };
         });
+
+        // 2nd pass: Normalize scores (need to do it after distance filter if any)
+        const scoredLocations = initialScored.map((item: any) => {
+            const percentage = Math.max(0, Math.round((item.score / (item.maxScore || 1)) * 100));
+            return { ...item, matchScore: percentage };
+        });
+
+        function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // Filter out those with negative score (excluded by distance)
+        const validLocations = scoredLocations.filter((loc: any) => loc.matchScore >= 0);
 
         // Log the match search to Firebase
         const logMatch = async (topMatches: any[]) => {
@@ -184,7 +251,7 @@ export default function MatchWizard() {
 
                 await addDoc(collection(db, 'match_logs'), {
                     preferences,
-                    results: topMatches.map(m => ({ id: m.id, name: m.name, score: m.matchScore })),
+                    results: topMatches.map(m => ({ id: m.id, name: m.name, score: m.matchScore, distance: m.distance })),
                     timestamp: serverTimestamp(),
                     userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown'
                 });
@@ -193,8 +260,8 @@ export default function MatchWizard() {
             }
         };
 
-        const topMatches = scoredLocations
-            .sort((a, b) => b.matchScore - a.matchScore)
+        const topMatches = validLocations
+            .sort((a: any, b: any) => b.matchScore - a.matchScore)
             .slice(0, 6);
 
         setMatches(topMatches);
@@ -205,9 +272,9 @@ export default function MatchWizard() {
     };
 
 
-    const handleOptionToggle = (category: keyof Preferences, value: string, singleSelect: boolean = false) => {
+    const handleOptionToggle = (category: keyof Omit<Preferences, 'location'>, value: string, singleSelect: boolean = false) => {
         setPreferences(prev => {
-            const current = prev[category];
+            const current = prev[category] as string[];
             if (singleSelect) {
                 return { ...prev, [category]: current.includes(value) ? [] : [value] };
             }
@@ -224,7 +291,8 @@ export default function MatchWizard() {
         else if (currentStep === 'target') setCurrentStep('vibe');
         else if (currentStep === 'vibe') setCurrentStep('activities');
         else if (currentStep === 'activities') setCurrentStep('nation');
-        else if (currentStep === 'nation') setCurrentStep('results');
+        else if (currentStep === 'nation') setCurrentStep('location');
+        else if (currentStep === 'location') setCurrentStep('results');
     };
 
     const prevStep = () => {
@@ -233,11 +301,19 @@ export default function MatchWizard() {
         else if (currentStep === 'vibe') setCurrentStep('target');
         else if (currentStep === 'activities') setCurrentStep('vibe');
         else if (currentStep === 'nation') setCurrentStep('activities');
-        else if (currentStep === 'results') setCurrentStep('nation');
+        else if (currentStep === 'location') setCurrentStep('nation');
+        else if (currentStep === 'results') setCurrentStep('location');
     };
 
     const restart = () => {
-        setPreferences({ season: [], target: [], vibe: [], activities: [], nation: [] });
+        setPreferences({
+            season: [],
+            target: [],
+            vibe: [],
+            activities: [],
+            nation: [],
+            location: { lat: 45.4642, lng: 9.1899, name: '', mode: 'none', maxDistance: 0 }
+        });
         setCurrentStep('intro');
         setMatches([]);
     };
@@ -372,6 +448,16 @@ export default function MatchWizard() {
                                                 <span className="text-xs text-slate-400 uppercase font-bold block mb-1">Season</span>
                                                 <span className="font-bold text-slate-800 capitalize">{preferences.season[0] || currentSeason}</span>
                                             </div>
+                                            {location.distance && (
+                                                <div className="col-span-2 mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
+                                                    <span className="text-slate-500 text-sm flex items-center gap-1">
+                                                        <MapPin size={14} /> Distanza da te
+                                                    </span>
+                                                    <span className="font-black text-primary">
+                                                        ~{Math.round(location.distance)} km
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <Link
@@ -465,17 +551,179 @@ export default function MatchWizard() {
         }
     };
 
-    const currentConf = stepsConf[currentStep as keyof typeof stepsConf] as any;
+    // Location Step Custom Render
+    if (currentStep === 'location') {
 
+        const detectLocation = () => {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    setPreferences(prev => ({
+                        ...prev,
+                        location: {
+                            ...prev.location,
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                            mode: 'current',
+                            name: 'Mia posizione attuale'
+                        }
+                    }));
+                }, (error) => {
+                    alert("Impossibile rilevare la posizione. Per favore inserisci una città manualmente.");
+                    console.error(error);
+                });
+            } else {
+                alert("Geolocalizzazione non supportata dal tuo browser.");
+            }
+        };
+
+        const searchCity = async () => {
+            if (!preferences.location.name) return;
+            setSearching(true);
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(preferences.location.name)}&limit=1`);
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    setPreferences(prev => ({
+                        ...prev,
+                        location: {
+                            ...prev.location,
+                            lat: parseFloat(data[0].lat),
+                            lng: parseFloat(data[0].lon),
+                            name: data[0].display_name
+                        }
+                    }));
+                } else {
+                    alert("Città non trovata.");
+                }
+            } catch (err) {
+                console.error("Geocoding error:", err);
+                alert("Errore durante la ricerca della città.");
+            } finally {
+                setSearching(false);
+            }
+        };
+
+        return (
+            <div className="min-h-screen bg-slate-50 flex flex-col">
+                <Navbar />
+                <div className="flex-1 flex flex-col pt-24 pb-12 px-4 sm:px-6 max-w-4xl mx-auto w-full">
+                    <div className="w-full h-1 bg-slate-200 rounded-full mb-12 overflow-hidden">
+                        <motion.div className="h-full bg-primary" initial={{ width: '80%' }} animate={{ width: getProgress() }} />
+                    </div>
+
+                    <div className="flex-1 flex flex-col items-center">
+                        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full">
+                            <h2 className="text-3xl md:text-4xl font-display font-bold text-slate-900 text-center mb-4">
+                                {t('steps.location')}
+                            </h2>
+                            <p className="text-slate-500 text-center mb-12">Dicci da dove parti per calcolare le distanze.</p>
+
+                            <div className="max-w-xl mx-auto space-y-6">
+                                {/* Mode Selection */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        onClick={detectLocation}
+                                        className={cn(
+                                            "p-6 rounded-2xl border transition-all flex flex-col items-center gap-4",
+                                            preferences.location.mode === 'current'
+                                                ? "border-primary bg-primary text-white shadow-lg"
+                                                : "border-slate-100 bg-white text-slate-600 hover:border-primary/30"
+                                        )}
+                                    >
+                                        <MapPin size={32} strokeWidth={1.5} />
+                                        <span className="font-bold">Usa Posizione Attuale</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setPreferences(prev => ({ ...prev, location: { ...prev.location, mode: 'custom' } }))}
+                                        className={cn(
+                                            "p-6 rounded-2xl border transition-all flex flex-col items-center gap-4",
+                                            preferences.location.mode === 'custom'
+                                                ? "border-primary bg-primary text-white shadow-lg"
+                                                : "border-slate-100 bg-white text-slate-600 hover:border-primary/30"
+                                        )}
+                                    >
+                                        <Globe size={32} strokeWidth={1.5} />
+                                        <span className="font-bold">Inserisci Città</span>
+                                    </button>
+                                </div>
+
+                                {preferences.location.mode === 'custom' && (
+                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="pt-4 space-y-4">
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Es. Milano, Roma, Torino..."
+                                                value={preferences.location.name}
+                                                onChange={(e) => setPreferences(prev => ({ ...prev, location: { ...prev.location, name: e.target.value } }))}
+                                                className="flex-1 px-6 py-4 rounded-xl border border-slate-200 focus:border-primary outline-none shadow-sm text-lg"
+                                                onKeyDown={(e) => e.key === 'Enter' && searchCity()}
+                                            />
+                                            <button
+                                                onClick={searchCity}
+                                                disabled={searching || !preferences.location.name}
+                                                className="px-6 bg-slate-900 text-white rounded-xl font-bold hover:bg-primary transition-colors disabled:opacity-50"
+                                            >
+                                                {searching ? '...' : <Search size={20} />}
+                                            </button>
+                                        </div>
+                                        {preferences.location.lat !== 45.4642 && (
+                                            <p className="text-xs text-green-600 font-medium px-2 flex items-center gap-1">
+                                                <CheckCircle size={14} /> Località trovata!
+                                            </p>
+                                        )}
+                                    </motion.div>
+                                )}
+
+                                {/* Distance Selection */}
+                                <div className="pt-8 border-t border-slate-100">
+                                    <label className="block text-sm font-black uppercase tracking-widest text-slate-400 mb-6 text-center">
+                                        Maximum Distance: {preferences.location.maxDistance === 0 ? 'Unlimited' : `${preferences.location.maxDistance} km`}
+                                    </label>
+
+                                    <div className="grid grid-cols-4 gap-3">
+                                        {[100, 250, 500, 0].map(dist => (
+                                            <button
+                                                key={dist}
+                                                onClick={() => setPreferences(prev => ({ ...prev, location: { ...prev.location, maxDistance: dist } }))}
+                                                className={cn(
+                                                    "py-3 rounded-xl border font-bold text-sm transition-all",
+                                                    preferences.location.maxDistance === dist
+                                                        ? "bg-slate-900 text-white border-slate-900"
+                                                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
+                                                )}
+                                            >
+                                                {dist === 0 ? 'Unlimited' : `${dist}km`}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+
+                    <div className="mt-12 flex justify-between items-center w-full max-w-2xl mx-auto">
+                        <button onClick={prevStep} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 font-medium px-6 py-3 rounded-full hover:bg-slate-100 transition-colors">
+                            <ChevronLeft size={20} /> Back
+                        </button>
+                        <button
+                            onClick={nextStep}
+                            disabled={preferences.location.mode === 'none' || (preferences.location.mode === 'custom' && !preferences.location.name)}
+                            className="bg-slate-900 hover:bg-primary text-white px-8 py-3 rounded-full font-bold shadow-lg flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                            Complete <ChevronRight size={20} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const currentConf = stepsConf[currentStep as keyof typeof stepsConf] as any;
     if (!currentConf) return null;
 
-    // Calculate progress width
-    const getProgress = () => {
-        const stepOrder = ['season', 'target', 'vibe', 'activities', 'nation'];
-        const index = stepOrder.indexOf(currentStep);
-        if (index === -1) return 0;
-        return ((index + 1) / stepOrder.length) * 100 + '%';
-    };
+
+
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -506,7 +754,7 @@ export default function MatchWizard() {
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             {currentConf.options.map((opt: any) => {
-                                const isSelected = preferences[currentConf.stateKey as keyof Preferences].includes(opt.id);
+                                const isSelected = (preferences[currentConf.stateKey as keyof Preferences] as string[]).includes(opt.id);
                                 const IconComp = opt.Icon;
 
                                 return (
@@ -552,7 +800,7 @@ export default function MatchWizard() {
 
                     <button
                         onClick={nextStep}
-                        disabled={preferences[currentConf.stateKey as keyof Preferences].length === 0}
+                        disabled={Array.isArray(preferences[currentConf.stateKey as keyof Preferences]) && (preferences[currentConf.stateKey as keyof Preferences] as any).length === 0}
                         className="disabled:opacity-50 disabled:cursor-not-allowed bg-slate-900 hover:bg-primary text-white px-8 py-3 rounded-full font-bold shadow-lg flex items-center gap-2 transition-all cursor-pointer"
                     >
                         Continue <ChevronRight size={20} />

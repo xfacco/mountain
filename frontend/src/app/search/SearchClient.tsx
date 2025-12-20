@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useSeasonStore } from '@/store/season-store';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SuggestLocationBanner } from '@/components/ui/SuggestLocationBanner';
 
 // Helper to normalize strings for search (remove accents, lowercase)
 const normalize = (s: string) => s?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
@@ -372,6 +373,8 @@ export default function SearchClient() {
                         )}
                     </div>
                 </div>
+
+                <SuggestLocationBanner />
             </div>
         </div>
     );

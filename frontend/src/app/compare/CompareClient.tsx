@@ -1,10 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { useSeasonStore } from '@/store/season-store';
 import { useCompareStore } from '@/store/compare-store';
-import { Check, Plus, X, ChevronDown, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Check, Plus, X, ChevronDown, ChevronRight, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 
@@ -18,6 +19,7 @@ export default function CompareClient() {
     const headerRef = useRef<HTMLDivElement>(null);
     const t = useTranslations('Compare');
     const tSeasons = useTranslations('Seasons');
+    const tNav = useTranslations('Navbar');
 
     // Merge stored locations with fresh data from Firestore to ensure images/data are up-to-date
     const freshSelectedLocations = selectedLocations.map(storedLoc => {
@@ -143,13 +145,24 @@ export default function CompareClient() {
                             </span>
                         </p>
                     </div>
-                    <button
-                        onClick={() => setIsSelectorOpen(!isSelectorOpen)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow-sm transition-all font-medium ${isSelectorOpen ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-primary text-white hover:bg-opacity-90'}`}
-                    >
-                        {isSelectorOpen ? <X size={18} /> : <Plus size={18} />}
-                        {isSelectorOpen ? t('close_selector') : t('add_location')}
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => setIsSelectorOpen(!isSelectorOpen)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow-sm transition-all font-medium ${isSelectorOpen ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-primary text-white hover:bg-opacity-90'}`}
+                        >
+                            {isSelectorOpen ? <X size={18} /> : <Plus size={18} />}
+                            {isSelectorOpen ? t('close_selector') : t('add_location')}
+                        </button>
+                        {!isSelectorOpen && (
+                            <Link
+                                href="/match"
+                                className="hidden lg:flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg shadow-sm hover:bg-slate-800 transition-all font-medium border border-slate-800"
+                            >
+                                <Sparkles size={18} className="text-yellow-400" />
+                                {tNav('match')}
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 {/* Selection Modal / Dropdown Area */}

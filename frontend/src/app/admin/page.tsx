@@ -109,10 +109,13 @@ export default function AdminDashboard() {
 
     const handleSaveEdit = async (updatedData: any) => {
         try {
-            const { doc, updateDoc } = await import('firebase/firestore');
+            const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
             const { db } = await import('@/lib/firebase');
 
-            const finalData = { ...updatedData };
+            const finalData = {
+                ...updatedData,
+                updatedAt: serverTimestamp()
+            };
             delete finalData.id; // Don't save ID inside the doc
 
             await updateDoc(doc(db, 'locations', updatedData.id), finalData);
@@ -281,6 +284,7 @@ export default function AdminDashboard() {
                                                 <th className="px-6 py-4 text-center">Servizi</th>
                                                 <th className="px-6 py-4">Regione</th>
                                                 <th className="px-6 py-4">Stato</th>
+                                                <th className="px-6 py-4">Ultima Modifica</th>
                                                 <th className="px-6 py-4 text-right">Azioni</th>
                                             </tr>
                                         </thead>
@@ -352,6 +356,29 @@ export default function AdminDashboard() {
                                                             }`}>
                                                             <CheckCircle size={12} /> {loc.status === 'published' ? 'Pubblicato' : 'Bozza'}
                                                         </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-xs text-slate-500">
+                                                            {loc.updatedAt ? (
+                                                                <>
+                                                                    <div className="font-bold text-slate-700">
+                                                                        {new Date(loc.updatedAt.seconds * 1000).toLocaleDateString('it-IT')}
+                                                                    </div>
+                                                                    <div>
+                                                                        {new Date(loc.updatedAt.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                                                    </div>
+                                                                </>
+                                                            ) : loc.createdAt ? (
+                                                                <>
+                                                                    <div className="font-bold text-slate-700">
+                                                                        {new Date(loc.createdAt.seconds * 1000).toLocaleDateString('it-IT')}
+                                                                    </div>
+                                                                    <div className="text-[10px]">Creazione</div>
+                                                                </>
+                                                            ) : (
+                                                                <span className="italic text-slate-400">N/D</span>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <div className="flex justify-end gap-2">
@@ -553,7 +580,7 @@ function MergeTool({ selectedLocations, onCancel, onComplete }: { selectedLocati
         if (!confirm(`Confermi l'unione? \n- ${masterLoc.name} sarà aggiornata.\n- ${sourceLocs.length} località verranno ELIMINATE definitamente.`)) return;
 
         try {
-            const { doc, updateDoc, deleteDoc } = await import('firebase/firestore');
+            const { doc, updateDoc, deleteDoc, serverTimestamp } = await import('firebase/firestore');
             const { db } = await import('@/lib/firebase');
 
             // 1. Build Final Object
@@ -571,6 +598,7 @@ function MergeTool({ selectedLocations, onCancel, onComplete }: { selectedLocati
             const allServices = selectedLocations.flatMap(l => l.services || []);
             const finalServices = allServices.filter(s => selectedServiceIds.has(s.id || s.name));
             finalData.services = finalServices;
+            finalData.updatedAt = serverTimestamp();
 
             // 2. Update Master
             const { id, ...dataToSave } = finalData; // exclude ID
@@ -1616,7 +1644,7 @@ function AITaskRunner() {
     const saveToDatabase = async () => {
         if (!result || !result.data) return;
         try {
-            const { collection, addDoc } = await import('firebase/firestore');
+            const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
             const { db } = await import('@/lib/firebase');
 
             const mappedServices = (result.data.services || []).map((s: any) => ({
@@ -1634,7 +1662,8 @@ function AITaskRunner() {
                 description: result.data.description || {},
                 services: mappedServices,
                 tags: result.data.tags || { vibe: [], target: [], highlights: [] },
-                createdAt: new Date().toISOString(),
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
                 status: 'draft',
                 visible: false,
                 order: 0,

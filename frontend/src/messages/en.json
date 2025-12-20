@@ -274,6 +274,7 @@
             "vibe": "What's the vibe you're looking for?",
             "activities": "What do you love to do?",
             "nation": "Do you have a preferred country?",
+            "location": "From where are you starting?",
             "results": "Here are your top matches!"
         },
         "options": {
@@ -310,5 +311,10 @@
         "no_matches": "We couldn't find a perfect match, but here are some popular destinations.",
         "match_score": "Match Score",
         "view_details": "View Details"
+    },
+    "Common": {
+        "suggest_location_title": "Don't see your favorite destination?",
+        "suggest_location_desc": "Help us expand! Suggest a new mountain resort and we'll analyze it for the community.",
+        "suggest_location_button": "Suggest a Location"
     }
 }
