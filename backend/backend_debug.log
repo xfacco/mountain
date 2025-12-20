@@ -244,3 +244,296 @@ Traceback: Traceback (most recent call last):
     obj, end = self.scan_once(s, idx)
 json.decoder.JSONDecodeError: Expecting ',' delimiter: line 161 column 2 (char 20663)
 
+
+
+--- ERROR KEY_PRESENT ---
+Error: 403 Your API key was reported as leaked. Please use another API key.
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 115, in research_location
+    response = model.generate_content(full_prompt)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/generativeai/generative_models.py", line 331, in generate_content
+    response = self._client.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/ai/generativelanguage_v1beta/services/generative_service/client.py", line 835, in generate_content
+    response = rpc(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/gapic_v1/method.py", line 131, in __call__
+    return wrapped_func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 294, in retry_wrapped_func
+    return retry_target(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 156, in retry_target
+    next_sleep = _retry_error_helper(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_base.py", line 214, in _retry_error_helper
+    raise final_exc from source_exc
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 147, in retry_target
+    result = target()
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/timeout.py", line 130, in func_with_timeout
+    return func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/grpc_helpers.py", line 77, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc
+google.api_core.exceptions.PermissionDenied: 403 Your API key was reported as leaked. Please use another API key.
+
+
+
+--- ERROR KEY_PRESENT ---
+Error: Expecting ',' delimiter: line 8 column 203 (char 3693)
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 140, in research_location
+    raise e
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 135, in research_location
+    data = json.loads(clean_text)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+json.decoder.JSONDecodeError: Expecting ',' delimiter: line 8 column 203 (char 3693)
+
+
+
+--- ERROR KEY_PRESENT ---
+Error: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 115, in research_location
+    response = model.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/generativeai/generative_models.py", line 331, in generate_content
+    response = self._client.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/ai/generativelanguage_v1beta/services/generative_service/client.py", line 835, in generate_content
+    response = rpc(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/gapic_v1/method.py", line 131, in __call__
+    return wrapped_func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 294, in retry_wrapped_func
+    return retry_target(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 156, in retry_target
+    next_sleep = _retry_error_helper(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_base.py", line 214, in _retry_error_helper
+    raise final_exc from source_exc
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 147, in retry_target
+    result = target()
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/timeout.py", line 130, in func_with_timeout
+    return func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/grpc_helpers.py", line 77, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc
+google.api_core.exceptions.NotFound: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+
+
+
+--- ERROR KEY_PRESENT ---
+Error: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 115, in research_location
+    response = model.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/generativeai/generative_models.py", line 331, in generate_content
+    response = self._client.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/ai/generativelanguage_v1beta/services/generative_service/client.py", line 835, in generate_content
+    response = rpc(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/gapic_v1/method.py", line 131, in __call__
+    return wrapped_func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 294, in retry_wrapped_func
+    return retry_target(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 156, in retry_target
+    next_sleep = _retry_error_helper(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_base.py", line 214, in _retry_error_helper
+    raise final_exc from source_exc
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 147, in retry_target
+    result = target()
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/timeout.py", line 130, in func_with_timeout
+    return func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/grpc_helpers.py", line 77, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc
+google.api_core.exceptions.NotFound: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+
+
+
+--- ERROR KEY_PRESENT ---
+Error: Expecting ',' delimiter: line 113 column 2 (char 16877)
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 146, in research_location
+    raise e
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 141, in research_location
+    data = json.loads(clean_text)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+json.decoder.JSONDecodeError: Expecting ',' delimiter: line 113 column 2 (char 16877)
+
+
+
+--- ERROR KEY_PRESENT ---
+Error: 400 API key expired. Please renew the API key. [reason: "API_KEY_INVALID"
+domain: "googleapis.com"
+metadata {
+  key: "service"
+  value: "generativelanguage.googleapis.com"
+}
+, locale: "en-US"
+message: "API key expired. Please renew the API key."
+]
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 115, in research_location
+    response = model.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/generativeai/generative_models.py", line 331, in generate_content
+    response = self._client.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/ai/generativelanguage_v1beta/services/generative_service/client.py", line 835, in generate_content
+    response = rpc(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/gapic_v1/method.py", line 131, in __call__
+    return wrapped_func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 294, in retry_wrapped_func
+    return retry_target(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 156, in retry_target
+    next_sleep = _retry_error_helper(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_base.py", line 214, in _retry_error_helper
+    raise final_exc from source_exc
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 147, in retry_target
+    result = target()
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/timeout.py", line 130, in func_with_timeout
+    return func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/grpc_helpers.py", line 77, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc
+google.api_core.exceptions.InvalidArgument: 400 API key expired. Please renew the API key. [reason: "API_KEY_INVALID"
+domain: "googleapis.com"
+metadata {
+  key: "service"
+  value: "generativelanguage.googleapis.com"
+}
+, locale: "en-US"
+message: "API key expired. Please renew the API key."
+]
+
+
+
+--- ERROR KEY_PRESENT ---
+Error: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 121, in research_location
+    response = model.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/generativeai/generative_models.py", line 331, in generate_content
+    response = self._client.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/ai/generativelanguage_v1beta/services/generative_service/client.py", line 835, in generate_content
+    response = rpc(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/gapic_v1/method.py", line 131, in __call__
+    return wrapped_func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 294, in retry_wrapped_func
+    return retry_target(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 156, in retry_target
+    next_sleep = _retry_error_helper(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_base.py", line 214, in _retry_error_helper
+    raise final_exc from source_exc
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 147, in retry_target
+    result = target()
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/timeout.py", line 130, in func_with_timeout
+    return func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/grpc_helpers.py", line 77, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc
+google.api_core.exceptions.NotFound: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+
+
+
+--- ERROR KEY_PRESENT ---
+Error: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 121, in research_location
+    response = model.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/generativeai/generative_models.py", line 331, in generate_content
+    response = self._client.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/ai/generativelanguage_v1beta/services/generative_service/client.py", line 835, in generate_content
+    response = rpc(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/gapic_v1/method.py", line 131, in __call__
+    return wrapped_func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 294, in retry_wrapped_func
+    return retry_target(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 156, in retry_target
+    next_sleep = _retry_error_helper(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_base.py", line 214, in _retry_error_helper
+    raise final_exc from source_exc
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 147, in retry_target
+    result = target()
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/timeout.py", line 130, in func_with_timeout
+    return func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/grpc_helpers.py", line 77, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc
+google.api_core.exceptions.NotFound: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+
+
+
+--- ERROR KEY_PRESENT ---
+Error: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 121, in research_location
+    response = model.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/generativeai/generative_models.py", line 331, in generate_content
+    response = self._client.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/ai/generativelanguage_v1beta/services/generative_service/client.py", line 835, in generate_content
+    response = rpc(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/gapic_v1/method.py", line 131, in __call__
+    return wrapped_func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 294, in retry_wrapped_func
+    return retry_target(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 156, in retry_target
+    next_sleep = _retry_error_helper(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_base.py", line 214, in _retry_error_helper
+    raise final_exc from source_exc
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 147, in retry_target
+    result = target()
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/timeout.py", line 130, in func_with_timeout
+    return func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/grpc_helpers.py", line 77, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc
+google.api_core.exceptions.NotFound: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+
+
+
+--- ERROR KEY_PRESENT ---
+Error: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 123, in research_location
+    response = model.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/generativeai/generative_models.py", line 331, in generate_content
+    response = self._client.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/ai/generativelanguage_v1beta/services/generative_service/client.py", line 835, in generate_content
+    response = rpc(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/gapic_v1/method.py", line 131, in __call__
+    return wrapped_func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 294, in retry_wrapped_func
+    return retry_target(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 156, in retry_target
+    next_sleep = _retry_error_helper(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_base.py", line 214, in _retry_error_helper
+    raise final_exc from source_exc
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 147, in retry_target
+    result = target()
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/timeout.py", line 130, in func_with_timeout
+    return func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/grpc_helpers.py", line 77, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc
+google.api_core.exceptions.NotFound: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+
+
+
+--- ERROR KEY_PRESENT ---
+Error: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 123, in research_location
+    response = model.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/generativeai/generative_models.py", line 331, in generate_content
+    response = self._client.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/ai/generativelanguage_v1beta/services/generative_service/client.py", line 835, in generate_content
+    response = rpc(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/gapic_v1/method.py", line 131, in __call__
+    return wrapped_func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 294, in retry_wrapped_func
+    return retry_target(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 156, in retry_target
+    next_sleep = _retry_error_helper(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_base.py", line 214, in _retry_error_helper
+    raise final_exc from source_exc
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 147, in retry_target
+    result = target()
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/timeout.py", line 130, in func_with_timeout
+    return func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/grpc_helpers.py", line 77, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc
+google.api_core.exceptions.NotFound: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+

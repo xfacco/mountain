@@ -17,7 +17,9 @@ import {
     ExternalLink,
     Layers,
     MessageSquare,
-    Mail
+    Mail,
+    Activity,
+    Columns
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -166,6 +168,22 @@ export default function AdminDashboard() {
                         <MessageSquare size={18} />
                         Messaggi
                     </button>
+                    <button
+                        onClick={() => { setActiveTab('match-logs'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'match-logs' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <Activity size={18} />
+                        Log Match
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('compare-logs'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'compare-logs' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <Columns size={18} />
+                        Log Comparazioni
+                    </button>
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
@@ -196,10 +214,19 @@ export default function AdminDashboard() {
                         <header className="flex justify-between items-center mb-8">
                             <div>
                                 <h1 className="text-2xl font-bold text-slate-900">
-                                    {activeTab === 'locations' ? 'Località' : activeTab === 'messages' ? 'Messaggi Utenti' : 'Motore AI Ricerca'}
+                                    {activeTab === 'locations' ? 'Località'
+                                        : activeTab === 'messages' ? 'Messaggi Utenti'
+                                            : activeTab === 'match-logs' ? 'Log Match AI'
+                                                : activeTab === 'compare_logs' ? 'Log Comparazioni'
+                                                    : 'Motore AI Ricerca'}
                                 </h1>
                                 <p className="text-slate-500 text-sm mt-1">
-                                    {activeTab === 'locations' ? 'Gestisci le destinazioni pubblicate.' : activeTab === 'messages' ? 'Leggi le segnalazioni e le richieste degli utenti.' : activeTab === 'ai-tasks' ? 'Estrai nuovi dati dal web tramite Gemini.' : 'Modifica i contenuti della Home Page.'}
+                                    {activeTab === 'locations' ? 'Gestisci le destinazioni pubblicate.'
+                                        : activeTab === 'messages' ? 'Leggi le segnalazioni e le richieste degli utenti.'
+                                            : activeTab === 'match-logs' ? 'Vedi cosa cercano gli utenti nel Wizard.'
+                                                : activeTab === 'compare-logs' ? 'Vedi quali località vengono messe a confronto.'
+                                                    : activeTab === 'ai-tasks' ? 'Estrai nuovi dati dal web tramite Gemini.'
+                                                        : 'Modifica i contenuti della Home Page.'}
                                 </p>
                             </div>
                             <div className="flex gap-3">
@@ -269,10 +296,22 @@ export default function AdminDashboard() {
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-3">
-                                                            {loc.coverImage ? (
-                                                                <img src={loc.coverImage} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                                                            {loc.seasonalImages ? (
+                                                                <div className="grid grid-cols-2 gap-0.5 w-12 h-12 rounded-lg overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0">
+                                                                    {['winter', 'summer', 'autumn', 'spring'].map((s) => (
+                                                                        <div key={s} className="w-full h-full">
+                                                                            {loc.seasonalImages[s] ? (
+                                                                                <img src={loc.seasonalImages[s]} alt={s} className="w-full h-full object-cover" title={`${s.charAt(0).toUpperCase()}${s.slice(1)}`} />
+                                                                            ) : (
+                                                                                <div className="w-full h-full bg-slate-200" />
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : loc.coverImage ? (
+                                                                <img src={loc.coverImage} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                                                             ) : (
-                                                                <div className="w-10 h-10 rounded-lg bg-slate-200" />
+                                                                <div className="w-12 h-12 rounded-lg bg-slate-100 flex-shrink-0" />
                                                             )}
                                                             <span className="font-medium text-slate-900">{loc.name}</span>
                                                             {loc.aiGenerationMetadata && (
@@ -357,6 +396,8 @@ export default function AdminDashboard() {
                         )}
 
                         {activeTab === 'messages' && <MessagesView />}
+                        {activeTab === 'match-logs' && <MatchLogsView />}
+                        {activeTab === 'compare-logs' && <CompareLogsView />}
                         {activeTab === 'ai-tasks' && <AITaskRunner />}
                         {activeTab === 'home-config' && <HomeConfigView />}
                     </>
@@ -556,6 +597,25 @@ function MergeTool({ selectedLocations, onCancel, onComplete }: { selectedLocati
         setSelectedServiceIds(newSet);
     };
 
+    const toggleAllFromSource = (loc: any, select: boolean) => {
+        const newSet = new Set(selectedServiceIds);
+        const sourceServiceIds = (loc.services || []).map((s: any) => s.id || s.name);
+        sourceServiceIds.forEach((id: string) => {
+            if (select) newSet.add(id);
+            else newSet.delete(id);
+        });
+        setSelectedServiceIds(newSet);
+    };
+
+    const toggleAllGlobal = (select: boolean) => {
+        if (select) {
+            const allIds = selectedLocations.flatMap(l => l.services || []).map(s => s.id || s.name);
+            setSelectedServiceIds(new Set(allIds));
+        } else {
+            setSelectedServiceIds(new Set());
+        }
+    };
+
     // Categories to merge
     const CATEGORIES = [
         'description', 'profile', 'technicalData', 'accessibility', 'parking', 'localMobility',
@@ -656,15 +716,47 @@ function MergeTool({ selectedLocations, onCancel, onComplete }: { selectedLocati
 
                     {/* Services Selection */}
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                        <h3 className="font-bold text-slate-900 mb-6">3. Unisci Servizi ({selectedServiceIds.size})</h3>
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-slate-900">3. Unisci Servizi ({selectedServiceIds.size})</h3>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => toggleAllGlobal(true)}
+                                    className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition-colors"
+                                >
+                                    Seleziona Tutti (Global)
+                                </button>
+                                <button
+                                    onClick={() => toggleAllGlobal(false)}
+                                    className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-600 transition-colors"
+                                >
+                                    Pulisci Tutto
+                                </button>
+                            </div>
+                        </div>
                         <p className="text-sm text-slate-500 mb-4">Seleziona i singoli servizi da includere nel risultato finale.</p>
 
                         <div className="space-y-4">
                             {selectedLocations.map(loc => (
                                 <div key={loc.id} className="border-t border-slate-100 pt-4">
-                                    <h4 className={`text-sm font-bold mb-3 ${loc.id === masterId ? 'text-green-700' : 'text-slate-700'}`}>
-                                        {loc.id === masterId ? 'Da Master' : `Da Source (${loc.name})`}
-                                    </h4>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h4 className={`text-sm font-bold ${loc.id === masterId ? 'text-green-700' : 'text-slate-700'}`}>
+                                            {loc.id === masterId ? 'Da Master' : `Da Source (${loc.name})`}
+                                        </h4>
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={() => toggleAllFromSource(loc, true)}
+                                                className="text-[10px] font-bold text-indigo-600 hover:underline uppercase"
+                                            >
+                                                Tutti
+                                            </button>
+                                            <button
+                                                onClick={() => toggleAllFromSource(loc, false)}
+                                                className="text-[10px] font-bold text-slate-400 hover:text-red-500 hover:underline uppercase"
+                                            >
+                                                Nessuno
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         {(loc.services || []).map((s: any, idx: number) => {
                                             const sId = s.id || s.name; // Use ID or Fallback to Name
@@ -785,15 +877,25 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
     };
 
     // AI Tag Generation Logic
-    const [generatingTags, setGeneratingTags] = useState(false);
-    const generateTags = async () => {
-        setGeneratingTags(true);
+    const [generatingWizard, setGeneratingWizard] = useState(false);
+    const [generatingSEO, setGeneratingSEO] = useState(false);
+
+    const generateTags = async (mode: 'wizard' | 'seo') => {
+        if (mode === 'wizard') setGeneratingWizard(true);
+        else setGeneratingSEO(true);
+
         try {
             const { API_BASE_URL } = await import('@/lib/api');
             const res = await fetch(`${API_BASE_URL}/api/ai/generate-tags`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ location_name: formData.name })
+                body: JSON.stringify({
+                    location_name: formData.name,
+                    description: formData.description,
+                    services: formData.services,
+                    language: formData.language || 'it',
+                    mode: mode
+                })
             });
 
             if (!res.ok) {
@@ -805,9 +907,12 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
             if (data.status === 'success' && data.data) {
                 setFormData((prev: any) => ({
                     ...prev,
-                    tags: data.data
+                    tags: {
+                        ...(prev.tags || {}),
+                        ...data.data
+                    }
                 }));
-                alert('Tags generati con successo! Ricorda di salvare.');
+                alert(`${mode === 'wizard' ? 'Tag Wizard' : 'Tag SEO'} generati con successo!`);
             } else {
                 alert(`Errore API: ${data.message || 'Sconosciuto'}`);
             }
@@ -815,7 +920,8 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
             console.error(e);
             alert(`Errore Generazione: ${e.message}`);
         } finally {
-            setGeneratingTags(false);
+            if (mode === 'wizard') setGeneratingWizard(false);
+            else setGeneratingSEO(false);
         }
     };
 
@@ -1107,160 +1213,166 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                             </div>
                         </div>
 
-                        <div className="border-t border-slate-100 pt-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <div>
-                                    <h3 className="font-bold text-slate-900">Tags & Caratteristiche</h3>
-                                    <p className="text-xs text-slate-500">Inserisci i valori separati da virgola.</p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={generateTags}
-                                    disabled={generatingTags}
-                                    className="text-xs bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg border border-purple-200 font-bold hover:bg-purple-200 flex items-center gap-2 transition-colors"
-                                >
-                                    {generatingTags ? 'Generazione...' : '✨ Genera con AI'}
-                                </button>
-                            </div>
-                            <div className="space-y-8">
-                                {/* Wizard Match Tags (Strict 1-to-1) */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
-                                    <div className="col-span-full mb-2">
+                        <div className="mb-6">
+                            <h3 className="font-bold text-slate-900">Tags & Caratteristiche</h3>
+                            <p className="text-xs text-slate-500">Gestisci i tag per l'algoritmo e per la SEO.</p>
+                        </div>
+                        <div className="space-y-8">
+                            {/* Wizard Match Tags (Strict 1-to-1) */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                                <div className="col-span-full mb-2 flex justify-between items-center">
+                                    <div>
                                         <h4 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
                                             <Sparkles size={16} /> Configurazione Match Wizard (1-a-1)
                                         </h4>
                                         <p className="text-xs text-slate-500 mt-1">Questi tag attivano direttamente l'algoritmo di abbinamento intelligente.</p>
                                     </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => generateTags('wizard')}
+                                        disabled={generatingWizard}
+                                        className="text-[10px] bg-primary/10 text-primary px-3 py-1.5 rounded-lg border border-primary/20 font-bold hover:bg-primary/20 flex items-center gap-2 transition-colors uppercase tracking-wider"
+                                    >
+                                        {generatingWizard ? 'Analisi...' : '✨ Autoconfigura Wizard'}
+                                    </button>
+                                </div>
 
-                                    {/* Vibe Selection */}
-                                    <div>
-                                        <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Vibe / Atmosfera</label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {TAG_CATEGORIES.vibe.map(tag => (
-                                                <button
-                                                    key={tag.id}
-                                                    type="button"
-                                                    onClick={() => toggleTag('vibe', tag.id)}
-                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${formData.tags?.vibe?.includes(tag.id)
-                                                        ? 'bg-primary text-white border-primary shadow-md'
-                                                        : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
-                                                        }`}
-                                                >
-                                                    {tag.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Target Selection */}
-                                    <div>
-                                        <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Target Utente</label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {TAG_CATEGORIES.target.map(tag => (
-                                                <button
-                                                    key={tag.id}
-                                                    type="button"
-                                                    onClick={() => toggleTag('target', tag.id)}
-                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${formData.tags?.target?.includes(tag.id)
-                                                        ? 'bg-primary text-white border-primary shadow-md'
-                                                        : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
-                                                        }`}
-                                                >
-                                                    {tag.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Activities Match */}
-                                    <div>
-                                        <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Attività Chiave</label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {TAG_CATEGORIES.activities.map(tag => (
-                                                <button
-                                                    key={tag.id}
-                                                    type="button"
-                                                    onClick={() => toggleTag('activities', tag.id)}
-                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${formData.tags?.activities?.includes(tag.id)
-                                                        ? 'bg-primary text-white border-primary shadow-md'
-                                                        : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
-                                                        }`}
-                                                >
-                                                    {tag.label}
-                                                </button>
-                                            ))}
-                                        </div>
+                                {/* Vibe Selection */}
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Vibe / Atmosfera</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {TAG_CATEGORIES.vibe.map(tag => (
+                                            <button
+                                                key={tag.id}
+                                                type="button"
+                                                onClick={() => toggleTag('vibe', tag.id)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${formData.tags?.vibe?.includes(tag.id)
+                                                    ? 'bg-primary text-white border-primary shadow-md'
+                                                    : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
+                                                    }`}
+                                            >
+                                                {tag.label}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
 
-                                {/* SEO & Extra Tags (Free Text) */}
-                                <div className="grid grid-cols-3 gap-6">
-                                    <div className="col-span-full">
-                                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 border-b border-slate-100 pb-2">Tag SEO & Approfondimenti (Testo Libero)</h4>
+                                {/* Target Selection */}
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Target Utente</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {TAG_CATEGORIES.target.map(tag => (
+                                            <button
+                                                key={tag.id}
+                                                type="button"
+                                                onClick={() => toggleTag('target', tag.id)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${formData.tags?.target?.includes(tag.id)
+                                                    ? 'bg-primary text-white border-primary shadow-md'
+                                                    : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
+                                                    }`}
+                                            >
+                                                {tag.label}
+                                            </button>
+                                        ))}
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Highlights</label>
-                                        <input
-                                            value={formData.tags?.highlights?.join(', ') || ''}
-                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, highlights: e.target.value.split(',').map(s => s.trim()) } })}
-                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                            placeholder="Es. Spa, Ghiacciaio..."
-                                        />
+                                </div>
+
+                                {/* Activities Match */}
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Attività Chiave</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {TAG_CATEGORIES.activities.map(tag => (
+                                            <button
+                                                key={tag.id}
+                                                type="button"
+                                                onClick={() => toggleTag('activities', tag.id)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${formData.tags?.activities?.includes(tag.id)
+                                                    ? 'bg-primary text-white border-primary shadow-md'
+                                                    : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
+                                                    }`}
+                                            >
+                                                {tag.label}
+                                            </button>
+                                        ))}
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Tag Attività (Tourism)</label>
-                                        <input
-                                            value={formData.tags?.tourism?.join(', ') || ''}
-                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, tourism: e.target.value.split(',').map(s => s.trim()) } })}
-                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                            placeholder="Es. Freeride, MTB..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Tag Ospitalità (Accom.)</label>
-                                        <input
-                                            value={formData.tags?.accommodation?.join(', ') || ''}
-                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, accommodation: e.target.value.split(',').map(s => s.trim()) } })}
-                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                            placeholder="Es. Lusso, Glamping..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Tag Impianti (Infrastr.)</label>
-                                        <input
-                                            value={formData.tags?.infrastructure?.join(', ') || ''}
-                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, infrastructure: e.target.value.split(',').map(s => s.trim()) } })}
-                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                            placeholder="Es. Skibus, Funivia..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Tag Sport</label>
-                                        <input
-                                            value={formData.tags?.sport?.join(', ') || ''}
-                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, sport: e.target.value.split(',').map(s => s.trim()) } })}
-                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                            placeholder="Es. Tennis, Nuoto..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Tag Info</label>
-                                        <input
-                                            value={formData.tags?.info?.join(', ') || ''}
-                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, info: e.target.value.split(',').map(s => s.trim()) } })}
-                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                            placeholder="Es. App, Guide..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Tag Generali</label>
-                                        <input
-                                            value={formData.tags?.general?.join(', ') || ''}
-                                            onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, general: e.target.value.split(',').map(s => s.trim()) } })}
-                                            className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                            placeholder="Es. Storico, Panoramico..."
-                                        />
-                                    </div>
+                                </div>
+                            </div>
+
+                            {/* SEO & Extra Tags (Free Text) */}
+                            <div className="grid grid-cols-3 gap-6">
+                                <div className="col-span-full flex justify-between items-end mb-4 border-b border-slate-100 pb-2">
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Tag SEO & Approfondimenti (Testo Libero)</h4>
+                                    <button
+                                        type="button"
+                                        onClick={() => generateTags('seo')}
+                                        disabled={generatingSEO}
+                                        className="text-[10px] bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 font-bold hover:bg-slate-200 flex items-center gap-2 transition-colors uppercase tracking-wider"
+                                    >
+                                        {generatingSEO ? 'Generazione...' : '✨ Estrai Parole Chiave SEO'}
+                                    </button>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Highlights</label>
+                                    <input
+                                        value={formData.tags?.highlights?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, highlights: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Spa, Ghiacciaio..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Attività (Tourism)</label>
+                                    <input
+                                        value={formData.tags?.tourism?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, tourism: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Freeride, MTB..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Ospitalità (Accom.)</label>
+                                    <input
+                                        value={formData.tags?.accommodation?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, accommodation: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Lusso, Glamping..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Impianti (Infrastr.)</label>
+                                    <input
+                                        value={formData.tags?.infrastructure?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, infrastructure: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Skibus, Funivia..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Sport</label>
+                                    <input
+                                        value={formData.tags?.sport?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, sport: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Tennis, Nuoto..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Info</label>
+                                    <input
+                                        value={formData.tags?.info?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, info: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. App, Guide..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Generali</label>
+                                    <input
+                                        value={formData.tags?.general?.join(', ') || ''}
+                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, general: e.target.value.split(',').map(s => s.trim()) } })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. Storico, Panoramico..."
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -1741,6 +1853,136 @@ function HomeConfigView() {
                     </button>
                 </div>
             </div>
+        </div>
+    );
+}
+
+function MatchLogsView() {
+    const [logs, setLogs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchLogs = async () => {
+            try {
+                const { collection, getDocs, orderBy, query, limit } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase');
+                const q = query(collection(db, 'match_logs'), orderBy('timestamp', 'desc'), limit(50));
+                const snap = await getDocs(q);
+                setLogs(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchLogs();
+    }, []);
+
+    if (loading) return <div className="p-8 text-center text-slate-500">Caricamento log...</div>;
+
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                    <tr>
+                        <th className="px-6 py-4">Data</th>
+                        <th className="px-6 py-4">Preferenze</th>
+                        <th className="px-6 py-4">Top Result</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                    {logs.map(log => (
+                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap text-slate-500">
+                                {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString() : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="flex flex-wrap gap-1">
+                                    {Object.entries(log.preferences || {}).map(([key, val]: [string, any]) => (
+                                        Array.isArray(val) && val.length > 0 && (
+                                            <div key={key} className="bg-slate-100 px-2 py-0.5 rounded text-[10px] border border-slate-200">
+                                                <span className="font-bold text-slate-400 mr-1 uppercase">{key}:</span>
+                                                <span className="text-slate-700">{val.join(', ')}</span>
+                                            </div>
+                                        )
+                                    ))}
+                                </div>
+                            </td>
+                            <td className="px-6 py-4">
+                                {log.results?.[0] ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px]">
+                                            {log.results[0].score}%
+                                        </div>
+                                        <span className="font-bold text-slate-900">{log.results[0].name}</span>
+                                    </div>
+                                ) : '-'}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
+function CompareLogsView() {
+    const [logs, setLogs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchLogs = async () => {
+            try {
+                const { collection, getDocs, orderBy, query, limit } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase');
+                const q = query(collection(db, 'compare_logs'), orderBy('timestamp', 'desc'), limit(50));
+                const snap = await getDocs(q);
+                setLogs(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchLogs();
+    }, []);
+
+    if (loading) return <div className="p-8 text-center text-slate-500">Caricamento log...</div>;
+
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                    <tr>
+                        <th className="px-6 py-4">Data</th>
+                        <th className="px-6 py-4">Stagione</th>
+                        <th className="px-6 py-4">Località Comparate</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                    {logs.map(log => (
+                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap text-slate-500">
+                                {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString() : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4">
+                                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold text-[10px] uppercase tracking-wider border border-slate-200">
+                                    {log.season}
+                                </span>
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="flex flex-wrap gap-2">
+                                    {log.locations?.map((loc: any, i: number) => (
+                                        <div key={i} className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-100">
+                                            {loc.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
     );
 }

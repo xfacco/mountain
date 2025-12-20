@@ -39,6 +39,31 @@ export default function CompareClient() {
         return () => content.removeEventListener('scroll', handleScroll);
     }, [freshSelectedLocations]);
 
+    // Log comparison activity
+    useEffect(() => {
+        if (freshSelectedLocations.length > 1) {
+            const logComparison = async () => {
+                try {
+                    const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase');
+
+                    // We only log if we haven't logged this exact set in this session
+                    // Simple way: log every time it changes but with a debounce or just log it
+                    // The user is explicitly adding a location, which "triggers" a new comparison view
+                    await addDoc(collection(db, 'compare_logs'), {
+                        locations: freshSelectedLocations.map(l => ({ id: l.id, name: l.name })),
+                        timestamp: serverTimestamp(),
+                        season: currentSeason,
+                        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown'
+                    });
+                } catch (err) {
+                    console.error("Error logging comparison:", err);
+                }
+            };
+            logComparison();
+        }
+    }, [freshSelectedLocations.length]); // Log when the number of items changes
+
     // Dettagli Toggles State (all closed by default)
     const [showDetails, setShowDetails] = useState<{
         tourism: boolean;

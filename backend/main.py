@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import os
+import re
+import json
 from dotenv import load_dotenv
 
 load_dotenv() # Load env vars from .env file
@@ -25,6 +27,13 @@ class ScrapeRequest(BaseModel):
     targets: List[str] = ["tourism", "accommodation"]
     user_instructions: Optional[str] = "" 
 
+class TagGenRequest(BaseModel):
+    location_name: str
+    description: Optional[dict] = None
+    services: Optional[list] = None
+    language: Optional[str] = "it"
+    current_tags: Optional[dict] = None
+    mode: Optional[str] = "full"  # wizard, seo, or full
 @app.get("/")
 def health_check():
     return {"status": "ok", "service": "AlpeMatch AI Backend", "version": "0.1.0"}
@@ -112,14 +121,17 @@ async def research_location(request: ScrapeRequest):
         
         full_prompt = f"{SYSTEM_PROMPT}\n\n{USER_PROMPT_TEMPLATE.format(location_name=request.location_name, user_instructions=instructions)}"
         
-        response = model.generate_content(full_prompt)
+        response = model.generate_content(
+            full_prompt,
+            generation_config={"response_mime_type": "application/json"}
+        )
         text_response = response.text
         
         print(f"DEBUG - Raw AI Response: {text_response}")
         
         # Robust cleanup to extract JSON if wrapped in markdown blocks
         import re
-        # Remove markdown code blocks with any language tag (json, JSON, text, etc) or no tag
+        # Remove markdown code blocks
         clean_text = re.sub(r'```[a-zA-Z]*', '', text_response).replace('```', '').strip()
         
         # Try to find first { and last } if heavy text around
@@ -127,6 +139,9 @@ async def research_location(request: ScrapeRequest):
         end_idx = clean_text.rfind('}')
         if start_idx != -1 and end_idx != -1:
             clean_text = clean_text[start_idx:end_idx+1]
+        
+        # Remove common JSON errors like trailing commas
+        clean_text = re.sub(r',\s*([}\]])', r'\1', clean_text)
             
         print(f"DEBUG - Cleaned AI Response (for JSON parsing): {clean_text[:500]}... [TRUNCATED]")
 
@@ -172,7 +187,7 @@ async def research_location(request: ScrapeRequest):
         }
 
 @app.post("/api/ai/generate-tags")
-async def generate_tags(request: ScrapeRequest):
+async def generate_tags(request: TagGenRequest):
     load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -183,37 +198,99 @@ async def generate_tags(request: ScrapeRequest):
         import json
         
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
-        prompt = f"""
-        Analyze the mountain tourism location: "{request.location_name}".
+        # Prepare context from existing data
+        context = f"Location: {request.location_name}\n"
+        if request.description:
+            context += f"Descriptions: {json.dumps(request.description)}\n"
+        if request.services:
+            context += f"Services/Activities: {json.dumps(request.services)}\n"
+
+        target_lang = "Italian" if request.language == "it" else "English"
         
-        CRITICAL INSTRUCTION: Output ONLY specific TAG IDs from the list below if they apply to the location. 
-        Output format MUST be strictly JSON in ENGLISH.
+        if request.mode == "wizard":
+            prompt = f"""
+            Analyze the following data about the mountain location "{request.location_name}":
+            {context}
+            
+            Goal: Identify the strictly defined Match Wizard Tags.
+            
+            ### MATCH WIZARD TAGS (CRITICAL)
+            You MUST select the most appropriate IDs from these fixed lists. 
+            Select 1 to 3 IDs per category. Use ONLY these exact IDs (lowercase).
+            
+            - vibe: relax, sport, party, luxury, nature, tradition, work, silence
+            - target: family, couple, friends, solo
+            - activities: ski, hiking, wellness, food, culture, adrenaline, shopping, photography
+            
+            Required format (strictly JSON):
+            {{
+                "vibe": ["id1", "id2"],
+                "target": ["id1", "id2"],
+                "activities": ["id1", "id2"]
+            }}
+            
+            Respond ONLY with a valid JSON object. No markdown.
+            """
+        elif request.mode == "seo":
+            prompt = f"""
+            Analyze the following data about the mountain location "{request.location_name}":
+            {context}
+            
+            Goal: Provide structured SEO and descriptive tags in {target_lang}.
+            
+            ### SEO & EXTRA TAGS (FREE TEXT)
+            Provide keyword lists. Max 5-8 tags per category. Use {target_lang}.
+            - highlights: Main selling points (e.g. "Ghiacciaio perenne", "Terme storiche")
+            - tourism: Specific activities (e.g. "MTB", "Freeride", "Nordic Walking")
+            - accommodation: Types of stays (e.g. "Eco-rifugi", "Dormire in botte")
+            - infrastructure: Facilities (e.g. "Impianti moderni", "Skibus gratuito")
+            - sport: Sports available (e.g. "Padel", "Tennis", "Ice Climbing")
+            - info: Useful tourist info (e.g. "App dedicata", "WiFi in quota")
+            - general: Generic descriptive tags (e.g. "Panoramico", "Soleggiato")
+            
+            Required format (strictly JSON):
+            {{
+                "highlights": ["Tag 1", "Tag 2"],
+                "tourism": ["Tag 1", "Tag 2"],
+                "accommodation": ["Tag 1", "Tag 2"],
+                "infrastructure": ["Tag 1", "Tag 2"],
+                "sport": ["Tag 1", "Tag 2"],
+                "info": ["Tag 1", "Tag 2"],
+                "general": ["Tag 1", "Tag 2"]
+            }}
+            
+            Respond ONLY with a valid JSON object. No markdown.
+            """
+        else: # Full mode (backward compatibility)
+            prompt = f"""
+            Analyze the following data about the mountain location "{request.location_name}":
+            {context}
+            
+            Goal: Provide all structured TAGS for this location.
+            
+            Required format (strictly JSON):
+            {{
+                "vibe": ["id1", "id2"],
+                "target": ["id1", "id2"],
+                "activities": ["id1", "id2"],
+                "highlights": ["Tag 1", "Tag 2"],
+                "tourism": ["Tag 1", "Tag 2"],
+                "accommodation": ["Tag 1", "Tag 2"],
+                "infrastructure": ["Tag 1", "Tag 2"],
+                "sport": ["Tag 1", "Tag 2"],
+                "info": ["Tag 1", "Tag 2"],
+                "general": ["Tag 1", "Tag 2"]
+            }}
+            
+            Respond ONLY with a valid JSON object. No markdown.
+            """
         
-        ALLOWED IDs (MUST be lowercase):
-        - vibe: relax, sport, party, luxury, nature, tradition, work, silence
-        - target: family, couple, friends, solo
-        - activities: ski, hiking, wellness, food, culture, adrenaline, shopping, photography
-        
-        Required format (strictly JSON):
-        {{
-            "vibe": ["id1", "id2"],
-            "target": ["id1", "id2"],
-            "activities": ["id1", "id2"],
-            "highlights": ["English description 1", "English description 2"],
-            "tourism": ["Fuzzy Activity Tags e.g. Freeride, MTB"],
-            "accommodation": ["Hotel Tags e.g. Luxury, Spa"],
-            "infrastructure": ["e.g. Cable Car, Ski Bus"],
-            "sport": ["e.g. Tennis, Padel"],
-            "info": ["e.g. App, WiFi"],
-            "general": ["e.g. Panoramic"]
-        }}
-        
-        Respond ONLY with valid JSON. No markdown code blocks.
-        """
-        
-        response = model.generate_content(prompt)
+        response = model.generate_content(
+            prompt,
+            generation_config={"response_mime_type": "application/json"}
+        )
         text_response = response.text
         
         print(f"DEBUG - TAGS Raw Response: {text_response}")
@@ -223,6 +300,9 @@ async def generate_tags(request: ScrapeRequest):
         end_idx = clean_text.rfind('}')
         if start_idx != -1 and end_idx != -1:
             clean_text = clean_text[start_idx:end_idx+1]
+        
+        # Fix trailing commas
+        clean_text = re.sub(r',\s*([}\]])', r'\1', clean_text)
             
         data = json.loads(clean_text)
         

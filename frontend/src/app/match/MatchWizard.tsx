@@ -176,12 +176,29 @@ export default function MatchWizard() {
             return { ...loc, matchScore: percentage };
         });
 
-        // Sort by score desc, take top 6
+        // Log the match search to Firebase
+        const logMatch = async (topMatches: any[]) => {
+            try {
+                const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase');
+
+                await addDoc(collection(db, 'match_logs'), {
+                    preferences,
+                    results: topMatches.map(m => ({ id: m.id, name: m.name, score: m.matchScore })),
+                    timestamp: serverTimestamp(),
+                    userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown'
+                });
+            } catch (err) {
+                console.error("Error logging match:", err);
+            }
+        };
+
         const topMatches = scoredLocations
             .sort((a, b) => b.matchScore - a.matchScore)
             .slice(0, 6);
 
         setMatches(topMatches);
+        logMatch(topMatches);
 
         // Simulate "thinking" time
         setTimeout(() => setLoading(false), 800);
