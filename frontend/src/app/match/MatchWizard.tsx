@@ -451,7 +451,7 @@ export default function MatchWizard() {
                                             {location.distance && (
                                                 <div className="col-span-2 mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
                                                     <span className="text-slate-500 text-sm flex items-center gap-1">
-                                                        <MapPin size={14} /> Distanza da te
+                                                        <MapPin size={14} /> Distance from you
                                                     </span>
                                                     <span className="font-black text-primary">
                                                         ~{Math.round(location.distance)} km
@@ -631,7 +631,7 @@ export default function MatchWizard() {
                                         )}
                                     >
                                         <MapPin size={32} strokeWidth={1.5} />
-                                        <span className="font-bold">Usa Posizione Attuale</span>
+                                        <span className="font-bold">Use Current Location</span>
                                     </button>
 
                                     <button
@@ -644,7 +644,7 @@ export default function MatchWizard() {
                                         )}
                                     >
                                         <Globe size={32} strokeWidth={1.5} />
-                                        <span className="font-bold">Inserisci Città</span>
+                                        <span className="font-bold">Enter City</span>
                                     </button>
                                 </div>
 
@@ -669,7 +669,7 @@ export default function MatchWizard() {
                                         </div>
                                         {preferences.location.lat !== 45.4642 && (
                                             <p className="text-xs text-green-600 font-medium px-2 flex items-center gap-1">
-                                                <CheckCircle size={14} /> Località trovata!
+                                                <CheckCircle size={14} /> Location found!
                                             </p>
                                         )}
                                     </motion.div>

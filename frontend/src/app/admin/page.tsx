@@ -21,7 +21,7 @@ import {
     Activity,
     Columns
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
@@ -1163,7 +1163,7 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                 <div className="flex justify-between items-center mb-2">
                                     <label className="block text-sm font-medium text-slate-700">Coordinate (Gradi Decimali es. 46.1234)</label>
                                     <a
-                                        href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' altitudine longitudine latitudine gradi decimali')}`}
+                                        href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' ' + (formData.region || '') + ' altitudine longitudine latitudine gradi decimali')}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold"
@@ -1206,12 +1206,12 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                 <div className="flex justify-between items-center mb-2">
                                     <label className="block text-sm font-medium text-slate-700">Immagini Stagionali (URL)</label>
                                     <a
-                                        href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' immagini alta definizione')}`}
+                                        href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' immagini di grandi dimensioni')}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold"
                                     >
-                                        <Search size={10} /> Cerca immagini HD
+                                        <Search size={10} /> Cerca immagini HQ
                                     </a>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
@@ -1997,7 +1997,8 @@ function CompareLogsView() {
             try {
                 const { collection, getDocs, orderBy, query, limit } = await import('firebase/firestore');
                 const { db } = await import('@/lib/firebase');
-                const q = query(collection(db, 'compare_logs'), orderBy('timestamp', 'desc'), limit(50));
+                // Increase limit to get better statistics
+                const q = query(collection(db, 'compare_logs'), orderBy('timestamp', 'desc'), limit(500));
                 const snap = await getDocs(q);
                 setLogs(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             } catch (e) {
@@ -2009,37 +2010,89 @@ function CompareLogsView() {
         fetchLogs();
     }, []);
 
-    if (loading) return <div className="p-8 text-center text-slate-500">Caricamento log...</div>;
+    const aggregatedLogs = useMemo(() => {
+        const groups: Record<string, any> = {};
+
+        logs.forEach(log => {
+            const names = (log.locations || []).map((l: any) => l.name).sort();
+            const key = names.length > 0 ? names.join(' + ') : 'Nessuna località';
+
+            if (!groups[key]) {
+                groups[key] = {
+                    key,
+                    names: names,
+                    count: 0,
+                    lastSeen: log.timestamp,
+                    seasons: new Set()
+                };
+            }
+
+            groups[key].count += 1;
+            groups[key].seasons.add(log.season);
+
+            if (log.timestamp?.seconds && (!groups[key].lastSeen?.seconds || log.timestamp.seconds > groups[key].lastSeen.seconds)) {
+                groups[key].lastSeen = log.timestamp;
+            }
+        });
+
+        return Object.values(groups).sort((a: any, b: any) => b.count - a.count);
+    }, [logs]);
+
+    if (loading) return <div className="p-8 text-center text-slate-500">Caricamento statistiche comparazioni...</div>;
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                <h3 className="font-bold text-slate-700 text-sm">Classifica Comparazioni (Top {aggregatedLogs.length})</h3>
+                <span className="text-[10px] text-slate-400 font-medium">Analizzati {logs.length} log recenti</span>
+            </div>
             <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
                     <tr>
-                        <th className="px-6 py-4">Data</th>
-                        <th className="px-6 py-4">Stagione</th>
+                        <th className="px-6 py-4 w-16">Rank</th>
                         <th className="px-6 py-4">Località Comparate</th>
+                        <th className="px-6 py-4 text-center">Frequenza</th>
+                        <th className="px-6 py-4">Stagioni</th>
+                        <th className="px-6 py-4 text-right">Ultima Ricerca</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                    {logs.map(log => (
-                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap text-slate-500">
-                                {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString() : 'N/A'}
-                            </td>
+                    {aggregatedLogs.map((log: any, idx) => (
+                        <tr key={log.key} className="hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-4">
-                                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold text-[10px] uppercase tracking-wider border border-slate-200">
-                                    {log.season}
-                                </span>
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${idx === 0 ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
+                                    idx === 1 ? 'bg-slate-100 text-slate-600 border border-slate-200' :
+                                        idx === 2 ? 'bg-orange-50 text-orange-700 border border-orange-100' :
+                                            'bg-slate-50 text-slate-400'
+                                    }`}>
+                                    {idx + 1}
+                                </div>
                             </td>
                             <td className="px-6 py-4">
                                 <div className="flex flex-wrap gap-2">
-                                    {log.locations?.map((loc: any, i: number) => (
+                                    {log.names.map((name: string, i: number) => (
                                         <div key={i} className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-100">
-                                            {loc.name}
+                                            {name}
                                         </div>
                                     ))}
                                 </div>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                                <span className="inline-flex items-center justify-center min-w-[32px] px-2 py-1 bg-primary/10 text-primary rounded-full font-black text-xs">
+                                    {log.count}
+                                </span>
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="flex gap-1">
+                                    {Array.from(log.seasons).map((s: any) => (
+                                        <span key={s} className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[9px] font-bold uppercase border border-slate-200">
+                                            {s}
+                                        </span>
+                                    ))}
+                                </div>
+                            </td>
+                            <td className="px-6 py-4 text-right whitespace-nowrap text-slate-500 text-xs">
+                                {log.lastSeen?.toDate ? log.lastSeen.toDate().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}
                             </td>
                         </tr>
                     ))}

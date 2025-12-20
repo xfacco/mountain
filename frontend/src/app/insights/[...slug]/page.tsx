@@ -14,7 +14,9 @@ async function getLocationData(name: string) {
     const locationsRef = collection(db, 'locations');
     const q = query(locationsRef, where('name', '==', name));
     const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) return querySnapshot.docs[0].data();
+    if (!querySnapshot.empty) {
+        return JSON.parse(JSON.stringify(querySnapshot.docs[0].data()));
+    }
     return null;
 }
 
@@ -42,11 +44,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         }
     }
 
+    const fullTitle = `${contentTitle} - Compare with Alpe Match`;
+
     return {
-        title: `${contentTitle} | Compare locations and find the one that's best for you.`,
+        title: fullTitle,
         description: description.substring(0, 160),
         openGraph: {
-            title: contentTitle,
+            title: fullTitle,
             description: description.substring(0, 200),
             images: [location.coverImage || '/logo_alpematch.png'],
         }

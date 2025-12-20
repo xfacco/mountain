@@ -15,7 +15,10 @@ async function getLocationData(name: string) {
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
-            return querySnapshot.docs[0].data();
+            const data = querySnapshot.docs[0].data();
+            // Convert to plain object to avoid "Only plain objects can be passed to Client Components" error
+            // This handles Firestore Timestamps and other non-serializable objects
+            return JSON.parse(JSON.stringify(data));
         }
     } catch (error) {
         console.error("Error fetching location for metadata:", error);
