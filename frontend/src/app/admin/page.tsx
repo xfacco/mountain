@@ -804,6 +804,9 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
         }
     });
 
+    // AI weights for tags visualization
+    const [tagWeights, setTagWeights] = useState<any>(null);
+
     // UI State for Active Tab inside Editor
     const [editTab, setEditTab] = useState<'general' | 'services'>('general');
 
@@ -905,13 +908,28 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
 
             const data = await res.json();
             if (data.status === 'success' && data.data) {
-                setFormData((prev: any) => ({
-                    ...prev,
-                    tags: {
-                        ...(prev.tags || {}),
-                        ...data.data
-                    }
-                }));
+                if (mode === 'wizard') {
+                    // Update weights state for UI visualization
+                    if (data.data.weights) setTagWeights(data.data.weights);
+
+                    // Update the actual selected tags
+                    setFormData((prev: any) => ({
+                        ...prev,
+                        tags: {
+                            ...(prev.tags || {}),
+                            ...(data.data.selected || {})
+                        }
+                    }));
+                } else {
+                    // SEO Mode
+                    setFormData((prev: any) => ({
+                        ...prev,
+                        tags: {
+                            ...(prev.tags || {}),
+                            ...data.data
+                        }
+                    }));
+                }
                 alert(`${mode === 'wizard' ? 'Tag Wizard' : 'Tag SEO'} generati con successo!`);
             } else {
                 alert(`Errore API: ${data.message || 'Sconosciuto'}`);
@@ -1246,12 +1264,17 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                                 key={tag.id}
                                                 type="button"
                                                 onClick={() => toggleTag('vibe', tag.id)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${formData.tags?.vibe?.includes(tag.id)
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-between gap-2 ${formData.tags?.vibe?.includes(tag.id)
                                                     ? 'bg-primary text-white border-primary shadow-md'
                                                     : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
                                                     }`}
                                             >
                                                 {tag.label}
+                                                {tagWeights?.vibe?.[tag.id] !== undefined && (
+                                                    <span className={`text-[9px] px-1 rounded-sm ${formData.tags?.vibe?.includes(tag.id) ? 'bg-white/20' : 'bg-slate-100 text-slate-400'}`}>
+                                                        {tagWeights.vibe[tag.id]}%
+                                                    </span>
+                                                )}
                                             </button>
                                         ))}
                                     </div>
@@ -1266,12 +1289,17 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                                 key={tag.id}
                                                 type="button"
                                                 onClick={() => toggleTag('target', tag.id)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${formData.tags?.target?.includes(tag.id)
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-between gap-2 ${formData.tags?.target?.includes(tag.id)
                                                     ? 'bg-primary text-white border-primary shadow-md'
                                                     : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
                                                     }`}
                                             >
                                                 {tag.label}
+                                                {tagWeights?.target?.[tag.id] !== undefined && (
+                                                    <span className={`text-[9px] px-1 rounded-sm ${formData.tags?.target?.includes(tag.id) ? 'bg-white/20' : 'bg-slate-100 text-slate-400'}`}>
+                                                        {tagWeights.target[tag.id]}%
+                                                    </span>
+                                                )}
                                             </button>
                                         ))}
                                     </div>
@@ -1286,12 +1314,17 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                                 key={tag.id}
                                                 type="button"
                                                 onClick={() => toggleTag('activities', tag.id)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${formData.tags?.activities?.includes(tag.id)
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-between gap-2 ${formData.tags?.activities?.includes(tag.id)
                                                     ? 'bg-primary text-white border-primary shadow-md'
                                                     : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
                                                     }`}
                                             >
                                                 {tag.label}
+                                                {tagWeights?.activities?.[tag.id] !== undefined && (
+                                                    <span className={`text-[9px] px-1 rounded-sm ${formData.tags?.activities?.includes(tag.id) ? 'bg-white/20' : 'bg-slate-100 text-slate-400'}`}>
+                                                        {tagWeights.activities[tag.id]}%
+                                                    </span>
+                                                )}
                                             </button>
                                         ))}
                                     </div>

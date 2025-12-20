@@ -198,7 +198,7 @@ async def generate_tags(request: TagGenRequest):
         import json
         
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         # Prepare context from existing data
         context = f"Location: {request.location_name}\n"
@@ -214,24 +214,34 @@ async def generate_tags(request: TagGenRequest):
             Analyze the following data about the mountain location "{request.location_name}":
             {context}
             
-            Goal: Identify the strictly defined Match Wizard Tags.
+            Goal: Evaluate and weight ALL Match Wizard Tags.
             
-            ### MATCH WIZARD TAGS (CRITICAL)
-            You MUST select the most appropriate IDs from these fixed lists. 
-            Select 1 to 3 IDs per category. Use ONLY these exact IDs (lowercase).
+            ### MATCH WIZARD TAGS SCORING
+            For EVERY tag ID list below, you must:
+            1. Assign a relevance weight (0-100) based on the location data.
+            2. Return the weights for ALL IDs, even those with low scores.
+            3. Identify the top 4 most relevant IDs.
             
+            ALLOWED IDs (Use ONLY these exact lowercase strings):
             - vibe: relax, sport, party, luxury, nature, tradition, work, silence
             - target: family, couple, friends, solo
             - activities: ski, hiking, wellness, food, culture, adrenaline, shopping, photography
             
             Required format (strictly JSON):
             {{
-                "vibe": ["id1", "id2"],
-                "target": ["id1", "id2"],
-                "activities": ["id1", "id2"]
+                "weights": {{
+                    "vibe": {{"relax": 90, "sport": 10, "nature": 80}},
+                    "target": {{"family": 70, "couple": 30}},
+                    "activities": {{"ski": 100, "wellness": 50}}
+                }},
+                "selected": {{
+                    "vibe": ["relax", "nature"],
+                    "target": ["family"],
+                    "activities": ["ski", "wellness"]
+                }}
             }}
             
-            Respond ONLY with a valid JSON object. No markdown.
+            Respond ONLY with a valid JSON object containing ALL IDs in 'weights' and the top 4 in 'selected'. No markdown.
             """
         elif request.mode == "seo":
             prompt = f"""
