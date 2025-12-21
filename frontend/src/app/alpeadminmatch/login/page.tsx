@@ -35,7 +35,15 @@ export default function LoginPage() {
                     // For this session, we'll store a simple flag in localStorage/sessionStorage
                     sessionStorage.setItem('mountcomp_admin_user', email);
 
-                    router.push('/admin');
+                    // Check for redirect URL in query params
+                    const params = new URLSearchParams(window.location.search);
+                    const redirectUrl = params.get('redirect');
+
+                    if (redirectUrl) {
+                        router.push(decodeURIComponent(redirectUrl));
+                    } else {
+                        router.push('/alpeadminmatch');
+                    }
                 } else {
                     setError('Password non valida.');
                 }

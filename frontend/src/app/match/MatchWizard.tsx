@@ -64,6 +64,16 @@ export default function MatchWizard() {
             maxDistance: 0
         }
     });
+    const [userIp, setUserIp] = useState<string>('');
+    const [logId, setLogId] = useState<string | null>(null);
+
+    // Fetch IP on mount
+    useEffect(() => {
+        fetch('https://api.ipify.org?format=json')
+            .then(res => res.json())
+            .then(data => setUserIp(data.ip))
+            .catch(err => console.error("Error fetching IP", err));
+    }, []);
 
     // Results
     const [locations, setLocations] = useState<any[]>([]);
@@ -273,12 +283,15 @@ export default function MatchWizard() {
             try {
                 const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
                 const { db } = await import('@/lib/firebase');
-                await addDoc(collection(db, 'match_logs'), {
+                const docRef = await addDoc(collection(db, 'match_logs'), {
                     preferences,
                     results: results.map(m => ({ id: m.id, name: m.name, score: m.matchScore, distance: m.distance })),
                     timestamp: serverTimestamp(),
-                    algo: "avg_affinity_v2"
+                    algo: "avg_affinity_v2",
+                    ip: userIp,
+                    choices: [] // Initialize empty choices
                 });
+                setLogId(docRef.id);
             } catch (err) {
                 console.error("Error logging", err);
             }
@@ -301,6 +314,19 @@ export default function MatchWizard() {
             }
             return { ...prev, [category]: [...current, value] };
         });
+    };
+
+    const handleChoice = async (locationName: string) => {
+        if (!logId) return;
+        try {
+            const { doc, updateDoc, arrayUnion } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await updateDoc(doc(db, 'match_logs', logId), {
+                choices: arrayUnion(locationName)
+            });
+        } catch (err) {
+            console.error("Error updating choice", err);
+        }
     };
 
     const nextStep = () => {
@@ -647,6 +673,7 @@ export default function MatchWizard() {
 
                                         <Link
                                             href={`/locations/${location.name}`}
+                                            onClick={() => handleChoice(location.name)}
                                             className="mt-8 block w-full py-4 text-center bg-slate-900 text-white rounded-xl font-bold hover:bg-primary transition-colors duration-300"
                                         >
                                             {t('view_details')}

@@ -21,15 +21,25 @@ import {
     ChevronUp,
     ChevronDown,
     MessageSquare,
-    Mail
+    Mail,
+    Check
 } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
 
-export default function AdminDashboard() {
+export default function AdminDashboardPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center">Caricamento...</div>}>
+            <AdminDashboard />
+        </Suspense>
+    );
+}
+
+function AdminDashboard() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [activeTab, setActiveTab] = useState('locations');
     const [locations, setLocations] = useState<any[]>([]);
     const [loadingLocs, setLoadingLocs] = useState(true);
@@ -85,7 +95,10 @@ export default function AdminDashboard() {
     useEffect(() => {
         const user = sessionStorage.getItem('mountcomp_admin_user');
         if (!user) {
-            router.push('/admin/login');
+            const currentPath = window.location.pathname;
+            const currentSearch = window.location.search;
+            const redirectUrl = encodeURIComponent(`${currentPath}${currentSearch}`);
+            router.push(`/alpeadminmatch/login?redirect=${redirectUrl}`);
         } else {
             setIsAuthenticated(true);
         }
@@ -94,18 +107,19 @@ export default function AdminDashboard() {
     // Edit Mode State
     const [editingLocation, setEditingLocation] = useState<any>(null);
 
+    // Handle deep linking from URL search params
+    useEffect(() => {
+        if (!isAuthenticated) return;
+
+        const tabParam = searchParams.get('tab');
+        if (tabParam) {
+            setActiveTab(tabParam);
+        }
+    }, [searchParams, isAuthenticated]);
+
     // Load locations from Firestore
     useEffect(() => {
         if (!isAuthenticated) return;
-        // Handle URL parameters for deep linking
-        const queryParams = new URLSearchParams(window.location.search);
-        const tabParam = queryParams.get('tab');
-        const locParam = queryParams.get('location');
-
-        if (tabParam === 'ai-tasks') {
-            setActiveTab('ai-tasks');
-            // We'll handle the location pre-fill via state or passing it down
-        }
 
         const fetchLocations = async () => {
             try {
@@ -148,7 +162,7 @@ export default function AdminDashboard() {
 
     const handleLogout = async () => {
         sessionStorage.removeItem('mountcomp_admin_user');
-        router.push('/admin/login');
+        router.push('/alpeadminmatch/login');
     };
 
     const handleStartEdit = async (loc: any) => {
@@ -346,12 +360,28 @@ export default function AdminDashboard() {
                         Log Match
                     </button>
                     <button
-                        onClick={() => { setActiveTab('compare-logs'); setEditingLocation(null); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'compare-logs' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                        onClick={() => { setActiveTab('compare-ranking'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'compare-ranking' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <Activity size={18} />
+                        Top Comparazioni
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('compare-raw'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'compare-raw' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
                             }`}
                     >
                         <Columns size={18} />
                         Log Comparazioni
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('search-logs'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'search-logs' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <Search size={18} />
+                        Log Ricerche
                     </button>
                     <button
                         onClick={() => { setActiveTab('search-data'); setEditingLocation(null); }}
@@ -359,7 +389,7 @@ export default function AdminDashboard() {
                             }`}
                     >
                         <Search size={18} />
-                        Dati Search
+                        Dati Search per AI
                     </button>
                 </nav>
 
@@ -394,18 +424,22 @@ export default function AdminDashboard() {
                                     {activeTab === 'locations' ? 'Località'
                                         : activeTab === 'messages' ? 'Messaggi Utenti'
                                             : activeTab === 'match-logs' ? 'Log Match AI'
-                                                : activeTab === 'compare_logs' ? 'Log Comparazioni'
-                                                    : activeTab === 'search-data' ? 'Dati per Motori di Ricerca'
-                                                        : 'Motore AI Ricerca'}
+                                                : activeTab === 'compare-ranking' ? 'Classifica Comparazioni'
+                                                    : activeTab === 'compare-raw' ? 'Dettaglio Comparazioni'
+                                                        : activeTab === 'search-logs' ? 'Log Ricerche Sito'
+                                                            : activeTab === 'search-data' ? 'Dati per Motori di Ricerca'
+                                                                : 'Motore AI Ricerca'}
                                 </h1>
                                 <p className="text-slate-500 text-sm mt-1">
                                     {activeTab === 'locations' ? 'Gestisci le destinazioni pubblicate.'
                                         : activeTab === 'messages' ? 'Leggi le segnalazioni e le richieste degli utenti.'
                                             : activeTab === 'match-logs' ? 'Vedi cosa cercano gli utenti nel Wizard.'
-                                                : activeTab === 'compare-logs' ? 'Vedi quali località vengono messe a confronto.'
-                                                    : activeTab === 'search-data' ? 'Elenco località e nazioni (Copia & Incolla).'
-                                                        : activeTab === 'ai-tasks' ? 'Estrai nuovi dati dal web tramite Gemini.'
-                                                            : 'Modifica i contenuti della Home Page.'}
+                                                : activeTab === 'compare-ranking' ? 'Vedi quali combinazioni di località sono più popolari.'
+                                                    : activeTab === 'compare-raw' ? 'Vedi i singoli confronti effettuati dagli utenti.'
+                                                        : activeTab === 'search-logs' ? 'Analisi delle ricerche testuali e dei filtri usati.'
+                                                            : activeTab === 'search-data' ? 'Elenco località e nazioni (Copia & Incolla).'
+                                                                : activeTab === 'ai-tasks' ? 'Estrai nuovi dati dal web tramite Gemini.'
+                                                                    : 'Modifica i contenuti della Home Page.'}
                                 </p>
                             </div>
                             <div className="flex gap-3">
@@ -627,7 +661,7 @@ export default function AdminDashboard() {
                                                                 <ExternalLink size={18} />
                                                             </Link>
                                                             <Link
-                                                                href={`/admin?tab=ai-tasks&location=${encodeURIComponent(loc.name)}`}
+                                                                href={`/alpeadminmatch?tab=ai-tasks&location=${encodeURIComponent(loc.name)}`}
                                                                 target="_blank"
                                                                 className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                                                                 title="Analisi AI (Nuova Scheda)"
@@ -660,7 +694,9 @@ export default function AdminDashboard() {
 
                         {activeTab === 'messages' && <MessagesView />}
                         {activeTab === 'match-logs' && <MatchLogsView />}
-                        {activeTab === 'compare-logs' && <CompareLogsView />}
+                        {activeTab === 'compare-ranking' && <CompareRankingView />}
+                        {activeTab === 'compare-raw' && <CompareRawLogsView />}
+                        {activeTab === 'search-logs' && <SearchLogsView />}
                         {activeTab === 'search-data' && <SearchDataView locations={locations} />}
                         {activeTab === 'ai-tasks' && <AITaskRunner />}
                         {activeTab === 'home-config' && <HomeConfigView />}
@@ -2274,73 +2310,190 @@ function HomeConfigView() {
 function MatchLogsView() {
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [hasMore, setHasMore] = useState(true);
+    const [ipMap, setIpMap] = useState<Record<string, string>>({});
+
+    const PAGE_SIZE = 10;
+
+    const fetchLogs = async (isMore = false) => {
+        if (isMore) setLoadingMore(true);
+        else setLoading(true);
+
+        try {
+            const { collection, getDocs, orderBy, query, limit, startAfter } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            let q = query(
+                collection(db, 'match_logs'),
+                orderBy('timestamp', 'desc'),
+                limit(PAGE_SIZE)
+            );
+
+            if (isMore && lastDoc) {
+                q = query(
+                    collection(db, 'match_logs'),
+                    orderBy('timestamp', 'desc'),
+                    startAfter(lastDoc),
+                    limit(PAGE_SIZE)
+                );
+            }
+
+            const snap = await getDocs(q);
+            const newLogs = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+
+            if (isMore) {
+                setLogs(prev => [...prev, ...newLogs]);
+            } else {
+                setLogs(newLogs);
+            }
+
+            setLastDoc(snap.docs[snap.docs.length - 1]);
+            setHasMore(snap.docs.length === PAGE_SIZE);
+
+            // Fetch IPs
+            newLogs.forEach(log => {
+                if (log.ip && log.ip !== '0.0.0.0' && !log.country && !ipMap[log.ip]) {
+                    resolveIP(log.ip, log.id);
+                }
+            });
+
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    };
+
+    const resolveIP = async (ip: string, docId: string) => {
+        if (!ip || ip === '0.0.0.0' || ip === '127.0.0.1' || ip === '::1' || ipMap[ip]) return;
+
+        try {
+            setIpMap(prev => ({ ...prev, [ip]: '...' }));
+            const res = await fetch(`https://ipinfo.io/${ip}/json`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.country) {
+                    const regionNames = new Intl.DisplayNames(['it'], { type: 'region' });
+                    const countryName = regionNames.of(data.country) || data.country;
+                    setIpMap(prev => ({ ...prev, [ip]: countryName }));
+                    const { doc, updateDoc } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase');
+                    await updateDoc(doc(db, 'match_logs', docId), { country: countryName });
+                    return;
+                }
+            }
+            setIpMap(prev => ({ ...prev, [ip]: 'N/D' }));
+        } catch (e) {
+            setIpMap(prev => ({ ...prev, [ip]: 'N/D' }));
+        }
+    };
 
     useEffect(() => {
-        const fetchLogs = async () => {
-            try {
-                const { collection, getDocs, orderBy, query, limit } = await import('firebase/firestore');
-                const { db } = await import('@/lib/firebase');
-                const q = query(collection(db, 'match_logs'), orderBy('timestamp', 'desc'), limit(50));
-                const snap = await getDocs(q);
-                setLogs(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchLogs();
     }, []);
 
     if (loading) return <div className="p-8 text-center text-slate-500">Caricamento log...</div>;
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
-                    <tr>
-                        <th className="px-6 py-4">Data</th>
-                        <th className="px-6 py-4">Preferenze</th>
-                        <th className="px-6 py-4">Top Result</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                    {logs.map(log => (
-                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap text-slate-500">
-                                {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString() : 'N/A'}
-                            </td>
-                            <td className="px-6 py-4">
-                                <div className="flex flex-wrap gap-1">
-                                    {Object.entries(log.preferences || {}).map(([key, val]: [string, any]) => (
-                                        Array.isArray(val) && val.length > 0 && (
-                                            <div key={key} className="bg-slate-100 px-2 py-0.5 rounded text-[10px] border border-slate-200">
-                                                <span className="font-bold text-slate-400 mr-1 uppercase">{key}:</span>
-                                                <span className="text-slate-700">{val.join(', ')}</span>
-                                            </div>
-                                        )
-                                    ))}
-                                </div>
-                            </td>
-                            <td className="px-6 py-4">
-                                {log.results?.[0] ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px]">
-                                            {log.results[0].score}%
-                                        </div>
-                                        <span className="font-bold text-slate-900">{log.results[0].name}</span>
-                                    </div>
-                                ) : '-'}
-                            </td>
+        <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                        <tr>
+                            <th className="px-6 py-4">Data / IP</th>
+                            <th className="px-6 py-4">Preferenze</th>
+                            <th className="px-6 py-4">Risultati Match (%)</th>
+                            <th className="px-6 py-4">Scelta Utente</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {logs.map(log => (
+                            <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-slate-500 text-xs font-medium">
+                                        {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('it-IT') : 'N/A'}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-1 text-[10px] font-mono">
+                                        <span className="text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                            {log.ip || '0.0.0.0'}
+                                        </span>
+                                        {(log.country || ipMap[log.ip]) && (
+                                            <span className="text-indigo-500 font-black uppercase text-[9px]">
+                                                {log.country || ipMap[log.ip]}
+                                            </span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex flex-wrap gap-1 max-w-sm">
+                                        {Object.entries(log.preferences || {}).map(([key, val]: [string, any]) => (
+                                            Array.isArray(val) && val.length > 0 && (
+                                                <div key={key} className="bg-slate-100 px-2 py-0.5 rounded text-[10px] border border-slate-200">
+                                                    <span className="font-bold text-slate-400 mr-1 uppercase">{key}:</span>
+                                                    <span className="text-slate-700">{val.join(', ')}</span>
+                                                </div>
+                                            )
+                                        ))}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex flex-wrap gap-2">
+                                        {log.results?.map((res: any, idx: number) => (
+                                            <div key={idx} className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg">
+                                                <span className="text-[10px] font-black text-primary">{res.score}%</span>
+                                                <span className="text-xs font-medium text-slate-700">{res.name}</span>
+                                            </div>
+                                        ))}
+                                        {!log.results?.length && <span className="text-slate-300">-</span>}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex flex-col gap-1">
+                                        {log.choices?.length > 0 ? (
+                                            log.choices.map((choice: string, i: number) => (
+                                                <div key={i} className="flex items-center gap-1.5 text-green-600 font-bold text-xs bg-green-50 px-2 py-1 rounded-lg border border-green-100">
+                                                    <Check size={12} /> {choice}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <span className="text-[10px] text-slate-300 italic uppercase font-bold tracking-widest">Nessun click</span>
+                                        )}
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+
+                {hasMore && (
+                    <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex justify-center">
+                        <button
+                            onClick={() => fetchLogs(true)}
+                            disabled={loadingMore}
+                            className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:border-primary/30 hover:text-primary transition-all shadow-sm flex items-center gap-2"
+                        >
+                            {loadingMore ? (
+                                <>
+                                    <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                                    Caricamento...
+                                </>
+                            ) : (
+                                <>
+                                    <Plus size={14} /> Carica altri log
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
 
-function CompareLogsView() {
+function CompareRankingView() {
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -2349,10 +2502,9 @@ function CompareLogsView() {
             try {
                 const { collection, getDocs, orderBy, query, limit } = await import('firebase/firestore');
                 const { db } = await import('@/lib/firebase');
-                // Increase limit to get better statistics
                 const q = query(collection(db, 'compare_logs'), orderBy('timestamp', 'desc'), limit(500));
                 const snap = await getDocs(q);
-                setLogs(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                setLogs(snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) })));
             } catch (e) {
                 console.error(e);
             } finally {
@@ -2375,12 +2527,14 @@ function CompareLogsView() {
                     names: names,
                     count: 0,
                     lastSeen: log.timestamp,
-                    seasons: new Set()
+                    seasons: new Set(),
+                    choices: new Set()
                 };
             }
 
             groups[key].count += 1;
             groups[key].seasons.add(log.season);
+            (log.choices || []).forEach((c: string) => groups[key].choices.add(c));
 
             if (log.timestamp?.seconds && (!groups[key].lastSeen?.seconds || log.timestamp.seconds > groups[key].lastSeen.seconds)) {
                 groups[key].lastSeen = log.timestamp;
@@ -2405,6 +2559,7 @@ function CompareLogsView() {
                         <th className="px-6 py-4">Località Comparate</th>
                         <th className="px-6 py-4 text-center">Frequenza</th>
                         <th className="px-6 py-4">Stagioni</th>
+                        <th className="px-6 py-4">Click / Scelte</th>
                         <th className="px-6 py-4 text-right">Ultima Ricerca</th>
                     </tr>
                 </thead>
@@ -2436,20 +2591,201 @@ function CompareLogsView() {
                             </td>
                             <td className="px-6 py-4">
                                 <div className="flex gap-1">
-                                    {Array.from(log.seasons).map((s: any) => (
+                                    {Array.from(log.seasons || []).map((s: any) => (
                                         <span key={s} className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[9px] font-bold uppercase border border-slate-200">
                                             {s}
                                         </span>
                                     ))}
                                 </div>
                             </td>
+                            <td className="px-6 py-4">
+                                <div className="flex flex-wrap gap-1">
+                                    {Array.from(log.choices || []).length > 0 ? (
+                                        Array.from(log.choices).map((choice: any) => (
+                                            <span key={choice} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-50 text-green-700 text-[9px] font-bold border border-green-100">
+                                                <Check size={10} /> {choice}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span className="text-[9px] text-slate-300 italic">Nessun click</span>
+                                    )}
+                                </div>
+                            </td>
                             <td className="px-6 py-4 text-right whitespace-nowrap text-slate-500 text-xs">
-                                {log.lastSeen?.toDate ? log.lastSeen.toDate().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                                {log.lastSeen?.toDate ? log.lastSeen.toDate().toLocaleString('it-IT') : 'N/A'}
                             </td>
                         </tr>
                     ))}
                 </tbody>
             </table>
+        </div>
+    );
+}
+
+function CompareRawLogsView() {
+    const [logs, setLogs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [hasMore, setHasMore] = useState(true);
+    const [ipMap, setIpMap] = useState<Record<string, string>>({});
+
+    const PAGE_SIZE = 15;
+
+    const fetchLogs = async (isMore = false) => {
+        if (isMore) setLoadingMore(true);
+        else setLoading(true);
+
+        try {
+            const { collection, getDocs, orderBy, query, limit, startAfter } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            let q = query(
+                collection(db, 'compare_logs'),
+                orderBy('timestamp', 'desc'),
+                limit(PAGE_SIZE)
+            );
+
+            if (isMore && lastDoc) {
+                q = query(
+                    collection(db, 'compare_logs'),
+                    orderBy('timestamp', 'desc'),
+                    startAfter(lastDoc),
+                    limit(PAGE_SIZE)
+                );
+            }
+
+            const snap = await getDocs(q);
+            const newLogs = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+
+            if (isMore) setLogs(prev => [...prev, ...newLogs]);
+            else setLogs(newLogs);
+
+            setLastDoc(snap.docs[snap.docs.length - 1]);
+            setHasMore(snap.docs.length === PAGE_SIZE);
+
+            // Fetch IPs
+            newLogs.forEach(log => {
+                if (log.ip && log.ip !== '0.0.0.0' && !log.country && !ipMap[log.ip]) {
+                    resolveIP(log.ip, log.id);
+                }
+            });
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    };
+
+    const resolveIP = async (ip: string, docId: string) => {
+        if (!ip || ip === '0.0.0.0' || ip === '127.0.0.1' || ip === '::1' || ipMap[ip]) return;
+
+        try {
+            setIpMap(prev => ({ ...prev, [ip]: '...' }));
+            const res = await fetch(`https://ipinfo.io/${ip}/json`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.country) {
+                    const regionNames = new Intl.DisplayNames(['it'], { type: 'region' });
+                    const countryName = regionNames.of(data.country) || data.country;
+                    setIpMap(prev => ({ ...prev, [ip]: countryName }));
+                    const { doc, updateDoc } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase');
+                    await updateDoc(doc(db, 'compare_logs', docId), { country: countryName });
+                    return;
+                }
+            }
+            setIpMap(prev => ({ ...prev, [ip]: 'N/D' }));
+        } catch (e) {
+            setIpMap(prev => ({ ...prev, [ip]: 'N/D' }));
+        }
+    };
+
+    useEffect(() => {
+        fetchLogs();
+    }, []);
+
+    if (loading) return <div className="p-8 text-center text-slate-500">Caricamento log comparazioni...</div>;
+
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                <h3 className="font-bold text-slate-700 text-sm">Dettaglio Singole Comparazioni (Raw Logs)</h3>
+            </div>
+            <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                    <tr>
+                        <th className="px-6 py-4">Data / IP</th>
+                        <th className="px-6 py-4">Località Comparate</th>
+                        <th className="px-6 py-4">Scelte Utente</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                    {logs.map((log: any) => (
+                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-slate-500 text-xs font-medium">
+                                    {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('it-IT') : 'N/A'}
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-1 text-[10px] font-mono">
+                                    <span className="text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                        {log.ip || '0.0.0.0'}
+                                    </span>
+                                    {(log.country || ipMap[log.ip]) && (
+                                        <span className="text-indigo-500 font-black uppercase text-[9px]">
+                                            {log.country || ipMap[log.ip]}
+                                        </span>
+                                    )}
+                                </div>
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="flex flex-wrap gap-1">
+                                    {log.locations?.map((loc: any, i: number) => (
+                                        <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded border border-indigo-100">
+                                            {loc.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="flex flex-wrap gap-1">
+                                    {log.choices?.length > 0 ? (
+                                        log.choices.map((choice: string, i: number) => (
+                                            <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-50 text-green-700 text-[9px] font-bold border border-green-100">
+                                                <Check size={10} /> {choice}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span className="text-[9px] text-slate-300 italic uppercase font-bold text-[8px]">Nessun click</span>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+
+            {hasMore && (
+                <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex justify-center">
+                    <button
+                        onClick={() => fetchLogs(true)}
+                        disabled={loadingMore}
+                        className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:border-primary/30 hover:text-primary transition-all shadow-sm flex items-center gap-2"
+                    >
+                        {loadingMore ? (
+                            <>
+                                <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                                Caricamento...
+                            </>
+                        ) : (
+                            <>
+                                <Plus size={14} /> Carica altri log
+                            </>
+                        )}
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
@@ -2523,6 +2859,182 @@ function SearchDataView({ locations }: { locations: any[] }) {
                 placeholder="Nessun dato disponibile per questa selezione."
                 className="flex-1 w-full p-6 bg-slate-50 rounded-2xl border border-slate-200 font-mono text-sm leading-relaxed focus:outline-none resize-none"
             />
+        </div>
+    );
+}
+function SearchLogsView() {
+    const [logs, setLogs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [hasMore, setHasMore] = useState(true);
+    const [ipMap, setIpMap] = useState<Record<string, string>>({});
+
+    const PAGE_SIZE = 15;
+
+    const fetchLogs = async (isMore = false) => {
+        if (isMore) setLoadingMore(true);
+        else setLoading(true);
+
+        try {
+            const { collection, getDocs, orderBy, query, limit, startAfter } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            let q = query(
+                collection(db, 'search_logs'),
+                orderBy('timestamp', 'desc'),
+                limit(PAGE_SIZE)
+            );
+
+            if (isMore && lastDoc) {
+                q = query(
+                    collection(db, 'search_logs'),
+                    orderBy('timestamp', 'desc'),
+                    startAfter(lastDoc),
+                    limit(PAGE_SIZE)
+                );
+            }
+
+            const snap = await getDocs(q);
+            const newLogs = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+
+            if (isMore) setLogs(prev => [...prev, ...newLogs]);
+            else setLogs(newLogs);
+
+            setLastDoc(snap.docs[snap.docs.length - 1]);
+            setHasMore(snap.docs.length === PAGE_SIZE);
+
+            // Fetch IPs
+            newLogs.forEach(log => {
+                if (log.ip && log.ip !== '0.0.0.0' && !log.country && !ipMap[log.ip]) {
+                    resolveIP(log.ip, log.id);
+                }
+            });
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    };
+
+    const resolveIP = async (ip: string, docId: string) => {
+        if (!ip || ip === '0.0.0.0' || ip === '127.0.0.1' || ip === '::1' || ipMap[ip]) return;
+
+        try {
+            setIpMap(prev => ({ ...prev, [ip]: '...' }));
+            const res = await fetch(`https://ipinfo.io/${ip}/json`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.country) {
+                    const regionNames = new Intl.DisplayNames(['it'], { type: 'region' });
+                    const countryName = regionNames.of(data.country) || data.country;
+                    setIpMap(prev => ({ ...prev, [ip]: countryName }));
+                    const { doc, updateDoc } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase');
+                    await updateDoc(doc(db, 'search_logs', docId), { country: countryName });
+                    return;
+                }
+            }
+            setIpMap(prev => ({ ...prev, [ip]: 'N/D' }));
+        } catch (e) {
+            setIpMap(prev => ({ ...prev, [ip]: 'N/D' }));
+        }
+    };
+
+    useEffect(() => {
+        fetchLogs();
+    }, []);
+
+    if (loading) return <div className="p-8 text-center text-slate-500">Caricamento log ricerche...</div>;
+
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                <h3 className="font-bold text-slate-700 text-sm">Cronologia Ricerche Sito</h3>
+            </div>
+            <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                    <tr>
+                        <th className="px-6 py-4">Data / IP</th>
+                        <th className="px-6 py-4">Query / Filtri</th>
+                        <th className="px-6 py-4">Risultati</th>
+                        <th className="px-6 py-4">Destinazione Scelta</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                    {logs.map((log: any) => (
+                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-slate-500 text-xs font-medium">
+                                    {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('it-IT') : 'N/A'}
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-1 text-[10px] font-mono">
+                                    <span className="text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                        {log.ip || '0.0.0.0'}
+                                    </span>
+                                    {(log.country || ipMap[log.ip]) && (
+                                        <span className="text-indigo-500 font-black uppercase text-[9px]">
+                                            {log.country || ipMap[log.ip]}
+                                        </span>
+                                    )}
+                                </div>
+                            </td>
+                            <td className="px-6 py-4">
+                                {log.query && (
+                                    <div className="font-bold text-slate-900 mb-1 italic">"{log.query}"</div>
+                                )}
+                                <div className="flex flex-wrap gap-1">
+                                    {log.tags?.map((tag: string) => (
+                                        <span key={tag} className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-bold rounded border border-slate-200">
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            </td>
+                            <td className="px-6 py-4">
+                                <span className="text-xs font-bold text-slate-500">
+                                    {log.resultsCount || 0} match
+                                </span>
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="flex flex-wrap gap-1">
+                                    {log.choices?.length > 0 ? (
+                                        log.choices.map((choice: string, i: number) => (
+                                            <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-50 text-green-700 text-[9px] font-bold border border-green-100">
+                                                <Check size={10} /> {choice}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span className="text-[9px] text-slate-300 italic uppercase font-bold text-[8px]">Nessun click</span>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+
+            {hasMore && (
+                <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex justify-center">
+                    <button
+                        onClick={() => fetchLogs(true)}
+                        disabled={loadingMore}
+                        className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:border-primary/30 hover:text-primary transition-all shadow-sm flex items-center gap-2"
+                    >
+                        {loadingMore ? (
+                            <>
+                                <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                                Caricamento...
+                            </>
+                        ) : (
+                            <>
+                                <Plus size={14} /> Carica altri log ricerche
+                            </>
+                        )}
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

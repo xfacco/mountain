@@ -16,6 +16,8 @@ export default function CompareClient() {
     const [locationOptions, setLocationOptions] = useState<any[]>([]);
     const [fullSelectedLocations, setFullSelectedLocations] = useState<any[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+    const [compareLogId, setCompareLogId] = useState<string | null>(null);
+    const [userIp, setUserIp] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const [loadingDetails, setLoadingDetails] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -23,6 +25,14 @@ export default function CompareClient() {
     const t = useTranslations('Compare');
     const tSeasons = useTranslations('Seasons');
     const tNav = useTranslations('Navbar');
+
+    // Fetch IP on mount
+    useEffect(() => {
+        fetch('https://api.ipify.org?format=json')
+            .then(res => res.json())
+            .then(data => setUserIp(data.ip))
+            .catch(err => console.error("Error fetching IP", err));
+    }, []);
 
     // Fetch details for selected locations whenever the selection changes
     useEffect(() => {
@@ -86,12 +96,15 @@ export default function CompareClient() {
                     // We only log if we haven't logged this exact set in this session
                     // Simple way: log every time it changes but with a debounce or just log it
                     // The user is explicitly adding a location, which "triggers" a new comparison view
-                    await addDoc(collection(db, 'compare_logs'), {
+                    const docRef = await addDoc(collection(db, 'compare_logs'), {
                         locations: freshSelectedLocations.map(l => ({ id: l.id, name: l.name })),
                         timestamp: serverTimestamp(),
                         season: currentSeason,
-                        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown'
+                        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
+                        ip: userIp,
+                        choices: [] // Initialize empty choices
                     });
+                    setCompareLogId(docRef.id);
                 } catch (err) {
                     console.error("Error logging comparison:", err);
                 }
@@ -149,6 +162,19 @@ export default function CompareClient() {
                 return;
             }
             addLocation(location);
+        }
+    };
+
+    const handleCompareChoice = async (locationName: string) => {
+        if (!compareLogId) return;
+        try {
+            const { doc, updateDoc, arrayUnion } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await updateDoc(doc(db, 'compare_logs', compareLogId), {
+                choices: arrayUnion(locationName)
+            });
+        } catch (err) {
+            console.error("Error updating comparison choice", err);
         }
     };
 
@@ -323,12 +349,27 @@ export default function CompareClient() {
                                                     >
                                                         <X size={14} />
                                                     </button>
-                                                    <h3 className="text-sm md:text-xl font-bold text-slate-900 leading-tight pr-6">
-                                                        {loc.name}
-                                                    </h3>
-                                                    <p className="text-[10px] md:text-sm text-slate-500 font-medium truncate pr-6">
-                                                        {loc.region || 'Alpi'}, {loc.country || 'IT'}
-                                                    </p>
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="flex-1 min-w-0">
+                                                            <h3 className="text-sm md:text-xl font-bold text-slate-900 leading-tight truncate">
+                                                                {loc.name}
+                                                            </h3>
+                                                            <p className="text-[10px] md:text-sm text-slate-500 font-medium truncate">
+                                                                {loc.region || 'Alpi'}, {loc.country || 'IT'}
+                                                            </p>
+                                                        </div>
+                                                        <Link
+                                                            href={`/locations/${loc.name}`}
+                                                            onClick={() => handleCompareChoice(loc.name)}
+                                                            className="shrink-0 flex items-center gap-1.5 p-2 bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                                                            title="See Destination"
+                                                        >
+                                                            <span className="text-[9px] font-black uppercase tracking-widest leading-none hidden md:inline">
+                                                                See destination
+                                                            </span>
+                                                            <ChevronRight size={18} />
+                                                        </Link>
+                                                    </div>
                                                 </th>
                                             ))}
                                         </tr>
@@ -347,13 +388,22 @@ export default function CompareClient() {
                                         {selectedLocations.map((loc) => (
                                             <td key={`img-row-${loc.id}`} className="p-4 w-[330px] min-w-[330px] border-r border-b border-slate-100 last:border-r-0">
                                                 <div className="relative group">
-                                                    <div className="aspect-video rounded-lg overflow-hidden shadow-sm bg-slate-100 ring-1 ring-slate-200/50">
+                                                    <Link
+                                                        href={`/locations/${loc.name}`}
+                                                        onClick={() => handleCompareChoice(loc.name)}
+                                                        className="block aspect-video rounded-lg overflow-hidden shadow-sm bg-slate-100 ring-1 ring-slate-200/50 hover:ring-primary/50 transition-all relative"
+                                                    >
                                                         <img
                                                             src={loc.seasonalImages?.[currentSeason] || loc.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba'}
                                                             alt={loc.name}
-                                                            className="w-full h-full object-cover"
+                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                                                         />
-                                                    </div>
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                                            <div className="bg-white/90 backdrop-blur-sm text-primary px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 duration-300 shadow-xl border border-white/20">
+                                                                Vedi Dettagli
+                                                            </div>
+                                                        </div>
+                                                    </Link>
                                                 </div>
                                             </td>
                                         ))}

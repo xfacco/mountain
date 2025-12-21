@@ -21,6 +21,8 @@ export default function SearchClient() {
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [openCategories, setOpenCategories] = useState<string[]>(['vibe', 'target']);
+    const [userIP, setUserIP] = useState('0.0.0.0');
+    const [currentLogId, setCurrentLogId] = useState<string | null>(null);
 
     const t = useTranslations('Search');
     const tLoc = useTranslations('Locations');
@@ -46,18 +48,23 @@ export default function SearchClient() {
 
         fetchData();
 
+        // Get IP
+        fetch('https://api.ipify.org?format=json')
+            .then(res => res.json())
+            .then(data => setUserIP(data.ip))
+            .catch(err => console.error("IP fetch failed", err));
+
         // Initialize from URL
         const q = searchParams.get('q');
         const tag = searchParams.get('tag');
 
         if (q) setSearchTerm(q);
         if (tag) {
-            // Optional: if you want strict tag filtering from URL
             setSelectedTags([tag]);
-            // OR just use search term for broader matching:
-            // setSearchTerm(tag); 
         }
     }, [searchParams]);
+
+
 
     // Extract unique tags grouped by category
     const tagsByCategory = useMemo(() => {
@@ -122,6 +129,46 @@ export default function SearchClient() {
             return textMatches && tagFilterMatches;
         });
     }, [searchTerm, locations, currentSeason, selectedTags]);
+
+    // Search Logging
+    useEffect(() => {
+        if (!searchTerm && selectedTags.length === 0) return;
+
+        const logSearch = async () => {
+            try {
+                const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase');
+
+                const docRef = await addDoc(collection(db, 'search_logs'), {
+                    query: searchTerm,
+                    tags: selectedTags,
+                    timestamp: serverTimestamp(),
+                    ip: userIP,
+                    resultsCount: filteredLocations.length,
+                    choices: [] // Track clicked results
+                });
+                setCurrentLogId(docRef.id);
+            } catch (e) {
+                console.error("Failed to log search", e);
+            }
+        };
+
+        const timer = setTimeout(logSearch, 2000); // 2s debounce
+        return () => clearTimeout(timer);
+    }, [searchTerm, selectedTags, userIP, filteredLocations.length]);
+
+    const handleResultClick = async (locationName: string) => {
+        if (!currentLogId) return;
+        try {
+            const { doc, updateDoc, arrayUnion } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await updateDoc(doc(db, 'search_logs', currentLogId), {
+                choices: arrayUnion(locationName)
+            });
+        } catch (e) {
+            console.error("Failed to log click", e);
+        }
+    };
 
     const toggleTag = (tag: string) => {
         if (selectedTags.includes(tag)) {
@@ -219,6 +266,7 @@ export default function SearchClient() {
                                         <Link
                                             href={`/locations/${location.name}`}
                                             key={location.id}
+                                            onClick={() => handleResultClick(location.name)}
                                             className="group bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col sm:flex-row min-h-[220px]"
                                         >
                                             {/* Image */}
