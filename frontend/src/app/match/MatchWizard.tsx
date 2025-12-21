@@ -6,10 +6,11 @@ import { motion } from 'framer-motion';
 import { Navbar } from '@/components/layout/Navbar';
 import { useSeasonStore } from '@/store/season-store';
 import Link from 'next/link';
-import { ChevronRight, ChevronLeft, Check, Sparkles, MapPin, User, Users, Heart, PartyPopper, Coffee, Activity, Music, Gem, Trees, Snowflake, Mountain, Droplets, Utensils, Landmark, Flag, Globe, Sun, Leaf, History, Laptop, Moon, Zap, ShoppingBag, Camera, Search, CheckCircle } from 'lucide-react';
+import { SlidersHorizontal, ChevronRight, ChevronLeft, Check, Sparkles, MapPin, User, Users, Heart, PartyPopper, Coffee, Activity, Music, Gem, Trees, Snowflake, Mountain, Droplets, Utensils, Landmark, Flag, Globe, Sun, Leaf, History, Laptop, Moon, Zap, ShoppingBag, Camera, Search, CheckCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
+import { MatchScoreBreakdown } from '@/components/match/MatchScoreBreakdown';
 
 // Helper for classes 
 function cn(...inputs: (string | undefined | null | false)[]) {
@@ -113,48 +114,13 @@ export default function MatchWizard() {
     const calculateMatches = () => {
         setLoading(true);
 
-        // Update global season store based on preference
+        // Update global season store
         if (preferences.season.length > 0) {
             setSeason(preferences.season[0] as any);
         }
 
-        // This is a simple scoring algorithm. 
-        // In a real production app, this could be more sophisticated or use vector search.
-        const initialScored = locations.map((loc: any) => {
-            let score = 0;
-            let maxScore = 0;
-
-            // 1. Target Match (User traveling with vs Location Target)
-            const locTargets = loc.tags?.target || [];
-            if (preferences.target.length > 0 && locTargets.length > 0) {
-                const hasTargetMatch = preferences.target.some(pref =>
-                    locTargets.some((t: string) => t.toLowerCase().includes(pref.toLowerCase()))
-                );
-                if (hasTargetMatch) score += 30; // High weight
-                maxScore += 30;
-            }
-
-            // 2. Vibe Match
-            const locVibe = loc.tags?.vibe || [];
-            if (preferences.vibe.length > 0 && locVibe.length > 0) {
-                const hasVibeMatch = preferences.vibe.some(pref =>
-                    locVibe.some((t: string) => t.toLowerCase().includes(pref.toLowerCase()))
-                );
-                if (hasVibeMatch) score += 25;
-                maxScore += 25;
-            }
-
-            // 3. Activity Match
-            const locActivities = [...(loc.tags?.tourism || []), ...(loc.tags?.sport || [])];
-            if (preferences.activities.length > 0 && locActivities.length > 0) {
-                const matchCount = preferences.activities.filter(pref =>
-                    locActivities.some((t: string) => t.toLowerCase().includes(pref.toLowerCase()))
-                ).length;
-                score += Math.min(matchCount * 10, 30); // Max 30 points
-                maxScore += 30;
-            }
-
-            // 4. Nation Match
+        const validLocations = locations.filter((loc: any) => {
+            // 0. Hard Filter: Nation (if selected and not 'any')
             if (preferences.nation.length > 0 && !preferences.nation.includes('any')) {
                 const nationMappings: Record<string, string[]> = {
                     'italy': ['italy', 'italia'],
@@ -162,77 +128,128 @@ export default function MatchWizard() {
                     'switzerland': ['switzerland', 'svizzera', 'suisse', 'schweiz'],
                     'france': ['france', 'francia']
                 };
+                const requiredNations = preferences.nation.map(n => n.toLowerCase());
+                const locCountry = (loc.country || '').toLowerCase();
 
-                const isNationMatch = preferences.nation.some(pref => {
-                    const searchTerms = nationMappings[pref.toLowerCase()] || [pref.toLowerCase()];
-                    const locCountry = (loc.country || '').toLowerCase();
-                    return searchTerms.some(term => locCountry.includes(term));
+                const matchesNation = requiredNations.some(req => {
+                    const terms = nationMappings[req] || [req];
+                    return terms.some(term => locCountry.includes(term));
                 });
 
-                if (isNationMatch) score += 15;
-                maxScore += 15;
+                if (!matchesNation) return false;
             }
+            return true;
+        });
 
-            // 5. Explicit Tag Matching (1-to-1) based on categories
-            const categoriesToMatch: (keyof Omit<Preferences, 'location'>)[] = ['vibe', 'target', 'activities'];
-            categoriesToMatch.forEach(cat => {
-                const prefs = preferences[cat] as string[];
-                const locTags = loc.tags?.[cat] || [];
-                if (prefs.length > 0) {
-                    const matches = prefs.filter(p => locTags.includes(p));
-                    // Additional boost for exact structured match
-                    score += matches.length * 5;
-                }
-            });
+        // DEBUG: Log the first location's structure to see where weights are
+        if (validLocations.length > 0) {
+            console.log("DEBUG: Checking structure of first location:", validLocations[0].name);
+            console.log("DEBUG: tagWeights:", validLocations[0].tagWeights);
+            console.log("DEBUG: Full Object keys:", Object.keys(validLocations[0]));
+        }
 
-            // 5. Seasonality Boost (if location explicitly mentions season in description or data)
-            // Simulating this by checking if description exists for the selected season
-            if (preferences.season.length > 0) {
-                const season = preferences.season[0];
-                if (loc.description?.[season]) {
-                    score += 5;
-                    maxScore += 5;
-                }
-            }
-
-            // 6. Location & Distance Match
-            let distanceInKm: number | null = null;
-            if (preferences.location.mode !== 'none') {
-                const locLat = loc.coordinates?.lat;
-                const locLng = loc.coordinates?.lng;
-
-                if (locLat && locLng) {
-                    distanceInKm = getDistance(
-                        preferences.location.lat,
-                        preferences.location.lng,
-                        locLat,
-                        locLng
-                    );
-
-                    // If distance is set, exclude if outside range
-                    if (preferences.location.maxDistance > 0 && distanceInKm > preferences.location.maxDistance) {
-                        score = -100; // Drop it
-                    } else if (preferences.location.maxDistance > 0) {
-                        // Bonus for proximity if range is specified
-                        const proximityBonus = Math.max(0, 20 * (1 - distanceInKm / preferences.location.maxDistance));
-                        score += proximityBonus;
-                        maxScore += 20;
-                    }
+        // Helper to get weight (0-100) for a specific tag
+        const getTagWeight = (loc: any, category: string, tag: string): number => {
+            // Helper for fallback
+            const fallback = () => {
+                let locTags: string[] = [];
+                if (category === 'activities') {
+                    locTags = [...(loc.tags?.activities || []), ...(loc.tags?.tourism || []), ...(loc.tags?.sport || [])];
                 } else {
-                    // If we have a location filter but loc has no coords, slight penalty
-                    // but don't exclude unless we want to be strict
+                    locTags = loc.tags?.[category] || [];
                 }
+                return locTags.some(t => t.toLowerCase().includes(tag.toLowerCase())) ? 100 : 0;
+            };
+
+            if (!loc.tagWeights) return fallback();
+
+            // 1. Find Category Key (Case Insensitive)
+            const catKey = Object.keys(loc.tagWeights).find(k => k.toLowerCase() === category.toLowerCase());
+            if (!catKey) return fallback();
+
+            const weights = loc.tagWeights[catKey];
+
+            // 2. Find Tag Key (Case Insensitive)
+            const foundKey = Object.keys(weights).find(k => k.toLowerCase() === tag.toLowerCase());
+
+            if (foundKey && weights[foundKey] !== undefined) {
+                let val = weights[foundKey];
+                if (typeof val === 'string') val = parseFloat(val.replace('%', ''));
+                return isNaN(val) ? 0 : val;
             }
 
-            return { ...loc, matchScore: 0, distance: distanceInKm, score, maxScore };
+            return fallback();
+        };
+
+        const scoredLocations = validLocations.map((loc: any) => {
+            // 1. Calculate Content Affinity (The "Average")
+            // specific elements chosen by visitor: Vibe, Target, Activities
+            const selectedItems: { category: string, tag: string }[] = [];
+
+            preferences.vibe.forEach(t => selectedItems.push({ category: 'vibe', tag: t }));
+            preferences.target.forEach(t => selectedItems.push({ category: 'target', tag: t }));
+            preferences.activities.forEach(t => selectedItems.push({ category: 'activities', tag: t }));
+
+            // If no tags selected, default to neutral score or handled elsewhere (though wizard forces selection)
+            let totalWeight = 0;
+            let matchCount = 0;
+
+            if (selectedItems.length > 0) {
+                selectedItems.forEach(item => {
+                    const w = getTagWeight(loc, item.category, item.tag);
+                    totalWeight += w;
+                });
+                matchCount = selectedItems.length;
+            }
+
+            // Calculate Base Affinity Score (0-100)
+            // This represents strictly "how much this place is what you asked for"
+            let affinityScore = matchCount > 0 ? (totalWeight / matchCount) : 0; // Baseline 50 if nothing selected? rare.
+
+            // 2. Calculate Distance Score (Proximity)
+            let distanceInKm: number | null = null;
+            let proximityScore = 0;
+
+            if (preferences.location.mode !== 'none' && loc.coordinates) {
+                distanceInKm = getDistance(
+                    preferences.location.lat,
+                    preferences.location.lng,
+                    loc.coordinates.lat,
+                    loc.coordinates.lng
+                );
+
+                // Filter by max distance if set
+                if (preferences.location.maxDistance > 0 && distanceInKm > preferences.location.maxDistance) {
+                    return { ...loc, matchScore: -1, distance: distanceInKm }; // Exclude
+                }
+
+                // Score: 100 at 0km, fading to 0 at MaxDistance (or 600km default)
+                const range = preferences.location.maxDistance > 0 ? preferences.location.maxDistance : 600;
+                proximityScore = Math.max(0, 100 * (1 - (distanceInKm / range)));
+            }
+
+            // 3. Final Combined Score
+            // User request: "Algoritmo basato su pesi... POI variabile vicino"
+            // We use a weighted average: 80% Content Match, 20% Proximity Match (if distance provided)
+
+            // 3. Final Combined Score
+            // User request (Step 51): "Togli il 3 punto dall'algoritmo" -> Remove distance weighting.
+            // Match Score is strictly the Average Content Affinity.
+
+            const finalScore = affinityScore;
+            // Removed distance weighting block
+
+            // Rounding
+            return {
+                ...loc,
+                matchScore: Math.round(finalScore),
+                distance: distanceInKm,
+                // Debug values to verify if needed
+                _debug: { affinity: Math.round(affinityScore), proximity: Math.round(proximityScore) }
+            };
         });
 
-        // 2nd pass: Normalize scores (need to do it after distance filter if any)
-        const scoredLocations = initialScored.map((item: any) => {
-            const percentage = Math.max(0, Math.round((item.score / (item.maxScore || 1)) * 100));
-            return { ...item, matchScore: percentage };
-        });
-
+        // Utility: Distance Calculation
         function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
             const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -245,34 +262,30 @@ export default function MatchWizard() {
             return R * c;
         }
 
-        // Filter out those with negative score (excluded by distance)
-        const validLocations = scoredLocations.filter((loc: any) => loc.matchScore >= 0);
-
-        // Log the match search to Firebase
-        const logMatch = async (topMatches: any[]) => {
-            try {
-                const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
-                const { db } = await import('@/lib/firebase');
-
-                await addDoc(collection(db, 'match_logs'), {
-                    preferences,
-                    results: topMatches.map(m => ({ id: m.id, name: m.name, score: m.matchScore, distance: m.distance })),
-                    timestamp: serverTimestamp(),
-                    userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown'
-                });
-            } catch (err) {
-                console.error("Error logging match:", err);
-            }
-        };
-
-        const topMatches = validLocations
+        // Sort and Filter
+        const topMatches = scoredLocations
+            .filter((l: any) => l.matchScore >= 0) // Filter out hard exclusions
             .sort((a: any, b: any) => b.matchScore - a.matchScore)
             .slice(0, 6);
 
+        // Logging
+        const logMatch = async (results: any[]) => {
+            try {
+                const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase');
+                await addDoc(collection(db, 'match_logs'), {
+                    preferences,
+                    results: results.map(m => ({ id: m.id, name: m.name, score: m.matchScore, distance: m.distance })),
+                    timestamp: serverTimestamp(),
+                    algo: "avg_affinity_v2"
+                });
+            } catch (err) {
+                console.error("Error logging", err);
+            }
+        };
+
         setMatches(topMatches);
         logMatch(topMatches);
-
-        // Simulate "thinking" time
         setTimeout(() => setLoading(false), 800);
     };
 
@@ -385,6 +398,88 @@ export default function MatchWizard() {
                         </button>
                     </div>
 
+                    {/* Preferences Summary Recap */}
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-10"
+                    >
+                        <div className="flex items-center gap-2 mb-4 text-slate-400">
+                            <SlidersHorizontal size={14} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">{t('your_preferences') || 'Riepilogo Selezione'}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-6 gap-y-4">
+                            {/* Season */}
+                            {preferences.season.length > 0 && (
+                                <div>
+                                    <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{t('steps.season')}</span>
+                                    <div className="flex gap-2">
+                                        {preferences.season.map(s => (
+                                            <span key={s} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold capitalize">
+                                                {t(`options.${s}`)}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Target */}
+                            {preferences.target.length > 0 && (
+                                <div>
+                                    <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{t('steps.target')}</span>
+                                    <div className="flex gap-2">
+                                        {preferences.target.map(s => (
+                                            <span key={s} className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-bold capitalize">
+                                                {t(`options.${s}`)}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Vibe */}
+                            {preferences.vibe.length > 0 && (
+                                <div>
+                                    <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{t('steps.vibe')}</span>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {preferences.vibe.map(s => (
+                                            <span key={s} className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-bold capitalize">
+                                                {t(`options.${s}`)}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Activities */}
+                            {preferences.activities.length > 0 && (
+                                <div>
+                                    <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{t('steps.activities')}</span>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {preferences.activities.map(s => (
+                                            <span key={s} className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold capitalize">
+                                                {t(`options.${s}`)}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Location */}
+                            {preferences.location.mode !== 'none' && (
+                                <div>
+                                    <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{t('steps.location')}</span>
+                                    <div className="flex gap-2">
+                                        <span className="px-3 py-1 bg-slate-900 text-white rounded-full text-xs font-bold">
+                                            {preferences.location.name}
+                                            {preferences.location.maxDistance > 0 ? ` (${preferences.location.maxDistance}km)` : ' (∞)'}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+
                     {loading ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 my-12">
                             {[1, 2].map(i => (
@@ -405,12 +500,6 @@ export default function MatchWizard() {
                                     transition={{ delay: index * 0.1 }}
                                     className="bg-white rounded-3xl overflow-hidden shadow-xl border border-slate-100 group hover:shadow-2xl transition-all duration-300 relative"
                                 >
-                                    {/* Match Badge */}
-                                    <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur text-primary px-4 py-2 rounded-full font-bold shadow-lg flex items-center gap-1">
-                                        <Sparkles size={16} className="fill-current" />
-                                        {location.matchScore}% Match
-                                    </div>
-
                                     {/* Image */}
                                     <div className="relative h-80 overflow-hidden">
                                         <img
@@ -419,6 +508,12 @@ export default function MatchWizard() {
                                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-80" />
+
+                                        {/* Match Badge - Moved inside relative container */}
+                                        <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur text-primary px-4 py-2 rounded-full font-bold shadow-lg flex items-center gap-1">
+                                            <Sparkles size={16} className="fill-current" />
+                                            {location.matchScore}% Match
+                                        </div>
 
                                         <div className="absolute bottom-6 left-6 text-white">
                                             <div className="flex items-center gap-2 text-sm font-medium opacity-90 mb-1">
@@ -432,12 +527,94 @@ export default function MatchWizard() {
                                     {/* Content */}
                                     <div className="p-8">
                                         <div className="flex flex-wrap gap-2 mb-6">
-                                            {/* Show relevant tags based on match */}
-                                            {location.tags?.vibe?.slice(0, 3).map((tag: string) => (
-                                                <span key={tag} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase tracking-wide">
-                                                    {tag}
-                                                </span>
-                                            ))}
+                                            {/* Show matched preferences first to highlight correspondence */}
+                                            {/* Show matched preferences with SCORE to highlight correspondence */}
+                                            {(() => {
+                                                // Interface for display items
+                                                interface TagDisplayItem { tag: string; type: 'match' | 'generic'; score?: number; }
+                                                const matches: TagDisplayItem[] = [];
+
+                                                // Helper to get weight (replicated from algo scope or pass it down)
+                                                // Since we are inside map, better to just reuse logic safely
+                                                const getTagWeightLocal = (category: string, tag: string): number => {
+                                                    if (!location.tagWeights) return fallback();
+
+                                                    // Case insensitive Category
+                                                    const catKey = Object.keys(location.tagWeights).find(k => k.toLowerCase() === category.toLowerCase());
+                                                    if (!catKey) return fallback();
+
+                                                    const weightObj = location.tagWeights[catKey];
+
+                                                    // Case insensitive Tag
+                                                    const foundKey = Object.keys(weightObj).find(k => k.toLowerCase() === tag.toLowerCase());
+                                                    if (foundKey && weightObj[foundKey] !== undefined) {
+                                                        let val = weightObj[foundKey];
+                                                        if (typeof val === 'string') val = parseFloat(val.replace('%', ''));
+                                                        return isNaN(val) ? 0 : val;
+                                                    }
+
+                                                    return fallback();
+
+                                                    function fallback() {
+                                                        let locTags: string[] = [];
+                                                        if (category === 'activities') {
+                                                            locTags = [...(location.tags?.activities || []), ...(location.tags?.tourism || []), ...(location.tags?.sport || [])];
+                                                        } else {
+                                                            locTags = location.tags?.[category] || [];
+                                                        }
+                                                        return locTags.some(t => t.toLowerCase().includes(tag.toLowerCase())) ? 100 : 0;
+                                                    }
+                                                };
+
+                                                // Find matches in Vibe
+                                                preferences.vibe.forEach(p => {
+                                                    const w = getTagWeightLocal('vibe', p);
+                                                    if (w > 0) matches.push({ tag: p, type: 'match', score: w });
+                                                });
+
+                                                // Find matches in Target
+                                                preferences.target.forEach(p => {
+                                                    const w = getTagWeightLocal('target', p);
+                                                    if (w > 0) matches.push({ tag: p, type: 'match', score: w });
+                                                });
+
+                                                // Find matches in Activities
+                                                preferences.activities.forEach(p => {
+                                                    const w = getTagWeightLocal('activities', p);
+                                                    if (w > 0) matches.push({ tag: p, type: 'match', score: w });
+                                                });
+
+                                                // Dedup matches
+                                                const uniqueMatches = Array.from(new Set(matches.map(m => m.tag)))
+                                                    .map(tag => matches.find(m => m.tag === tag)!);
+
+                                                // Fill with generic vibe tags if needed (without score)
+                                                const allTags: TagDisplayItem[] = [...uniqueMatches];
+                                                if (allTags.length < 3) {
+                                                    location.tags?.vibe?.slice(0, 5).forEach((t: string) => {
+                                                        if (!allTags.some(m => m.tag.toLowerCase() === t.toLowerCase())) {
+                                                            allTags.push({ tag: t, type: 'generic' });
+                                                        }
+                                                    });
+                                                }
+
+                                                return allTags.slice(0, 5).map((item, i) => (
+                                                    <span key={i} className={cn(
+                                                        "px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide flex items-center gap-1.5",
+                                                        item.type === 'match'
+                                                            ? "bg-primary text-white shadow-md shadow-primary/20"
+                                                            : "bg-slate-100 text-slate-600"
+                                                    )}>
+                                                        {item.type === 'match' && item.score !== undefined && (
+                                                            <div className="flex items-center gap-1 mr-0.5">
+                                                                <CheckCircle size={10} strokeWidth={3} />
+                                                                <span className="opacity-90 font-black">{item.score}%</span>
+                                                            </div>
+                                                        )}
+                                                        {item.tag}
+                                                    </span>
+                                                ));
+                                            })()}
                                         </div>
 
                                         <p className="text-slate-600 leading-relaxed mb-8 line-clamp-3">
@@ -464,6 +641,9 @@ export default function MatchWizard() {
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* Match Score Breakdown */}
+                                        <MatchScoreBreakdown location={location} preferences={preferences} />
 
                                         <Link
                                             href={`/locations/${location.name}`}
@@ -573,11 +753,11 @@ export default function MatchWizard() {
                         }
                     }));
                 }, (error) => {
-                    alert("Impossibile rilevare la posizione. Per favore inserisci una città manualmente.");
+                    alert("Unable to detect your location. Please enter a city manually.");
                     console.error(error);
                 });
             } else {
-                alert("Geolocalizzazione non supportata dal tuo browser.");
+                alert("Your browser does not support geolocation.");
             }
         };
 
@@ -598,7 +778,7 @@ export default function MatchWizard() {
                         }
                     }));
                 } else {
-                    alert("Città non trovata.");
+                    alert("City not found.");
                 }
             } catch (err) {
                 console.error("Geocoding error:", err);

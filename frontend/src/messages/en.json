@@ -269,6 +269,7 @@
         "subtitle": "Answer a few simple questions and let our AI find the ideal mountain destination for you.",
         "start_button": "Start Matching",
         "restart": "Start Over",
+        "your_preferences": "Your Preferences",
         "steps": {
             "target": "Who are you traveling with?",
             "season": "When are you planning to go?",

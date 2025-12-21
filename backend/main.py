@@ -217,12 +217,12 @@ async def generate_tags(request: TagGenRequest):
             Goal: Evaluate and weight ALL Match Wizard Tags.
             
             ### MATCH WIZARD TAGS SCORING
-            For EVERY tag ID list below, you must:
-            1. Assign a relevance weight (0-100) based on the location data.
-            2. Return the weights for ALL IDs, even those with low scores.
-            3. Identify the top 4 most relevant IDs.
+            For EVERY tag ID listed below, you MUST:
+            1. Assign a relevance weight (0-100) for EACH ID based on the location data
+            2. Return weights for ALL IDs listed below (mandatory)
+            3. Select the top 3-4 most relevant IDs per category
             
-            ALLOWED IDs (Use ONLY these exact lowercase strings):
+            MANDATORY IDs (Include ALL of these in 'weights'):
             - vibe: relax, sport, party, luxury, nature, tradition, work, silence
             - target: family, couple, friends, solo
             - activities: ski, hiking, wellness, food, culture, adrenaline, shopping, photography
@@ -230,18 +230,19 @@ async def generate_tags(request: TagGenRequest):
             Required format (strictly JSON):
             {{
                 "weights": {{
-                    "vibe": {{"relax": 90, "sport": 10, "nature": 80}},
-                    "target": {{"family": 70, "couple": 30}},
-                    "activities": {{"ski": 100, "wellness": 50}}
+                    "vibe": {{"relax": 90, "sport": 10, "party": 5, "luxury": 30, "nature": 80, "tradition": 60, "work": 15, "silence": 70}},
+                    "target": {{"family": 70, "couple": 30, "friends": 40, "solo": 20}},
+                    "activities": {{"ski": 100, "hiking": 50, "wellness": 40, "food": 60, "culture": 30, "adrenaline": 20, "shopping": 10, "photography": 45}}
                 }},
                 "selected": {{
-                    "vibe": ["relax", "nature"],
+                    "vibe": ["relax", "nature", "silence"],
                     "target": ["family"],
-                    "activities": ["ski", "wellness"]
+                    "activities": ["ski", "food", "hiking", "wellness"]
                 }}
             }}
             
-            Respond ONLY with a valid JSON object containing ALL IDs in 'weights' and the top 4 in 'selected'. No markdown.
+            IMPORTANT: The 'weights' object MUST contain ALL 20 IDs listed above (8 vibe + 4 target + 8 activities).
+            Respond ONLY with a valid JSON object. No markdown.
             """
         elif request.mode == "seo":
             prompt = f"""

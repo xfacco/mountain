@@ -205,97 +205,7 @@ export default function SearchClient() {
                     )}
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-8">
-
-                    {/* COLLAPSIBLE SIDEBAR FILTERS */}
-                    <AnimatePresence>
-                        {isFilterOpen && (
-                            <motion.div
-                                initial={{ width: 0, opacity: 0, marginRight: 0 }}
-                                animate={{ width: 300, opacity: 1, marginRight: 32 }}
-                                exit={{ width: 0, opacity: 0, marginRight: 0 }}
-                                className="hidden md:block overflow-hidden shrink-0"
-                            >
-                                <div className="space-y-6 w-[300px]">
-                                    {Object.entries(tagsByCategory).map(([category, tags]) => (
-                                        <div key={category} className="border-b border-slate-100 pb-4 last:border-0">
-                                            <button
-                                                onClick={() => {
-                                                    setOpenCategories(prev =>
-                                                        prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
-                                                    )
-                                                }}
-                                                className="flex items-center justify-between w-full text-left mb-3 group cursor-pointer"
-                                            >
-                                                <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest group-hover:text-primary transition-colors">
-                                                    {t(`categories.${category}` as any)}
-                                                </h4>
-                                                {openCategories.includes(category) ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
-                                            </button>
-
-                                            {openCategories.includes(category) && (
-                                                <div className="flex flex-wrap gap-1.5 animate-in fade-in slide-in-from-top-1">
-                                                    {tags.map(tag => {
-                                                        const isSelected = selectedTags.includes(tag);
-                                                        return (
-                                                            <button
-                                                                key={tag}
-                                                                onClick={() => toggleTag(tag)}
-                                                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border cursor-pointer ${isSelected
-                                                                    ? 'bg-slate-900 text-white border-slate-900 shadow-md'
-                                                                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-800 hover:bg-slate-50'}`}
-                                                            >
-                                                                {tag}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Mobile Filters Toggler Overlay */}
-                    <AnimatePresence>
-                        {isFilterOpen && (
-                            <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="block md:hidden bg-white rounded-3xl border border-slate-100 shadow-xl p-6 overflow-hidden mb-8"
-                            >
-                                <div className="space-y-6">
-                                    {Object.entries(tagsByCategory).map(([category, tags]) => (
-                                        <div key={category} className="border-b border-slate-50 pb-4 last:border-0">
-                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">
-                                                {t(`categories.${category}` as any)}
-                                            </h4>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {tags.map(tag => {
-                                                    const isSelected = selectedTags.includes(tag);
-                                                    return (
-                                                        <button
-                                                            key={tag}
-                                                            onClick={() => toggleTag(tag)}
-                                                            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${isSelected
-                                                                ? 'bg-slate-900 text-white border-slate-900 shadow-lg'
-                                                                : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-slate-300'}`}
-                                                        >
-                                                            {tag}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
+                <div className="flex flex-col gap-8">
                     {/* Results Grid Area */}
                     <div className="flex-1">
                         {loading ? (
@@ -373,6 +283,92 @@ export default function SearchClient() {
                         )}
                     </div>
                 </div>
+
+                {/* Filter Modal */}
+                <AnimatePresence>
+                    {isFilterOpen && (
+                        <>
+                            {/* Backdrop */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setIsFilterOpen(false)}
+                                className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60]"
+                            />
+
+                            {/* Modal Content */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                className="fixed inset-0 m-auto w-full max-w-2xl h-fit max-h-[85vh] bg-white rounded-[32px] shadow-2xl z-[70] overflow-hidden flex flex-col"
+                            >
+                                {/* Header */}
+                                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-900">
+                                            <SlidersHorizontal size={20} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-bold text-slate-900">{t('show_filters')}</h2>
+                                            <p className="text-xs text-slate-400 font-medium">Personalizza la tua ricerca</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsFilterOpen(false)}
+                                        className="p-2 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+                                    >
+                                        <X size={24} className="text-slate-400" />
+                                    </button>
+                                </div>
+
+                                {/* Scrollable Filter Categories */}
+                                <div className="p-8 overflow-y-auto space-y-8 flex-1">
+                                    {Object.entries(tagsByCategory).map(([category, tags]) => (
+                                        <div key={category} className="space-y-4">
+                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">
+                                                {t(`categories.${category}` as any)}
+                                            </h4>
+                                            <div className="flex flex-wrap gap-2">
+                                                {tags.map(tag => {
+                                                    const isSelected = selectedTags.includes(tag);
+                                                    return (
+                                                        <button
+                                                            key={tag}
+                                                            onClick={() => toggleTag(tag)}
+                                                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${isSelected
+                                                                ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
+                                                                : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-slate-300 hover:bg-white'}`}
+                                                        >
+                                                            {tag}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Footer */}
+                                <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between sticky bottom-0 z-10">
+                                    <button
+                                        onClick={() => setSelectedTags([])}
+                                        className="text-sm font-bold text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                                    >
+                                        {t('clear_all')}
+                                    </button>
+                                    <button
+                                        onClick={() => setIsFilterOpen(false)}
+                                        className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:shadow-xl hover:-translate-y-0.5 transition-all cursor-pointer"
+                                    >
+                                        Applica Filtri
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
 
                 <SuggestLocationBanner />
             </div>

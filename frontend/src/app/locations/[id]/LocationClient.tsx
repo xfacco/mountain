@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
-import { MapPin, Calendar, Star, Info, ChevronLeft, ArrowLeft, Sun, Snowflake, Cloud, Wind, Mountain, Home, Bus, Quote, AlertCircle, Check, X, Accessibility, HelpCircle, Layers, List, Search, ArrowRight } from 'lucide-react';
+import { MapPin, Calendar, Star, Info, ChevronLeft, ArrowLeft, Sun, Snowflake, Cloud, Wind, Mountain, Home, Bus, Quote, AlertCircle, Check, X, Accessibility, HelpCircle, Layers, List, Search, ArrowRight, Sparkles } from 'lucide-react';
+import { TAG_CATEGORIES } from '@/lib/tags-config';
 import Link from 'next/link';
 import { useSeasonStore } from '@/store/season-store';
 import { useCompareStore } from '@/store/compare-store';
@@ -76,8 +77,21 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                 if (!querySnapshot.empty) {
                     const docSnap = querySnapshot.docs[0]; // Take the first match
                     const locData = docSnap.data();
-                    setLocation({ id: docSnap.id, ...locData });
-                    // Removed local season logic, relying on global currentSeason
+                    const locId = docSnap.id;
+
+                    // Fetch heavy details
+                    try {
+                        const { doc, getDoc } = await import('firebase/firestore');
+                        const detailsSnap = await getDoc(doc(db, 'location_details', locId));
+                        if (detailsSnap.exists()) {
+                            setLocation({ id: locId, ...locData, ...detailsSnap.data() });
+                        } else {
+                            setLocation({ id: locId, ...locData });
+                        }
+                    } catch (e) {
+                        console.error("Error fetching heavy details:", e);
+                        setLocation({ id: locId, ...locData });
+                    }
                 }
             } catch (error) {
                 console.error("Error fetching location:", error);
@@ -297,18 +311,13 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                     {/* RIGHT COLUMN (Main): Tabs & Content */}
                     <div className="lg:col-span-2 space-y-8">
 
+
                         {/* Tab Headers */}
                         {/* General Characteristics (Top of Page) */}
                         {location.tags && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                            <div className="mb-2">
                                 <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                     {renderTagGroup('Highlights', location.tags.highlights, Star, 'text-yellow-500', 'bg-yellow-50 border-yellow-100')}
-                                </div>
-                                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                                    {renderTagGroup('Vibe', location.tags.vibe, Info, 'text-purple-500', 'bg-purple-50 border-purple-100')}
-                                </div>
-                                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                                    {renderTagGroup('Target', location.tags.target, Info, 'text-blue-500', 'bg-blue-50 border-blue-100')}
                                 </div>
                             </div>
                         )}
@@ -328,6 +337,79 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                     <div className="prose prose-lg text-slate-600 leading-relaxed">
                                         {location.description?.[currentSeason] || <span className="text-slate-400 italic">{t('no_description')}</span>}
                                     </div>
+
+                                    {/* AI Match Weights (Nested) */}
+                                    {location.tagWeights && (
+                                        <div className="pt-10 border-t border-slate-100 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                                            <div className="flex flex-col gap-6">
+                                                {/* Vibe */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-1 h-3 bg-purple-500 rounded-full"></div>
+                                                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Vibe</h4>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {TAG_CATEGORIES.vibe.map(config => {
+                                                            const weights = location.tagWeights?.vibe || {};
+                                                            const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                            const val = tagKey ? weights[tagKey] : null;
+                                                            if (val === null || val === undefined) return null;
+                                                            return (
+                                                                <div key={config.id} className="flex flex-col items-center bg-purple-50 border border-purple-100 rounded-xl px-3 py-1.5 min-w-[80px]">
+                                                                    <span className="text-[10px] font-bold text-purple-700 capitalize leading-tight mb-0.5 text-center">{config.label}</span>
+                                                                    <span className="text-sm font-black text-purple-900">{val}%</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+
+                                                {/* Target */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-1 h-3 bg-blue-500 rounded-full"></div>
+                                                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Target</h4>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {TAG_CATEGORIES.target.map(config => {
+                                                            const weights = location.tagWeights?.target || {};
+                                                            const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                            const val = tagKey ? weights[tagKey] : null;
+                                                            if (val === null || val === undefined) return null;
+                                                            return (
+                                                                <div key={config.id} className="flex flex-col items-center bg-blue-50 border border-blue-100 rounded-xl px-3 py-1.5 min-w-[80px]">
+                                                                    <span className="text-[10px] font-bold text-blue-700 capitalize leading-tight mb-0.5 text-center">{config.label}</span>
+                                                                    <span className="text-sm font-black text-blue-900">{val}%</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+
+                                                {/* Activity */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-1 h-3 bg-green-500 rounded-full"></div>
+                                                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Activities</h4>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {TAG_CATEGORIES.activities.map(config => {
+                                                            const weights = location.tagWeights?.activities || {};
+                                                            const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                            const val = tagKey ? weights[tagKey] : null;
+                                                            if (val === null || val === undefined) return null;
+                                                            return (
+                                                                <div key={config.id} className="flex flex-col items-center bg-green-50 border border-green-100 rounded-xl px-3 py-1.5 min-w-[80px]">
+                                                                    <span className="text-[10px] font-bold text-green-700 capitalize leading-tight mb-0.5 text-center">{config.label}</span>
+                                                                    <span className="text-sm font-black text-green-900">{val}%</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

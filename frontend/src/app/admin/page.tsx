@@ -218,6 +218,10 @@ export default function AdminDashboard() {
                 }
             });
 
+            // Denormalize counts/flags for list view
+            lightData.servicesCount = updatedData.services?.length || 0;
+            lightData.hasAiMetadata = !!updatedData.aiGenerationMetadata;
+
             // Update main document (light)
             await updateDoc(doc(db, 'locations', updatedData.id), lightData);
 
@@ -225,12 +229,67 @@ export default function AdminDashboard() {
             // We use setDoc with merge to ensure it exists or updates
             await setDoc(doc(db, 'location_details', updatedData.id), heavyData, { merge: true });
 
+            // Small delay to allow Firestore to propagate serverTimestamp
+            await new Promise(resolve => setTimeout(resolve, 500));
+
             setEditingLocation(null);
             setActiveTab('locations');
             alert('Modifiche salvate con successo (Struttura Thin/Full)!');
         } catch (e) {
             console.error("Update Error:", e);
             alert("Errore durante il salvataggio delle modifiche.");
+        }
+    };
+
+    const handleMigrateTagWeights = async () => {
+        if (!confirm("ATTENZIONE: Questa azione copierà i 'tagWeights' dalla tabella dettagli alla tabella main per TUTTE le località. Confermi?")) return;
+        setLoadingLocs(true);
+        try {
+            const { collection, getDocs, doc, getDoc, updateDoc, query } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            const q = query(collection(db, 'locations'));
+            const querySnapshot = await getDocs(q);
+
+            let count = 0;
+            let foundInHeavy = 0;
+            console.log(`Found ${querySnapshot.size} locations. Starting migration...`);
+
+            for (const locDoc of querySnapshot.docs) {
+                const heavySnap = await getDoc(doc(db, 'location_details', locDoc.id));
+                if (heavySnap.exists()) {
+                    const heavyData = heavySnap.data();
+                    let weightsToMigrate = null;
+
+                    // Case 1: Nested under tagWeights (Standard)
+                    if (heavyData.tagWeights && Object.keys(heavyData.tagWeights).length > 0) {
+                        weightsToMigrate = heavyData.tagWeights;
+                    }
+                    // Case 2: Top-level vibe/target/activities (Legacy/Alternative)
+                    else if (heavyData.vibe || heavyData.target || heavyData.activities) {
+                        weightsToMigrate = {
+                            vibe: heavyData.vibe || {},
+                            target: heavyData.target || {},
+                            activities: heavyData.activities || {}
+                        };
+                    }
+
+                    if (weightsToMigrate) {
+                        await updateDoc(doc(db, 'locations', locDoc.id), {
+                            tagWeights: weightsToMigrate
+                        });
+                        count++;
+                    }
+                }
+            }
+            alert(`Migrazione completata! Aggiornate ${count} località.`);
+        } catch (e) {
+            console.error("Migration fatal error:", e);
+            alert("Errore durante la migrazione. Controlla la console.");
+        } finally {
+            setLoadingLocs(false);
+            // Reload locations to show updates if needed (though tagWeights usually hidden in table)
+            // fetchLocations(); // We'd need to expose fetchLocations or just let it be
         }
     };
 
@@ -350,6 +409,12 @@ export default function AdminDashboard() {
                                 </p>
                             </div>
                             <div className="flex gap-3">
+                                {activeTab === 'locations' && (
+                                    <button onClick={handleMigrateTagWeights} className="flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg shadow-sm hover:bg-yellow-200 font-medium text-sm">
+                                        <Sparkles size={16} />
+                                        Migra Pesi DB
+                                    </button>
+                                )}
                                 {selectedIds.length >= 2 && activeTab === 'locations' && (
                                     <button onClick={startMerge} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-opacity-90 font-medium text-sm animate-in fade-in">
                                         <CheckCircle size={16} />
@@ -486,7 +551,7 @@ export default function AdminDashboard() {
                                                                 <div className="w-12 h-12 rounded-lg bg-slate-100 flex-shrink-0" />
                                                             )}
                                                             <span className="font-medium text-slate-900">{loc.name}</span>
-                                                            {loc.aiGenerationMetadata && (
+                                                            {(loc.aiGenerationMetadata || loc.hasAiMetadata) && (
                                                                 <span title="Generato da AI" className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200">AI</span>
                                                             )}
                                                             <span title="Lingua" className={`text-xs px-1.5 py-0.5 rounded border uppercase font-bold ${loc.language === 'en' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
@@ -511,7 +576,7 @@ export default function AdminDashboard() {
                                                     <td className="px-6 py-4 text-center">
                                                         <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-bold border border-slate-200" title="Totale servizi/attività">
                                                             <Layers size={12} />
-                                                            {loc.services?.length || 0}
+                                                            {loc.servicesCount ?? (loc.services?.length || 0)}
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-slate-600 font-medium">
@@ -721,14 +786,46 @@ function MessagesView() {
     );
 }
 
-function MergeTool({ selectedLocations, onCancel, onComplete }: { selectedLocations: any[], onCancel: () => void, onComplete: () => void }) {
-    const [masterId, setMasterId] = useState<string>(selectedLocations[0]?.id);
+function MergeTool({ selectedLocations: initialSelected, onCancel, onComplete }: { selectedLocations: any[], onCancel: () => void, onComplete: () => void }) {
+    const [selectedLocations, setSelectedLocations] = useState<any[]>(initialSelected);
+    const [loading, setLoading] = useState(true);
+    const [masterId, setMasterId] = useState<string>(initialSelected[0]?.id);
     const [fieldSelections, setFieldSelections] = useState<Record<string, string>>({});
     const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
 
-    // Initialize selections when masterId changes
+    // Fetch Full Data for all selected locations
     useEffect(() => {
-        if (!masterId) return;
+        const fetchFullData = async () => {
+            try {
+                const { doc, getDoc } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase');
+
+                const fullLocs = await Promise.all(initialSelected.map(async (loc) => {
+                    try {
+                        const detailsSnap = await getDoc(doc(db, 'location_details', loc.id));
+                        if (detailsSnap.exists()) {
+                            return { ...loc, ...detailsSnap.data() };
+                        }
+                    } catch (e) {
+                        console.error("Error fetching heavy data for merge:", loc.name, e);
+                    }
+                    return loc;
+                }));
+
+                setSelectedLocations(fullLocs);
+            } catch (err) {
+                console.error("Error initializing merge tool:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchFullData();
+    }, [initialSelected]);
+
+    // Initialize selections when masterId changes or data loads
+    useEffect(() => {
+        if (!masterId || loading) return;
 
         // Default: all fields come from Master
         const defaults: Record<string, string> = {};
@@ -741,7 +838,9 @@ function MergeTool({ selectedLocations, onCancel, onComplete }: { selectedLocati
             const ids = new Set(masterLoc.services.map((s: any) => s.id || s.name)); // fallback to name if ID missing
             setSelectedServiceIds(ids as Set<string>);
         }
-    }, [masterId, selectedLocations]);
+    }, [masterId, selectedLocations, loading]);
+
+    if (loading) return <div className="p-12 text-center text-slate-500">Preparazione dati per l'unione...</div>;
 
     const masterLoc = selectedLocations.find(l => l.id === masterId);
     if (!masterLoc) return <div>Errore: Master non trovato</div>;
@@ -752,7 +851,7 @@ function MergeTool({ selectedLocations, onCancel, onComplete }: { selectedLocati
         if (!confirm(`Confermi l'unione? \n- ${masterLoc.name} sarà aggiornata.\n- ${sourceLocs.length} località verranno ELIMINATE definitamente.`)) return;
 
         try {
-            const { doc, updateDoc, deleteDoc, serverTimestamp } = await import('firebase/firestore');
+            const { doc, updateDoc, setDoc, deleteDoc, serverTimestamp } = await import('firebase/firestore');
             const { db } = await import('@/lib/firebase');
 
             // 1. Build Final Object
@@ -772,13 +871,40 @@ function MergeTool({ selectedLocations, onCancel, onComplete }: { selectedLocati
             finalData.services = finalServices;
             finalData.updatedAt = serverTimestamp();
 
-            // 2. Update Master
-            const { id, ...dataToSave } = finalData; // exclude ID
-            await updateDoc(doc(db, 'locations', masterId), dataToSave);
+            // 2. Separate into Thin/Full structure
+            const heavyFields = [
+                'services', 'technicalData', 'accessibility',
+                'parking', 'localMobility', 'infoPoints', 'medical',
+                'advancedSkiing', 'outdoorNonSki', 'family', 'rentals',
+                'eventsAndSeasonality', 'gastronomy', 'digital', 'practicalTips',
+                'openingHours', 'safety', 'sustainability',
+                'aiGenerationMetadata', 'profile'
+            ];
 
-            // 3. Delete Sources
+            const lightData: any = {};
+            const heavyData: any = {};
+
+            Object.entries(finalData).forEach(([key, value]) => {
+                if (key === 'id') return;
+                if (heavyFields.includes(key)) {
+                    heavyData[key] = value;
+                } else {
+                    lightData[key] = value;
+                }
+            });
+
+            // Denormalize for list view
+            lightData.servicesCount = finalServices.length;
+            lightData.hasAiMetadata = !!finalData.aiGenerationMetadata || !!heavyData.aiGenerationMetadata;
+
+            // 3. Update Master
+            await updateDoc(doc(db, 'locations', masterId), lightData);
+            await setDoc(doc(db, 'location_details', masterId), heavyData, { merge: true });
+
+            // 4. Delete Sources (both collections)
             for (const source of sourceLocs) {
                 await deleteDoc(doc(db, 'locations', source.id));
+                await deleteDoc(doc(db, 'location_details', source.id));
             }
 
             alert('Unione completata con successo!');
@@ -996,6 +1122,7 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
         description: location.description || { winter: '', summer: '' },
         services: location.services || [],
         tags: location.tags || { vibe: [], target: [], highlights: [], activities: [] },
+        tagWeights: location.tagWeights || {},
         seasonalImages: location.seasonalImages || {
             winter: location.coverImage || '',
             summer: location.coverImage || '',
@@ -1005,7 +1132,7 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
     });
 
     // AI weights for tags visualization
-    const [tagWeights, setTagWeights] = useState<any>(null);
+    const [tagWeights, setTagWeights] = useState<any>(location.tagWeights || null);
 
     // UI State for Active Tab inside Editor
     const [editTab, setEditTab] = useState<'general' | 'services'>('general');
@@ -1112,13 +1239,25 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                     // Update weights state for UI visualization
                     if (data.data.weights) setTagWeights(data.data.weights);
 
-                    // Update the actual selected tags
+                    // Auto-select ALL tags that have weights (not just top picks)
+                    // This allows admin to manually deselect unwanted tags
+                    const autoSelectedTags: any = {};
+                    if (data.data.weights) {
+                        Object.keys(data.data.weights).forEach(category => {
+                            // Get all tag IDs that have a weight > 0
+                            autoSelectedTags[category] = Object.keys(data.data.weights[category]);
+                        });
+                    }
+
+                    // Update the actual selected tags AND save the weights to DB
                     setFormData((prev: any) => ({
                         ...prev,
                         tags: {
                             ...(prev.tags || {}),
-                            ...(data.data.selected || {})
-                        }
+                            ...autoSelectedTags  // Auto-select ALL tags with weights
+                        },
+                        // Save weights for use in matching algorithm
+                        tagWeights: data.data.weights || {}
                     }));
                 } else {
                     // SEO Mode
@@ -1752,8 +1891,20 @@ function AITaskRunner() {
             // if (language === 'en') ...
 
             if (exactMatch) {
-                const existingData = exactMatch.data();
-                setExistingLocationId(exactMatch.id);
+                const locId = exactMatch.id;
+                setExistingLocationId(locId);
+
+                // Fetch heavy data to get services
+                const { doc, getDoc } = await import('firebase/firestore');
+                const detailsSnap = await getDoc(doc(db, 'location_details', locId));
+                let services: any[] = [];
+
+                if (detailsSnap.exists()) {
+                    services = detailsSnap.data().services || [];
+                } else {
+                    // Fallback to light data for legacy records
+                    services = exactMatch.data().services || [];
+                }
 
                 // Alert handled by UI logic (showing preview with warning)
                 if (!confirm(`⚠️ ATTENZIONE: "${targetLocation}" è già presente nel DB (Lingua: ${language.toUpperCase()})!\n\nVuoi procedere analizzando SOLO i servizi mancanti?`)) {
@@ -1761,7 +1912,7 @@ function AITaskRunner() {
                     return;
                 }
 
-                const existingServices = existingData.services?.map((s: any) => s.name) || [];
+                const existingServices = services.map((s: any) => s.name) || [];
 
                 if (existingServices.length > 0) {
                     const exclusionText = `\n\nIMPORTANTE - ESCLUSIONI:\nLa località è già presente nel database con alcuni servizi. \nNON includere o duplicare i seguenti servizi già salvati (ignorali completamente e trovane di nuovi o approfondisci categorie diverse):\n- ${existingServices.join('\n- ')}`;
@@ -1885,6 +2036,10 @@ function AITaskRunner() {
                     lightData[key] = value;
                 }
             });
+
+            // Denormalize for admin list
+            lightData.servicesCount = mappedServices.length;
+            lightData.hasAiMetadata = true;
 
             // 1. Create light doc and get ID
             const lightDocRef = await addDoc(collection(db, 'locations'), lightData);

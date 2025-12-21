@@ -8,6 +8,7 @@ import { useCompareStore } from '@/store/compare-store';
 import { Check, Plus, X, ChevronDown, ChevronRight, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
+import { TAG_CATEGORIES } from '@/lib/tags-config';
 
 export default function CompareClient() {
     const { currentSeason } = useSeasonStore();
@@ -393,6 +394,89 @@ export default function CompareClient() {
                                             </td>
                                         ))}
                                     </tr>
+
+                                    <tr className="border-b border-slate-100">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
+                                            Vibe Weights
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const weights = fullLoc.tagWeights?.vibe || {};
+                                            return (
+                                                <td key={`weights-vibe-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {TAG_CATEGORIES.vibe.map((config) => {
+                                                            const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                            const val = tagKey ? weights[tagKey] : null;
+                                                            if (val === null || val === undefined) return null;
+                                                            return (
+                                                                <div key={config.id} className="flex flex-col items-center bg-purple-50 border border-purple-100 rounded-lg px-2 py-1 min-w-[60px]">
+                                                                    <span className="text-[10px] font-bold text-purple-700 capitalize">{config.label}</span>
+                                                                    <span className="text-sm font-black text-purple-900">{val}%</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        {Object.keys(weights).length === 0 && <span className="text-slate-400 text-xs italic">-</span>}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                    <tr className="border-b border-slate-100">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
+                                            Target Weights
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const weights = fullLoc.tagWeights?.target || {};
+                                            return (
+                                                <td key={`weights-target-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {TAG_CATEGORIES.target.map((config) => {
+                                                            const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                            const val = tagKey ? weights[tagKey] : null;
+                                                            if (val === null || val === undefined) return null;
+                                                            return (
+                                                                <div key={config.id} className="flex flex-col items-center bg-blue-50 border border-blue-100 rounded-lg px-2 py-1 min-w-[60px]">
+                                                                    <span className="text-[10px] font-bold text-blue-700 capitalize">{config.label}</span>
+                                                                    <span className="text-sm font-black text-blue-900">{val}%</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        {Object.keys(weights).length === 0 && <span className="text-slate-400 text-xs italic">-</span>}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                    <tr className="border-b border-slate-100">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
+                                            Activity Weights
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const weights = fullLoc.tagWeights?.activities || {};
+                                            return (
+                                                <td key={`weights-act-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {TAG_CATEGORIES.activities.map((config) => {
+                                                            const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                            const val = tagKey ? weights[tagKey] : null;
+                                                            if (val === null || val === undefined) return null;
+                                                            return (
+                                                                <div key={config.id} className="flex flex-col items-center bg-green-50 border border-green-100 rounded-lg px-2 py-1 min-w-[60px]">
+                                                                    <span className="text-[10px] font-bold text-green-700 capitalize">{config.label}</span>
+                                                                    <span className="text-sm font-black text-green-900">{val}%</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        {Object.keys(weights).length === 0 && <span className="text-slate-400 text-xs italic">-</span>}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
                                     {/* Highlights */}
                                     <tr className="lg:hidden bg-yellow-50/30">
                                         <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
@@ -409,37 +493,6 @@ export default function CompareClient() {
                                                     {loc.tags?.highlights?.map((t: string) => (
                                                         <span key={t} className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-md border border-yellow-200">{t}</span>
                                                     )) || <span className="text-slate-400 text-xs italic">-</span>}
-                                                </div>
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    {/* Atmosphere & Target */}
-                                    <tr className="lg:hidden bg-slate-50/30">
-                                        <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
-                                            {t('atmosphere_target')}
-                                        </td>
-                                    </tr>
-                                    <tr className="border-b border-slate-100">
-                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
-                                            {t('atmosphere_target')}
-                                        </td>
-                                        {selectedLocations.map((loc) => (
-                                            <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0 space-y-3">
-                                                <div>
-                                                    <span className="text-xs font-bold text-purple-900 uppercase tracking-wider block mb-1">{t('vibe')}</span>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {loc.tags?.vibe?.map((t: string) => (
-                                                            <span key={t} className="px-2 py-0.5 bg-purple-50 text-purple-700 text-xs rounded border border-purple-100">{t}</span>
-                                                        )) || <span className="text-slate-400 text-xs italic">-</span>}
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <span className="text-xs font-bold text-blue-900 uppercase tracking-wider block mb-1">{t('target')}</span>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {loc.tags?.target?.map((t: string) => (
-                                                            <span key={t} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded border border-blue-100">{t}</span>
-                                                        )) || <span className="text-slate-400 text-xs italic">-</span>}
-                                                    </div>
                                                 </div>
                                             </td>
                                         ))}
