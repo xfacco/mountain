@@ -29,7 +29,10 @@ export const TAG_CATEGORIES = {
         { id: 'italy', label: 'Italy' },
         { id: 'austria', label: 'Austria' },
         { id: 'switzerland', label: 'Switzerland' },
-        { id: 'france', label: 'France' }
+        { id: 'france', label: 'France' },
+        { id: 'slovenia', label: 'Slovenia' },
+        { id: 'spain', label: 'Spain' },
+        { id: 'bulgaria', label: 'Bulgaria' }
     ]
 } as const;
 

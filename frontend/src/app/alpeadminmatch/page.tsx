@@ -21,6 +21,7 @@ import {
     ChevronUp,
     ChevronDown,
     MessageSquare,
+    Link as ShareIcon,
     Mail,
     Check
 } from 'lucide-react';
@@ -266,44 +267,127 @@ function AdminDashboard() {
             const querySnapshot = await getDocs(q);
 
             let count = 0;
-            let foundInHeavy = 0;
+            let skipped = [];
             console.log(`Found ${querySnapshot.size} locations. Starting migration...`);
 
             for (const locDoc of querySnapshot.docs) {
+                const locData = locDoc.data();
                 const heavySnap = await getDoc(doc(db, 'location_details', locDoc.id));
-                if (heavySnap.exists()) {
-                    const heavyData = heavySnap.data();
-                    let weightsToMigrate = null;
 
-                    // Case 1: Nested under tagWeights (Standard)
-                    if (heavyData.tagWeights && Object.keys(heavyData.tagWeights).length > 0) {
-                        weightsToMigrate = heavyData.tagWeights;
-                    }
-                    // Case 2: Top-level vibe/target/activities (Legacy/Alternative)
-                    else if (heavyData.vibe || heavyData.target || heavyData.activities) {
+                let weightsToMigrate = null;
+                const heavyData = heavySnap.exists() ? heavySnap.data() : {};
+
+                // Find weights with robustness
+                // 1. Check Standard: heavyData.tagWeights
+                if (heavyData.tagWeights && typeof heavyData.tagWeights === 'object') {
+                    weightsToMigrate = heavyData.tagWeights;
+                }
+                // 2. Check Legacy/Loose Keys in Heavy doc
+                else {
+                    const keys = Object.keys(heavyData);
+                    const findKey = (pattern: string) => keys.find(k => k.toLowerCase().replace(/[^a-z]/g, '') === pattern);
+
+                    const vibeKey = findKey('vibe') || findKey('vibeweights');
+                    const targetKey = findKey('target') || findKey('targetweights');
+                    const actKey = findKey('activities') || findKey('activitiesweights') || findKey('activityweights');
+
+                    if (vibeKey || targetKey || actKey) {
                         weightsToMigrate = {
-                            vibe: heavyData.vibe || {},
-                            target: heavyData.target || {},
-                            activities: heavyData.activities || {}
+                            vibe: vibeKey ? heavyData[vibeKey] : {},
+                            target: targetKey ? heavyData[targetKey] : {},
+                            activities: actKey ? heavyData[actKey] : {}
                         };
                     }
+                }
 
-                    if (weightsToMigrate) {
-                        await updateDoc(doc(db, 'locations', locDoc.id), {
-                            tagWeights: weightsToMigrate
-                        });
-                        count++;
+                // 3. Fallback: Check if they are already in locData but we want to be sure they are in tagWeights
+                if (!weightsToMigrate) {
+                    const keys = Object.keys(locData);
+                    const findKey = (pattern: string) => keys.find(k => k.toLowerCase().replace(/[^a-z]/g, '') === pattern);
+
+                    const vibeKey = findKey('vibe') || findKey('vibeweights');
+                    const targetKey = findKey('target') || findKey('targetweights');
+                    const actKey = findKey('activities') || findKey('activitiesweights') || findKey('activityweights');
+
+                    if (vibeKey || targetKey || actKey) {
+                        weightsToMigrate = {
+                            vibe: vibeKey ? locData[vibeKey] : {},
+                            target: targetKey ? locData[targetKey] : {},
+                            activities: actKey ? locData[actKey] : {}
+                        };
                     }
                 }
+
+                if (weightsToMigrate) {
+                    await updateDoc(doc(db, 'locations', locDoc.id), {
+                        tagWeights: weightsToMigrate
+                    });
+                    count++;
+                } else {
+                    skipped.push(locData.name || locDoc.id);
+                }
             }
-            alert(`Migrazione completata! Aggiornate ${count} località.`);
+
+            if (skipped.length > 0) {
+                console.warn("Skipped locations (no weights found):", skipped);
+                alert(`Migrazione completata! Aggiornate ${count} località.\nSaltate ${skipped.length}: ${skipped.join(', ')}`);
+            } else {
+                alert(`Migrazione completata! Tutte le ${count} località sono state aggiornate.`);
+            }
         } catch (e) {
             console.error("Migration fatal error:", e);
             alert("Errore durante la migrazione. Controlla la console.");
         } finally {
             setLoadingLocs(false);
-            // Reload locations to show updates if needed (though tagWeights usually hidden in table)
-            // fetchLocations(); // We'd need to expose fetchLocations or just let it be
+        }
+    };
+
+    const handleMigrateServicesCount = async () => {
+        if (!confirm("Questa azione aggiornerà il 'servicesCount' per TUTTE le località leggendo i dati dalla tabella dettagli. Procedere?")) return;
+        setLoadingLocs(true);
+        try {
+            const { collection, getDocs, doc, getDoc, updateDoc, query } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            const q = query(collection(db, 'locations'));
+            const querySnapshot = await getDocs(q);
+
+            let count = 0;
+            for (const locDoc of querySnapshot.docs) {
+                const locData = locDoc.data();
+                let sCount = 0;
+
+                // Check light doc
+                if (locData.services && Array.isArray(locData.services)) {
+                    sCount = Math.max(sCount, locData.services.length);
+                }
+
+                // Check heavy doc
+                const heavySnap = await getDoc(doc(db, 'location_details', locDoc.id));
+                if (heavySnap.exists()) {
+                    const heavyData = heavySnap.data();
+                    if (heavyData.services && Array.isArray(heavyData.services)) {
+                        sCount = Math.max(sCount, heavyData.services.length);
+                    }
+                }
+
+                // If sCount is STILL 0, but we have servicesCount already saved, keep it or try to find other array fields?
+                // For now, let's trust the services array.
+                if (sCount === 0 && locData.servicesCount) {
+                    sCount = locData.servicesCount;
+                }
+
+                await updateDoc(doc(db, 'locations', locDoc.id), {
+                    servicesCount: sCount
+                });
+                count++;
+            }
+            alert(`Migrazione completata! Aggiornate ${count} località.`);
+        } catch (e) {
+            console.error("Migration Error:", e);
+            alert("Errore durante la migrazione dei servizi.");
+        } finally {
+            setLoadingLocs(false);
         }
     };
 
@@ -391,6 +475,14 @@ function AdminDashboard() {
                         <Search size={18} />
                         Dati Search per AI
                     </button>
+                    <button
+                        onClick={() => { setActiveTab('share-logs'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'share-logs' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <ShareIcon size={18} />
+                        Log Cond. location
+                    </button>
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
@@ -428,7 +520,8 @@ function AdminDashboard() {
                                                     : activeTab === 'compare-raw' ? 'Dettaglio Comparazioni'
                                                         : activeTab === 'search-logs' ? 'Log Ricerche Sito'
                                                             : activeTab === 'search-data' ? 'Dati per Motori di Ricerca'
-                                                                : 'Motore AI Ricerca'}
+                                                                : activeTab === 'share-logs' ? 'Log Condivisioni Link location'
+                                                                    : 'Motore AI Ricerca'}
                                 </h1>
                                 <p className="text-slate-500 text-sm mt-1">
                                     {activeTab === 'locations' ? 'Gestisci le destinazioni pubblicate.'
@@ -439,15 +532,22 @@ function AdminDashboard() {
                                                         : activeTab === 'search-logs' ? 'Analisi delle ricerche testuali e dei filtri usati.'
                                                             : activeTab === 'search-data' ? 'Elenco località e nazioni (Copia & Incolla).'
                                                                 : activeTab === 'ai-tasks' ? 'Estrai nuovi dati dal web tramite Gemini.'
-                                                                    : 'Modifica i contenuti della Home Page.'}
+                                                                    : activeTab === 'share-logs' ? 'Vedi quali link e pagine vengono condivisi dagli utenti.'
+                                                                        : 'Modifica i contenuti della Home Page.'}
                                 </p>
                             </div>
                             <div className="flex gap-3">
                                 {activeTab === 'locations' && (
-                                    <button onClick={handleMigrateTagWeights} className="flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg shadow-sm hover:bg-yellow-200 font-medium text-sm">
-                                        <Sparkles size={16} />
-                                        Migra Pesi DB
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button onClick={handleMigrateTagWeights} className="flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg shadow-sm hover:bg-yellow-200 font-medium text-sm">
+                                            <Sparkles size={16} />
+                                            Migra Pesi
+                                        </button>
+                                        <button onClick={handleMigrateServicesCount} className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-lg shadow-sm hover:bg-blue-200 font-medium text-sm">
+                                            <Layers size={16} />
+                                            Migra Servizi
+                                        </button>
+                                    </div>
                                 )}
                                 {selectedIds.length >= 2 && activeTab === 'locations' && (
                                     <button onClick={startMerge} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-opacity-90 font-medium text-sm animate-in fade-in">
@@ -699,6 +799,7 @@ function AdminDashboard() {
                         {activeTab === 'search-logs' && <SearchLogsView />}
                         {activeTab === 'search-data' && <SearchDataView locations={locations} />}
                         {activeTab === 'ai-tasks' && <AITaskRunner />}
+                        {activeTab === 'share-logs' && <ShareLogsView />}
                         {activeTab === 'home-config' && <HomeConfigView />}
                     </>
                 )}
@@ -3038,3 +3139,210 @@ function SearchLogsView() {
         </div>
     );
 }
+function ShareLogsView() {
+    const [logs, setLogs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [hasMore, setHasMore] = useState(true);
+    const [ipMap, setIpMap] = useState<Record<string, string>>({});
+
+    const PAGE_SIZE = 15;
+
+    const fetchLogs = async (isMore = false) => {
+        if (isMore) setLoadingMore(true);
+        else setLoading(true);
+
+        try {
+            const { collection, getDocs, orderBy, query, limit, startAfter } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            let q = query(
+                collection(db, 'share_logs'),
+                orderBy('timestamp', 'desc'),
+                limit(PAGE_SIZE)
+            );
+
+            if (isMore && lastDoc) {
+                q = query(
+                    collection(db, 'share_logs'),
+                    orderBy('timestamp', 'desc'),
+                    startAfter(lastDoc),
+                    limit(PAGE_SIZE)
+                );
+            }
+
+            const snap = await getDocs(q);
+            const newLogs = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+
+            if (isMore) setLogs(prev => [...prev, ...newLogs]);
+            else setLogs(newLogs);
+
+            setLastDoc(snap.docs[snap.docs.length - 1]);
+            setHasMore(snap.docs.length === PAGE_SIZE);
+
+            // Fetch IPs
+            newLogs.forEach(log => {
+                if (log.ip && log.ip !== '0.0.0.0' && !log.country && !ipMap[log.ip]) {
+                    resolveIP(log.ip, log.id);
+                }
+            });
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    };
+
+    const resolveIP = async (ip: string, docId: string) => {
+        if (!ip || ip === '0.0.0.0' || ip === '127.0.0.1' || ip === '::1' || ipMap[ip]) return;
+
+        try {
+            setIpMap(prev => ({ ...prev, [ip]: '...' }));
+            const res = await fetch(`https://ipinfo.io/${ip}/json`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.country) {
+                    const regionNames = new Intl.DisplayNames(['it'], { type: 'region' });
+                    const countryName = regionNames.of(data.country) || data.country;
+                    setIpMap(prev => ({ ...prev, [ip]: countryName }));
+                    const { doc, updateDoc } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase');
+                    await updateDoc(doc(db, 'share_logs', docId), { country: countryName });
+                    return;
+                }
+            }
+            setIpMap(prev => ({ ...prev, [ip]: 'N/D' }));
+        } catch (e) {
+            setIpMap(prev => ({ ...prev, [ip]: 'N/D' }));
+        }
+    };
+
+    useEffect(() => {
+        fetchLogs();
+    }, []);
+
+    if (loading) return <div className="p-8 text-center text-slate-500">Caricamento log condivisioni...</div>;
+
+    const getPageLabel = (page: string) => {
+        switch (page) {
+            case 'search': return 'Ricerca';
+            case 'compare': return 'Comparazione';
+            case 'match': return 'Match Wizard';
+            case 'location_detail': return 'Dettaglio';
+            default: return page;
+        }
+    };
+
+    const getActionLabel = (action?: string) => {
+        switch (action) {
+            case 'copy': return 'Copiato';
+            case 'view': return 'Visualizzato';
+            default: return 'Copiato'; // fallback for old logs
+        }
+    };
+
+    const getActionColor = (action?: string) => {
+        switch (action) {
+            case 'copy': return 'bg-cyan-50 text-cyan-700 border-cyan-100';
+            case 'view': return 'bg-rose-50 text-rose-700 border-rose-100';
+            default: return 'bg-cyan-50 text-cyan-700 border-cyan-100';
+        }
+    };
+
+    const getPageColor = (page: string) => {
+        switch (page) {
+            case 'search': return 'bg-blue-50 text-blue-700 border-blue-100';
+            case 'compare': return 'bg-purple-50 text-purple-700 border-purple-100';
+            case 'match': return 'bg-amber-50 text-amber-700 border-amber-100';
+            case 'location_detail': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+            default: return 'bg-slate-50 text-slate-700 border-slate-100';
+        }
+    };
+
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                <h3 className="font-bold text-slate-700 text-sm">Cronologia Condivisioni Link</h3>
+            </div>
+            <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                    <tr>
+                        <th className="px-6 py-4">Data / IP</th>
+                        <th className="px-6 py-4">Azione</th>
+                        <th className="px-6 py-4">Pagina Sorgente</th>
+                        <th className="px-6 py-4">Link Condiviso / Oggetto</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                    {logs.map((log: any) => (
+                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-slate-500 text-xs font-medium">
+                                    {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('it-IT') : 'N/A'}
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-1 text-[10px] font-mono">
+                                    <span className="text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                        {log.ip || '0.0.0.0'}
+                                    </span>
+                                    {(log.country || ipMap[log.ip]) && (
+                                        <span className="text-indigo-500 font-black uppercase text-[9px]">
+                                            {log.country || ipMap[log.ip]}
+                                        </span>
+                                    )}
+                                </div>
+                            </td>
+                            <td className="px-6 py-4">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${getActionColor(log.action)}`}>
+                                    {getActionLabel(log.action)}
+                                </span>
+                            </td>
+                            <td className="px-6 py-4">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${getPageColor(log.page)}`}>
+                                    {getPageLabel(log.page)}
+                                </span>
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="max-w-md">
+                                    {log.locationName && (
+                                        <div className="font-bold text-slate-900 mb-1">{log.locationName}</div>
+                                    )}
+                                    {log.logId && (
+                                        <div className="text-[10px] text-slate-400 font-mono mb-1">ID Log: {log.logId}</div>
+                                    )}
+                                    <div className="text-[10px] text-primary truncate hover:underline cursor-help" title={log.url}>
+                                        {log.url}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+
+            {hasMore && (
+                <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex justify-center">
+                    <button
+                        onClick={() => fetchLogs(true)}
+                        disabled={loadingMore}
+                        className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:border-primary/30 hover:text-primary transition-all shadow-sm flex items-center gap-2"
+                    >
+                        {loadingMore ? (
+                            <>
+                                <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                                Caricamento...
+                            </>
+                        ) : (
+                            <>
+                                <Plus size={14} /> Carica altri log
+                            </>
+                        )}
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ... existing AITaskRunner, HomeConfigView etc ...

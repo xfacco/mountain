@@ -1,7 +1,8 @@
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import LocationsClient from './LocationsClient';
 
-export async function generateMetadata({ params: { locale } }: { params: { locale: string } }) {
+export async function generateMetadata() {
+    const locale = await getLocale();
     const t = await getTranslations({ locale, namespace: 'Metadata' });
 
     return {
@@ -11,5 +12,7 @@ export async function generateMetadata({ params: { locale } }: { params: { local
 }
 
 export default function Page() {
-    return <LocationsClient />;
+    return (
+        <LocationsClient />
+    );
 }

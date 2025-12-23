@@ -564,3 +564,54 @@ Traceback: Traceback (most recent call last):
     raise exceptions.from_grpc_error(exc) from exc
 google.api_core.exceptions.PermissionDenied: 403 Your API key was reported as leaked. Please use another API key.
 
+
+
+--- ERROR KEY_PRESENT ---
+Error: Expecting ',' delimiter: line 125 column 2 (char 13791)
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 155, in research_location
+    raise e
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 150, in research_location
+    data = json.loads(clean_text)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+json.decoder.JSONDecodeError: Expecting ',' delimiter: line 125 column 2 (char 13791)
+
+
+
+--- ERROR KEY_PRESENT ---
+Error: Expecting ',' delimiter: line 184 column 2 (char 24516)
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 155, in research_location
+    raise e
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 150, in research_location
+    data = json.loads(clean_text)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+json.decoder.JSONDecodeError: Expecting ',' delimiter: line 184 column 2 (char 24516)
+
+
+
+--- ERROR KEY_PRESENT ---
+Error: Expecting ',' delimiter: line 211 column 5 (char 16214)
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 155, in research_location
+    raise e
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 150, in research_location
+    data = json.loads(clean_text)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+json.decoder.JSONDecodeError: Expecting ',' delimiter: line 211 column 5 (char 16214)
+

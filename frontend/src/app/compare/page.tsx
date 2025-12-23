@@ -1,6 +1,8 @@
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
+import CompareClient from './CompareClient';
 
-export async function generateMetadata({ params: { locale } }: { params: { locale: string } }) {
+export async function generateMetadata() {
+    const locale = await getLocale();
     const t = await getTranslations({ locale, namespace: 'Metadata' });
 
     return {
@@ -9,8 +11,8 @@ export async function generateMetadata({ params: { locale } }: { params: { local
     };
 }
 
-import CompareClient from './CompareClient';
-
 export default function Page() {
-    return <CompareClient />;
+    return (
+        <CompareClient />
+    );
 }

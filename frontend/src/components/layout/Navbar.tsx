@@ -7,11 +7,13 @@ import { Menu, Search, X } from 'lucide-react';
 
 import { useTranslations } from 'next-intl';
 
-// ...
+import { useCompareStore } from '@/store/compare-store';
 
 export function Navbar() {
     const t = useTranslations('Navbar');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { selectedLocations } = useCompareStore();
+    const compareCount = selectedLocations.length;
 
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/70 backdrop-blur-lg border-b border-gray-200/50">
@@ -36,7 +38,14 @@ export function Navbar() {
                             Match
                         </Link>
                         <Link href="/locations" className="text-slate-600 hover:text-primary transition-colors font-medium">{t('destinations')}</Link>
-                        <Link href="/compare" className="text-slate-600 hover:text-primary transition-colors font-medium">{t('compare')}</Link>
+                        <Link href="/compare" className="text-slate-600 hover:text-primary transition-colors font-medium flex items-center gap-1.5">
+                            {t('compare')}
+                            {compareCount > 0 && (
+                                <span className="flex items-center justify-center bg-primary text-white text-[10px] font-bold w-4 h-4 rounded-full">
+                                    {compareCount}
+                                </span>
+                            )}
+                        </Link>
                         <Link href="/map" className="text-slate-600 hover:text-primary transition-colors font-medium">{t('map')}</Link>
                         <Link href="/search" className="text-slate-600 hover:text-primary transition-colors" title="Search">
                             <Search size={20} />
@@ -76,10 +85,15 @@ export function Navbar() {
                     </Link>
                     <Link
                         href="/compare"
-                        className="p-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700 hover:text-primary transition-colors"
+                        className="p-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700 hover:text-primary transition-colors flex items-center justify-between"
                         onClick={() => setIsMenuOpen(false)}
                     >
-                        {t('compare')}
+                        <span>{t('compare')}</span>
+                        {compareCount > 0 && (
+                            <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                {compareCount}
+                            </span>
+                        )}
                     </Link>
                     <Link
                         href="/map"

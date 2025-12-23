@@ -1,18 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
-import { MapPin, Calendar, Star, Info, ChevronLeft, ArrowLeft, Sun, Snowflake, Cloud, Wind, Mountain, Home, Bus, Quote, AlertCircle, Check, X, Accessibility, HelpCircle, Layers, List, Search, ArrowRight, Sparkles } from 'lucide-react';
+import { MapPin, Calendar, Star, Info, ChevronLeft, ArrowLeft, Sun, Snowflake, Cloud, Wind, Mountain, Home, Bus, Quote, AlertCircle, Check, X, Accessibility, HelpCircle, Layers, List, Search, ArrowRight, Sparkles, Link2 as LinkIcon } from 'lucide-react';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
 import Link from 'next/link';
 import { useSeasonStore } from '@/store/season-store';
 import { useCompareStore } from '@/store/compare-store';
 import { useTranslations } from 'next-intl';
+import { CompareAddedModal } from '@/components/ui/CompareAddedModal';
+import { CompareLimitModal } from '@/components/ui/CompareLimitModal';
 
 export default function LocationDetailClient({ initialData }: { initialData?: any }) {
     const params = useParams();
-    const router = useRouter(); // Initialize router
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const { currentSeason, setSeason } = useSeasonStore();
     const { selectedLocations, addLocation, removeLocation } = useCompareStore();
     const [location, setLocation] = useState<any>(initialData || null);
@@ -22,18 +25,60 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
     const [isSinglePageMode, setIsSinglePageMode] = useState(false);
     const t = useTranslations('LocationDetail');
     const tSeasons = useTranslations('Seasons');
+    const tCommon = useTranslations('Common');
+
+    const [copied, setCopied] = useState(false);
+
+    const [modalOpen, setModalOpen] = useState(false);
+    const [limitModalOpen, setLimitModalOpen] = useState(false);
+    const [userIp, setUserIp] = useState<string>('');
 
     // Local Search State
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Fetch IP on mount
+    useEffect(() => {
+        fetch('https://api.ipify.org?format=json')
+            .then(res => res.json())
+            .then(data => setUserIp(data.ip))
+            .catch(err => console.error("Error fetching IP", err));
+    }, []);
+
+    // Log view if shared link
+    useEffect(() => {
+        const isShared = searchParams.get('s') === '1';
+        if (isShared && location?.name) {
+            const logView = async () => {
+                try {
+                    const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase');
+
+                    let currentIp = userIp;
+                    if (!currentIp) {
+                        const res = await fetch('https://api.ipify.org?format=json');
+                        const ipData = await res.json();
+                        currentIp = ipData.ip;
+                    }
+
+                    await addDoc(collection(db, 'share_logs'), {
+                        ip: currentIp,
+                        page: 'location_detail',
+                        action: 'view',
+                        locationName: location.name,
+                        timestamp: serverTimestamp()
+                    });
+                } catch (err) {
+                    console.error("Error logging share view location detail:", err);
+                }
+            };
+            logView();
+        }
+    }, [searchParams, location?.name]);
 
     // Auto-switch to 'all' tab when searching to show results across all categories
     useEffect(() => {
         if (searchTerm.trim() !== '') {
             setActiveTab('all');
-        } else {
-            // Optional: revert to 'overview' or stay on 'all'? 
-            // Better to stay where user is or default to overview only if they were on 'all' effectively.
-            // Let's just switch to 'all' on search start.
         }
     }, [searchTerm]);
 
@@ -145,6 +190,31 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
         );
     };
 
+    const copyLink = async () => {
+        try {
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('s', '1');
+            const url = currentUrl.toString();
+            await navigator.clipboard.writeText(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+
+            // Log the share action
+            const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await addDoc(collection(db, 'share_logs'), {
+                ip: userIp,
+                page: 'location_detail',
+                action: 'copy',
+                url: url,
+                locationName: location?.name,
+                timestamp: serverTimestamp()
+            });
+        } catch (err) {
+            console.error("Failed to copy/log share link:", err);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50">
             <Navbar />
@@ -191,6 +261,26 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                     )}
                                 </div>
 
+                                {/* Quick Stats Summary */}
+                                <div className="grid grid-cols-2 gap-4 mb-6 pt-6 border-t border-slate-50">
+                                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100/50">
+                                        <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                            <Mountain size={12} className="text-slate-400" /> {t('altitude')}
+                                        </div>
+                                        <div className="text-lg font-black text-slate-900 leading-none">
+                                            {location.altitude ? `${location.altitude}m` : 'N/D'}
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100/50">
+                                        <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                            <Bus size={12} className="text-slate-400" /> {t('services')}
+                                        </div>
+                                        <div className="text-lg font-black text-slate-900 leading-none">
+                                            {location.servicesCount ?? location.services?.length ?? 0}
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Quick Search (Local Content) - Desktop Only */}
                                 <div className="hidden lg:block mb-6 relative z-10">
                                     <div className="relative">
@@ -223,28 +313,38 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                         {selectedLocations.find(l => l.id === location.id) ? (
                                             <button
                                                 onClick={() => removeLocation(location.id)}
-                                                className="w-full bg-green-50 hover:bg-red-50 text-green-700 hover:text-red-700 font-bold py-3 rounded-xl transition-all border border-green-200 hover:border-red-200 flex items-center justify-center gap-2 group shadow-sm"
+                                                className="w-full bg-green-50 hover:bg-red-50 text-green-700 hover:text-red-700 font-bold py-3 rounded-xl transition-all border border-green-200 hover:border-red-200 flex items-center justify-center gap-2 group shadow-sm active:scale-95"
                                             >
-                                                <span className="group-hover:hidden flex items-center gap-2"><Check size={18} /> {t('added_to_compare')}</span>
+                                                <span className="group-hover:hidden flex items-center gap-2 animate-in zoom-in duration-300"><Check size={18} /> {t('added_to_compare')}</span>
                                                 <span className="hidden group-hover:flex items-center gap-2"><X size={18} /> {t('remove_from_compare')}</span>
                                             </button>
                                         ) : (
                                             <button
                                                 onClick={() => {
                                                     if (selectedLocations.length >= 3) {
-                                                        alert(t('max_compare_alert'));
+                                                        setLimitModalOpen(true);
                                                         return;
                                                     }
                                                     addLocation(location);
-                                                    router.push('/compare');
+                                                    setModalOpen(true);
+                                                    // router.push('/compare'); // Removed redirect as per user request
                                                 }}
-                                                className={`w-full font-bold py-3 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2  ${selectedLocations.length >= 3 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-200'}`}
+                                                className={`w-full font-bold py-3 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2  ${selectedLocations.length >= 3 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-200 hover:shadow-lg hover:-translate-y-0.5'}`}
                                             >
                                                 <Star size={18} className="group-hover:fill-current transition-colors" />
                                                 {selectedLocations.length >= 3 ? t('max_compare_button') : t('add_to_compare')}
                                             </button>
                                         )}
                                     </div>
+
+                                    {/* Share Action */}
+                                    <button
+                                        onClick={copyLink}
+                                        className="w-full bg-white hover:bg-slate-50 text-slate-800 font-bold py-3 rounded-xl transition-all border border-slate-200 flex items-center justify-center gap-2 group shadow-sm active:scale-95"
+                                    >
+                                        <LinkIcon size={18} className={copied ? "text-green-500" : "text-slate-400 group-hover:text-primary transition-colors"} />
+                                        {copied ? tCommon('link_copied') : tCommon('copy_link')}
+                                    </button>
 
                                     {/* Categories / Tabs */}
                                     <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-2">
@@ -693,7 +793,7 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                             {selectedLocations.find(l => l.id === location.id) ? (
                                 <button
                                     onClick={() => removeLocation(location.id)}
-                                    className="p-3 bg-green-50 text-green-700 rounded-2xl border border-green-200 shadow-sm"
+                                    className="p-3 bg-green-50 text-green-700 rounded-2xl border border-green-200 shadow-sm animate-in zoom-in duration-300"
                                 >
                                     <Check size={22} />
                                 </button>
@@ -701,22 +801,43 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                 <button
                                     onClick={() => {
                                         if (selectedLocations.length >= 3) {
-                                            alert(t('max_compare_alert'));
+                                            setLimitModalOpen(true);
                                             return;
                                         }
                                         addLocation(location);
-                                        router.push('/compare');
+                                        setModalOpen(true);
+                                        // router.push('/compare'); // Removed redirect as per user request
                                     }}
-                                    className={`p-3 rounded-2xl transition-all shadow-sm ${selectedLocations.length >= 3 ? 'bg-slate-100 text-slate-300' : 'bg-slate-900 text-white shadow-slate-200'}`}
+                                    className={`p-3 rounded-2xl transition-all shadow-sm active:scale-95 ${selectedLocations.length >= 3 ? 'bg-slate-100 text-slate-300' : 'bg-slate-900 text-white shadow-slate-200'}`}
                                 >
                                     <Star size={22} />
                                 </button>
                             )}
                         </div>
+
+                        {/* Share Trigger */}
+                        <button
+                            onClick={copyLink}
+                            className={`p-3 rounded-2xl transition-all ${copied ? 'bg-green-50 text-green-700' : 'text-slate-500 bg-slate-50 border border-slate-100'}`}
+                        >
+                            <LinkIcon size={22} />
+                        </button>
                     </div>
                 </div>
             </div>
 
+            <CompareAddedModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                locationName={location?.name || ''}
+            />
+
+            <CompareLimitModal
+                isOpen={limitModalOpen}
+                onClose={() => setLimitModalOpen(false)}
+                selectedLocations={selectedLocations}
+                onRemove={removeLocation}
+            />
         </div>
     );
 }

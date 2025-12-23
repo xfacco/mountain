@@ -1,23 +1,28 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { useSeasonStore } from '@/store/season-store';
 import { useCompareStore } from '@/store/compare-store';
-import { Check, Plus, X, ChevronDown, ChevronRight, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { Check, Plus, X, ChevronDown, ChevronRight, ArrowLeft, ArrowRight, Sparkles, Link2 as LinkIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
 
-export default function CompareClient() {
+
+function CompareContent() {
+    const searchParams = useSearchParams();
     const { currentSeason } = useSeasonStore();
-    const { selectedLocations, addLocation, removeLocation } = useCompareStore();
+    const { selectedLocations, addLocation, removeLocation, clearLocations } = useCompareStore();
     const [locationOptions, setLocationOptions] = useState<any[]>([]);
     const [fullSelectedLocations, setFullSelectedLocations] = useState<any[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     const [compareLogId, setCompareLogId] = useState<string | null>(null);
     const [userIp, setUserIp] = useState<string>('');
+    const [copied, setCopied] = useState(false);
+
     const [loading, setLoading] = useState(true);
     const [loadingDetails, setLoadingDetails] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -25,6 +30,64 @@ export default function CompareClient() {
     const t = useTranslations('Compare');
     const tSeasons = useTranslations('Seasons');
     const tNav = useTranslations('Navbar');
+    const tCommon = useTranslations('Common');
+
+    // Load shared comparison
+    useEffect(() => {
+        const shareId = searchParams.get('id');
+        if (shareId) {
+            const loadShared = async () => {
+                try {
+                    setLoadingDetails(true);
+                    const { doc, getDoc } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase');
+                    const snapshot = await getDoc(doc(db, 'compare_logs', shareId));
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+
+                        // Log the view action
+                        try {
+                            const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+                            // We fetch IP again if userIp is not yet set
+                            let currentIp = userIp;
+                            if (!currentIp) {
+                                const res = await fetch('https://api.ipify.org?format=json');
+                                const ipData = await res.json();
+                                currentIp = ipData.ip;
+                            }
+                            await addDoc(collection(db, 'share_logs'), {
+                                ip: currentIp,
+                                page: 'compare',
+                                action: 'view',
+                                logId: shareId,
+                                timestamp: serverTimestamp()
+                            });
+                        } catch (logErr) {
+                            console.error("Error logging share view:", logErr);
+                        }
+
+                        if (data.locations && Array.isArray(data.locations)) {
+                            const { collection, getDocs, query, where, documentId } = await import('firebase/firestore');
+                            const locIds = data.locations.map((l: any) => l.id);
+                            if (locIds.length > 0) {
+                                const q = query(collection(db, 'locations'), where(documentId(), 'in', locIds));
+                                const locSnap = await getDocs(q);
+                                const loadedLocs = locSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                                clearLocations();
+                                loadedLocs.forEach((l: any) => addLocation(l));
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error loading shared comparison", e);
+                } finally {
+                    setLoadingDetails(false);
+                }
+            };
+            loadShared();
+        }
+    }, [searchParams]);
 
     // Fetch IP on mount
     useEffect(() => {
@@ -33,6 +96,17 @@ export default function CompareClient() {
             .then(data => setUserIp(data.ip))
             .catch(err => console.error("Error fetching IP", err));
     }, []);
+
+
+
+    // ... (rest of logic) ...
+
+    // Update logging to set compareLogId
+    // ...
+
+
+
+
 
     // Fetch details for selected locations whenever the selection changes
     useEffect(() => {
@@ -93,16 +167,13 @@ export default function CompareClient() {
                     const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
                     const { db } = await import('@/lib/firebase');
 
-                    // We only log if we haven't logged this exact set in this session
-                    // Simple way: log every time it changes but with a debounce or just log it
-                    // The user is explicitly adding a location, which "triggers" a new comparison view
                     const docRef = await addDoc(collection(db, 'compare_logs'), {
                         locations: freshSelectedLocations.map(l => ({ id: l.id, name: l.name })),
                         timestamp: serverTimestamp(),
                         season: currentSeason,
                         userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
                         ip: userIp,
-                        choices: [] // Initialize empty choices
+                        choices: []
                     });
                     setCompareLogId(docRef.id);
                 } catch (err) {
@@ -110,8 +181,38 @@ export default function CompareClient() {
                 }
             };
             logComparison();
+        } else {
+            setCompareLogId(null);
         }
-    }, [freshSelectedLocations.length]); // Log when the number of items changes
+    }, [freshSelectedLocations.length, currentSeason]);
+
+
+
+    const copyLink = async () => {
+        if (!compareLogId) return;
+        const url = `${window.location.origin}/compare?id=${compareLogId}`;
+        try {
+            await navigator.clipboard.writeText(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+
+            // Log the share action
+            const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await addDoc(collection(db, 'share_logs'), {
+                ip: userIp,
+                page: 'compare',
+                action: 'copy',
+                url: url,
+                logId: compareLogId,
+                timestamp: serverTimestamp()
+            });
+        } catch (err) {
+            console.error("Failed to copy/log share link:", err);
+        }
+    };
+
+
 
     // Dettagli Toggles State (all closed by default)
     const [showDetails, setShowDetails] = useState<{
@@ -165,18 +266,7 @@ export default function CompareClient() {
         }
     };
 
-    const handleCompareChoice = async (locationName: string) => {
-        if (!compareLogId) return;
-        try {
-            const { doc, updateDoc, arrayUnion } = await import('firebase/firestore');
-            const { db } = await import('@/lib/firebase');
-            await updateDoc(doc(db, 'compare_logs', compareLogId), {
-                choices: arrayUnion(locationName)
-            });
-        } catch (err) {
-            console.error("Error updating comparison choice", err);
-        }
-    };
+
 
     const scroll = (direction: 'left' | 'right') => {
         if (scrollRef.current) {
@@ -206,6 +296,16 @@ export default function CompareClient() {
                         </p>
                     </div>
                     <div className="flex gap-3">
+
+                        {compareLogId && selectedLocations.length >= 2 && (
+                            <button
+                                onClick={copyLink}
+                                className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-lg shadow-sm border border-slate-200 hover:bg-slate-50 transition-all font-medium"
+                            >
+                                {copied ? <Check size={18} className="text-green-500" /> : <LinkIcon size={18} />}
+                                {copied ? tCommon('link_copied') : tCommon('copy_link')}
+                            </button>
+                        )}
                         <button
                             onClick={() => setIsSelectorOpen(!isSelectorOpen)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow-sm transition-all font-medium ${isSelectorOpen ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-primary text-white hover:bg-opacity-90'}`}
@@ -360,7 +460,7 @@ export default function CompareClient() {
                                                         </div>
                                                         <Link
                                                             href={`/locations/${loc.name}`}
-                                                            onClick={() => handleCompareChoice(loc.name)}
+
                                                             className="shrink-0 flex items-center gap-1.5 p-2 bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                                                             title="See Destination"
                                                         >
@@ -390,7 +490,7 @@ export default function CompareClient() {
                                                 <div className="relative group">
                                                     <Link
                                                         href={`/locations/${loc.name}`}
-                                                        onClick={() => handleCompareChoice(loc.name)}
+
                                                         className="block aspect-video rounded-lg overflow-hidden shadow-sm bg-slate-100 ring-1 ring-slate-200/50 hover:ring-primary/50 transition-all relative"
                                                     >
                                                         <img
@@ -451,11 +551,21 @@ export default function CompareClient() {
                                         </td>
                                         {selectedLocations.map((loc) => {
                                             const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
-                                            const weights = fullLoc.tagWeights?.vibe || {};
+
+                                            // Robust weight retrieval
+                                            const getWeights = (category: string) => {
+                                                if (fullLoc.tagWeights?.[category]) return fullLoc.tagWeights[category];
+                                                // Fallback to top level
+                                                const keys = Object.keys(fullLoc);
+                                                const match = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, '') === category || k.toLowerCase().replace(/[^a-z]/g, '') === `${category}weights`);
+                                                return match ? fullLoc[match] : {};
+                                            };
+
+                                            const weights = getWeights('vibe');
                                             return (
                                                 <td key={`weights-vibe-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
                                                     <div className="flex flex-wrap gap-2">
-                                                        {TAG_CATEGORIES.vibe.map((config) => {
+                                                        {[...TAG_CATEGORIES.vibe].sort((a, b) => a.label.localeCompare(b.label)).map((config) => {
                                                             const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
                                                             const val = tagKey ? weights[tagKey] : null;
                                                             if (val === null || val === undefined) return null;
@@ -478,11 +588,17 @@ export default function CompareClient() {
                                         </td>
                                         {selectedLocations.map((loc) => {
                                             const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
-                                            const weights = fullLoc.tagWeights?.target || {};
+                                            const getWeights = (category: string) => {
+                                                if (fullLoc.tagWeights?.[category]) return fullLoc.tagWeights[category];
+                                                const keys = Object.keys(fullLoc);
+                                                const match = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, '') === category || k.toLowerCase().replace(/[^a-z]/g, '') === `${category}weights`);
+                                                return match ? fullLoc[match] : {};
+                                            };
+                                            const weights = getWeights('target');
                                             return (
                                                 <td key={`weights-target-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
                                                     <div className="flex flex-wrap gap-2">
-                                                        {TAG_CATEGORIES.target.map((config) => {
+                                                        {[...TAG_CATEGORIES.target].sort((a, b) => a.label.localeCompare(b.label)).map((config) => {
                                                             const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
                                                             const val = tagKey ? weights[tagKey] : null;
                                                             if (val === null || val === undefined) return null;
@@ -505,11 +621,17 @@ export default function CompareClient() {
                                         </td>
                                         {selectedLocations.map((loc) => {
                                             const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
-                                            const weights = fullLoc.tagWeights?.activities || {};
+                                            const getWeights = (category: string) => {
+                                                if (fullLoc.tagWeights?.[category]) return fullLoc.tagWeights[category];
+                                                const keys = Object.keys(fullLoc);
+                                                const match = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, '') === 'activities' || k.toLowerCase().replace(/[^a-z]/g, '') === 'activitiesweights' || k.toLowerCase().replace(/[^a-z]/g, '') === 'activityweights');
+                                                return match ? fullLoc[match] : {};
+                                            };
+                                            const weights = getWeights('activities');
                                             return (
                                                 <td key={`weights-act-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
                                                     <div className="flex flex-wrap gap-2">
-                                                        {TAG_CATEGORIES.activities.map((config) => {
+                                                        {[...TAG_CATEGORIES.activities].sort((a, b) => a.label.localeCompare(b.label)).map((config) => {
                                                             const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
                                                             const val = tagKey ? weights[tagKey] : null;
                                                             if (val === null || val === undefined) return null;
@@ -540,9 +662,10 @@ export default function CompareClient() {
                                         {selectedLocations.map((loc) => (
                                             <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
                                                 <div className="flex flex-wrap gap-2">
-                                                    {loc.tags?.highlights?.map((t: string) => (
+                                                    {[...(loc.tags?.highlights || [])].sort().map((t: string) => (
                                                         <span key={t} className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-md border border-yellow-200">{t}</span>
-                                                    )) || <span className="text-slate-400 text-xs italic">-</span>}
+                                                    ))}
+                                                    {(!loc.tags?.highlights || loc.tags.highlights.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
                                                 </div>
                                             </td>
                                         ))}
@@ -567,9 +690,10 @@ export default function CompareClient() {
                                         {selectedLocations.map((loc) => (
                                             <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {loc.tags?.tourism?.map((t: string) => (
+                                                    {[...(loc.tags?.tourism || [])].sort().map((t: string) => (
                                                         <span key={t} className="px-2 py-0.5 bg-green-50 text-green-700 text-xs rounded border border-green-100">{t}</span>
-                                                    )) || <span className="text-slate-400 text-xs italic">-</span>}
+                                                    ))}
+                                                    {(!loc.tags?.tourism || loc.tags.tourism.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
                                                 </div>
                                             </td>
                                         ))}
@@ -637,9 +761,10 @@ export default function CompareClient() {
                                         {selectedLocations.map((loc) => (
                                             <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {loc.tags?.accommodation?.map((t: string) => (
+                                                    {[...(loc.tags?.accommodation || [])].sort().map((t: string) => (
                                                         <span key={t} className="px-2 py-0.5 bg-orange-50 text-orange-700 text-xs rounded border border-orange-100">{t}</span>
-                                                    )) || <span className="text-slate-400 text-xs italic">-</span>}
+                                                    ))}
+                                                    {(!loc.tags?.accommodation || loc.tags.accommodation.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
                                                 </div>
                                             </td>
                                         ))}
@@ -707,9 +832,10 @@ export default function CompareClient() {
                                         {selectedLocations.map((loc) => (
                                             <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {loc.tags?.infrastructure?.map((t: string) => (
+                                                    {[...(loc.tags?.infrastructure || [])].sort().map((t: string) => (
                                                         <span key={t} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded border border-slate-200">{t}</span>
-                                                    )) || <span className="text-slate-400 text-xs italic">-</span>}
+                                                    ))}
+                                                    {(!loc.tags?.infrastructure || loc.tags.infrastructure.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
                                                 </div>
                                             </td>
                                         ))}
@@ -777,9 +903,10 @@ export default function CompareClient() {
                                         {selectedLocations.map((loc) => (
                                             <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {loc.tags?.sport?.map((t: string) => (
+                                                    {[...(loc.tags?.sport || [])].sort().map((t: string) => (
                                                         <span key={t} className="px-2 py-0.5 bg-red-50 text-red-700 text-xs rounded border border-red-100">{t}</span>
-                                                    )) || <span className="text-slate-400 text-xs italic">-</span>}
+                                                    ))}
+                                                    {(!loc.tags?.sport || loc.tags.sport.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
                                                 </div>
                                             </td>
                                         ))}
@@ -847,9 +974,10 @@ export default function CompareClient() {
                                         {selectedLocations.map((loc) => (
                                             <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {loc.tags?.info?.map((t: string) => (
+                                                    {[...(loc.tags?.info || [])].sort().map((t: string) => (
                                                         <span key={t} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded border border-indigo-100">{t}</span>
-                                                    )) || <span className="text-slate-400 text-xs italic">-</span>}
+                                                    ))}
+                                                    {(!loc.tags?.info || loc.tags.info.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
                                                 </div>
                                             </td>
                                         ))}
@@ -917,9 +1045,10 @@ export default function CompareClient() {
                                         {selectedLocations.map((loc) => (
                                             <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {loc.tags?.general?.map((t: string) => (
+                                                    {[...(loc.tags?.general || [])].sort().map((t: string) => (
                                                         <span key={t} className="px-2 py-0.5 bg-slate-50 text-slate-700 text-xs rounded border border-slate-200">{t}</span>
-                                                    )) || <span className="text-slate-400 text-xs italic">-</span>}
+                                                    ))}
+                                                    {(!loc.tags?.general || loc.tags.general.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
                                                 </div>
                                             </td>
                                         ))}
@@ -975,5 +1104,13 @@ export default function CompareClient() {
                 )}
             </div>
         </main>
+    );
+}
+
+export default function CompareClient() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center">Loading...</div>}>
+            <CompareContent />
+        </Suspense>
     );
 }

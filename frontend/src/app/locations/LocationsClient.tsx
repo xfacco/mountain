@@ -5,15 +5,25 @@ import { Navbar } from '@/components/layout/Navbar';
 import { useSeasonStore } from '@/store/season-store';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Search, SortAsc, TrendingUp, Layers, ArrowRight, Globe, Sparkles } from 'lucide-react';
 import { SuggestLocationBanner } from '@/components/ui/SuggestLocationBanner';
+import { useCompareStore } from '@/store/compare-store';
+import { Search, SortAsc, TrendingUp, Layers, ArrowRight, Globe, Sparkles, Star, Check } from 'lucide-react';
+import { CompareAddedModal } from '@/components/ui/CompareAddedModal';
+import { CompareLimitModal } from '@/components/ui/CompareLimitModal';
+
 
 export default function LocationsClient() {
     const { currentSeason } = useSeasonStore();
+    const { selectedLocations, addLocation, removeLocation } = useCompareStore();
     const [locations, setLocations] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState<'name' | 'altitude' | 'services' | 'country'>('name');
     const t = useTranslations('Locations');
+    const tCommon = useTranslations('LocationDetail');
+
+    const [modalOpen, setModalOpen] = useState(false);
+    const [limitModalOpen, setLimitModalOpen] = useState(false);
+    const [lastAddedLocation, setLastAddedLocation] = useState('');
 
     useEffect(() => {
         const fetchLocations = async () => {
@@ -21,13 +31,12 @@ export default function LocationsClient() {
                 const { collection, getDocs, query } = await import('firebase/firestore');
                 const { db } = await import('@/lib/firebase');
 
-                // Fetch all locations and filter client-side for simplicity (avoids index creation issues)
                 const q = query(collection(db, 'locations'));
                 const querySnapshot = await getDocs(q);
 
                 const docs = querySnapshot.docs
                     .map(doc => ({ id: doc.id, ...doc.data() } as any))
-                    .filter(loc => loc.status === 'published' && (loc.language === 'en' || !loc.language)); // Show English or Legacy (undefined)
+                    .filter(loc => loc.status === 'published' && (loc.language === 'en' || !loc.language));
 
                 setLocations(docs);
             } catch (e) {
@@ -42,7 +51,11 @@ export default function LocationsClient() {
     const sortedLocations = [...locations].sort((a, b) => {
         if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
         if (sortBy === 'altitude') return (b.altitude || 0) - (a.altitude || 0);
-        if (sortBy === 'services') return (b.services?.length || 0) - (a.services?.length || 0);
+        if (sortBy === 'services') {
+            const countA = a.servicesCount ?? a.services?.length ?? 0;
+            const countB = b.servicesCount ?? b.services?.length ?? 0;
+            return countB - countA;
+        }
         if (sortBy === 'country') return (a.country || '').localeCompare(b.country || '');
         return 0;
     });
@@ -62,14 +75,17 @@ export default function LocationsClient() {
                                 {t('subtitle')}
                             </p>
                         </div>
-                        <Link
-                            href="/match"
-                            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-lg shadow-primary/20 group"
-                        >
-                            <Sparkles size={18} />
-                            {t('match_cta')}
-                            <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
-                        </Link>
+                        <div className="flex items-center gap-3">
+
+                            <Link
+                                href="/match"
+                                className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-lg shadow-primary/20 group"
+                            >
+                                <Sparkles size={18} />
+                                {t('match_cta')}
+                                <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
+                            </Link>
+                        </div>
                     </div>
                 </header>
 
@@ -112,55 +128,100 @@ export default function LocationsClient() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {sortedLocations.map((location) => (
-                            <Link
-                                key={location.id}
-                                href={`/locations/${location.name}`}
-                                className="group block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                            >
-                                <div className="aspect-[4/3] relative overflow-hidden bg-slate-200">
-                                    <img
-                                        src={location.seasonalImages?.[currentSeason] || location.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba'}
-                                        alt={location.name}
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+                        {sortedLocations.map((location) => {
+                            const isSelected = selectedLocations.some(l => l.id === location.id);
+                            return (
+                                <div key={location.id} className="relative group">
+                                    <Link
+                                        href={`/locations/${location.name}`}
+                                        className="block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                                    >
+                                        <div className="aspect-[4/3] relative overflow-hidden bg-slate-200">
+                                            <img
+                                                src={location.seasonalImages?.[currentSeason] || location.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba'}
+                                                alt={location.name}
+                                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 
-                                    <div className="absolute bottom-4 left-4 right-4">
-                                        <div className="text-white/90 text-sm font-medium mb-1 uppercase tracking-wider">
-                                            {location.region}, {location.country}
+                                            <div className="absolute bottom-4 left-4 right-4">
+                                                <div className="text-white/90 text-sm font-medium mb-1 uppercase tracking-wider">
+                                                    {location.region}, {location.country}
+                                                </div>
+                                                <h3 className="text-2xl font-display font-bold text-white">
+                                                    {location.name}
+                                                </h3>
+                                            </div>
                                         </div>
-                                        <h3 className="text-2xl font-display font-bold text-white">
-                                            {location.name}
-                                        </h3>
-                                    </div>
+
+                                        <div className="p-6">
+                                            <p className="text-slate-600 line-clamp-3 mb-4 text-sm leading-relaxed">
+                                                {location.description?.[currentSeason] || location.description?.['winter'] || t('no_description')}
+                                            </p>
+
+                                            <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs text-slate-400 uppercase font-bold">{t('altitude')}</span>
+                                                    <span className="text-sm font-bold text-slate-800">
+                                                        {location.altitude ? `${location.altitude}m` : 'N/D'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs text-slate-400 uppercase font-bold">{t('services')}</span>
+                                                    <span className="text-sm font-bold text-slate-800">
+                                                        {location.servicesCount ?? location.services?.length ?? 0}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Link>
+
+                                    {/* Quick Compare Button */}
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            if (isSelected) {
+                                                removeLocation(location.id);
+                                            } else {
+                                                if (selectedLocations.length >= 3) {
+                                                    setLimitModalOpen(true);
+                                                    return;
+                                                }
+                                                addLocation(location);
+                                                setLastAddedLocation(location.name);
+                                                setModalOpen(true);
+                                            }
+                                        }}
+                                        className={`absolute top-4 right-4 p-2 rounded-xl transition-all z-10 shadow-lg backdrop-blur-md ${isSelected
+                                            ? 'bg-primary text-white'
+                                            : 'bg-white/80 text-slate-600 hover:bg-white hover:text-primary'
+                                            }`}
+                                        title={isSelected ? tCommon('remove_from_compare') : tCommon('add_to_compare')}
+                                    >
+                                        {isSelected ? <Check size={20} /> : <Star size={20} />}
+                                    </button>
                                 </div>
-
-                                <div className="p-6">
-                                    <p className="text-slate-600 line-clamp-3 mb-4 text-sm leading-relaxed">
-                                        {location.description?.[currentSeason] || location.description?.['winter'] || t('no_description')}
-                                    </p>
-
-                                    <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
-                                        <div className="flex flex-col">
-                                            <span className="text-xs text-slate-400 uppercase font-bold">{t('altitude')}</span>
-                                            <span className="text-sm font-bold text-slate-800">
-                                                {location.altitude ? `${location.altitude}m` : 'N/D'}
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-xs text-slate-400 uppercase font-bold">{t('services')}</span>
-                                            <span className="text-sm font-bold text-slate-800">{location.services?.length || 0}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
 
                 <SuggestLocationBanner />
             </main>
+
+            <CompareAddedModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                locationName={lastAddedLocation}
+            />
+
+            <CompareLimitModal
+                isOpen={limitModalOpen}
+                onClose={() => setLimitModalOpen(false)}
+                selectedLocations={selectedLocations}
+                onRemove={removeLocation}
+            />
         </div>
     );
 }

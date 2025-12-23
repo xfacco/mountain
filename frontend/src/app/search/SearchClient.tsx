@@ -1,19 +1,22 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
-import { Search as SearchIcon, MapPin, X, Loader2, SlidersHorizontal, ChevronRight, ChevronDown, Check } from 'lucide-react';
 import Link from 'next/link';
 import { useSeasonStore } from '@/store/season-store';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SuggestLocationBanner } from '@/components/ui/SuggestLocationBanner';
+import { useCompareStore } from '@/store/compare-store';
+import { Search as SearchIcon, MapPin, X, Loader2, SlidersHorizontal, ChevronRight, ChevronDown, Check, Star, Link2 as LinkIcon } from 'lucide-react';
+import { CompareAddedModal } from '@/components/ui/CompareAddedModal';
+import { CompareLimitModal } from '@/components/ui/CompareLimitModal';
 
 // Helper to normalize strings for search (remove accents, lowercase)
 const normalize = (s: string) => s?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
-export default function SearchClient() {
+function SearchContent() {
     const { currentSeason } = useSeasonStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [locations, setLocations] = useState<any[]>([]);
@@ -26,8 +29,17 @@ export default function SearchClient() {
 
     const t = useTranslations('Search');
     const tLoc = useTranslations('Locations');
+    const tLocDetail = useTranslations('LocationDetail');
+    const tCommon = useTranslations('Common');
 
+    const [copied, setCopied] = useState(false);
+
+    const { selectedLocations, addLocation, removeLocation } = useCompareStore();
     const searchParams = useSearchParams();
+
+    const [modalOpen, setModalOpen] = useState(false);
+    const [limitModalOpen, setLimitModalOpen] = useState(false);
+    const [lastAddedLocation, setLastAddedLocation] = useState('');
 
     // Load Data & Handle Query Params
     useEffect(() => {
@@ -57,14 +69,54 @@ export default function SearchClient() {
         // Initialize from URL
         const q = searchParams.get('q');
         const tag = searchParams.get('tag');
+        const sharedId = searchParams.get('id');
 
         if (q) setSearchTerm(q);
         if (tag) {
             setSelectedTags([tag]);
         }
+
+        if (sharedId) {
+            const loadSharedSearch = async () => {
+                try {
+                    const { doc, getDoc } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase');
+                    const docSnap = await getDoc(doc(db, 'search_logs', sharedId));
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+
+                        // Log the view action
+                        try {
+                            const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+                            // We fetch IP again if userIP is not yet set or is default
+                            let currentIp = userIP;
+                            if (!currentIp || currentIp === '0.0.0.0') {
+                                const res = await fetch('https://api.ipify.org?format=json');
+                                const ipData = await res.json();
+                                currentIp = ipData.ip;
+                            }
+                            await addDoc(collection(db, 'share_logs'), {
+                                ip: currentIp,
+                                page: 'search',
+                                action: 'view',
+                                logId: sharedId,
+                                timestamp: serverTimestamp()
+                            });
+                        } catch (logErr) {
+                            console.error("Error logging share view:", logErr);
+                        }
+
+                        if (data.query !== undefined) setSearchTerm(data.query);
+                        if (data.tags) setSelectedTags(data.tags);
+                        setCurrentLogId(sharedId);
+                    }
+                } catch (e) {
+                    console.error("Failed to load shared search", e);
+                }
+            };
+            loadSharedSearch();
+        }
     }, [searchParams]);
-
-
 
     // Extract unique tags grouped by category
     const tagsByCategory = useMemo(() => {
@@ -178,6 +230,30 @@ export default function SearchClient() {
         }
     };
 
+    const copyLink = async () => {
+        if (!currentLogId) return;
+        try {
+            const url = `${window.location.origin}/search?id=${currentLogId}`;
+            await navigator.clipboard.writeText(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+
+            // Log the share action
+            const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await addDoc(collection(db, 'share_logs'), {
+                ip: userIP,
+                page: 'search',
+                action: 'copy',
+                url: url,
+                logId: currentLogId,
+                timestamp: serverTimestamp()
+            });
+        } catch (e) {
+            console.error("Failed to copy/log share link", e);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50">
             <Navbar />
@@ -185,7 +261,7 @@ export default function SearchClient() {
             <div className="pt-24 pb-12 px-6 container mx-auto max-w-5xl">
 
                 {/* Search Header */}
-                <div className="text-center mb-12 space-y-4">
+                <div className="text-center mb-12 space-y-4 relative">
                     <h1 className="text-3xl font-black text-slate-900">{t('hero_title')}</h1>
                     <p className="text-slate-500">{t('hero_subtitle')}</p>
                 </div>
@@ -216,13 +292,25 @@ export default function SearchClient() {
                 {/* Filter Toggles & Active Filters Area */}
                 <div className="mb-8 flex flex-col gap-4">
                     <div className="flex items-center gap-4 justify-between">
-                        <button
-                            onClick={() => setIsFilterOpen(!isFilterOpen)}
-                            className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all border cursor-pointer ${isFilterOpen ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:border-primary'}`}
-                        >
-                            <SlidersHorizontal size={18} />
-                            {isFilterOpen ? t('hide_filters') : t('show_filters')}
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all border cursor-pointer ${isFilterOpen ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:border-primary'}`}
+                            >
+                                <SlidersHorizontal size={18} />
+                                {isFilterOpen ? t('hide_filters') : t('show_filters')}
+                            </button>
+
+                            {currentLogId && (
+                                <button
+                                    onClick={copyLink}
+                                    className="flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-all border bg-white text-slate-700 border-slate-200 hover:border-primary shadow-sm active:scale-95 cursor-pointer"
+                                >
+                                    <LinkIcon size={18} className={copied ? "text-green-500" : "text-slate-400"} />
+                                    {copied ? tCommon('link_copied') : tCommon('copy_link')}
+                                </button>
+                            )}
+                        </div>
 
                         <div className="text-sm font-medium text-slate-500">
                             {t('results_found', { count: filteredLocations.length })}
@@ -262,58 +350,100 @@ export default function SearchClient() {
                         ) : (
                             <div className="grid grid-cols-1 gap-6">
                                 {filteredLocations.length > 0 ? (
-                                    filteredLocations.map(location => (
-                                        <Link
-                                            href={`/locations/${location.name}`}
-                                            key={location.id}
-                                            onClick={() => handleResultClick(location.name)}
-                                            className="group bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col sm:flex-row min-h-[220px]"
-                                        >
-                                            {/* Image */}
-                                            <div className="w-full sm:w-2/5 relative overflow-hidden h-48 sm:h-auto">
-                                                <img
-                                                    src={location.seasonalImages?.[currentSeason] || location.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba'}
-                                                    alt={location.name}
-                                                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                                                />
-                                                <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent sm:block hidden" />
+                                    filteredLocations.map(location => {
+                                        const isSelected = selectedLocations.some(l => l.id === location.id);
+                                        return (
+                                            <div key={location.id} className="relative group">
+                                                <Link
+                                                    href={`/locations/${location.name}`}
+                                                    onClick={() => handleResultClick(location.name)}
+                                                    className="block bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col sm:flex-row min-h-[220px]"
+                                                >
+                                                    {/* Image */}
+                                                    <div className="w-full sm:w-2/5 relative overflow-hidden h-48 sm:h-auto">
+                                                        <img
+                                                            src={location.seasonalImages?.[currentSeason] || location.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba'}
+                                                            alt={location.name}
+                                                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                                        />
+                                                        <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent sm:block hidden" />
 
-                                                {/* Match Indicator (Fake for aesthetic) */}
-                                                <div className="absolute top-4 left-4">
-                                                    <div className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black uppercase text-primary shadow-lg flex items-center gap-1">
-                                                        <Check size={10} /> {t('recommended')}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Content */}
-                                            <div className="flex-1 p-8 flex flex-col justify-between">
-                                                <div>
-                                                    <div className="flex justify-between items-start mb-3">
-                                                        <div>
-                                                            <div className="flex items-center gap-2 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-1">
-                                                                <MapPin size={10} /> {location.country}
+                                                        {/* Match Indicator (Fake for aesthetic) */}
+                                                        <div className="absolute top-4 left-4">
+                                                            <div className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black uppercase text-primary shadow-lg flex items-center gap-1">
+                                                                <Check size={10} /> {t('recommended')}
                                                             </div>
-                                                            <h3 className="font-bold text-slate-900 text-2xl group-hover:text-primary transition-colors">{location.name}</h3>
                                                         </div>
                                                     </div>
-                                                    <p className="text-slate-500 text-sm line-clamp-2 leading-relaxed mb-4">
-                                                        {location.description?.[currentSeason] || location.description?.['winter'] || tLoc('no_description')}
-                                                    </p>
-                                                </div>
 
-                                                {/* Tags Preview */}
-                                                <div className="flex flex-wrap gap-2">
-                                                    {location.tags?.vibe?.slice(0, 3).map((t: string) => (
-                                                        <span key={t} className="text-[10px] uppercase font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 shadow-sm">{t}</span>
-                                                    ))}
-                                                    {location.tags?.highlights?.slice(0, 2).map((t: string) => (
-                                                        <span key={t} className="text-[10px] font-black text-primary bg-primary/5 px-2.5 py-1 rounded-lg border border-primary/10 shadow-sm">{t}</span>
-                                                    ))}
-                                                </div>
+                                                    {/* Content */}
+                                                    <div className="flex-1 p-8 flex flex-col justify-between">
+                                                        <div>
+                                                            <div className="flex justify-between items-start mb-3">
+                                                                <div>
+                                                                    <div className="flex items-center gap-2 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-1">
+                                                                        <MapPin size={10} /> {location.country}
+                                                                    </div>
+                                                                    <h3 className="font-bold text-slate-900 text-2xl group-hover:text-primary transition-colors">{location.name}</h3>
+                                                                </div>
+                                                            </div>
+                                                            <p className="text-slate-500 text-sm line-clamp-2 leading-relaxed mb-4">
+                                                                {location.description?.[currentSeason] || location.description?.['winter'] || tLoc('no_description')}
+                                                            </p>
+
+                                                            {/* Info Row (Altitude & Services) */}
+                                                            <div className="flex items-center gap-6 mb-6">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">{tLoc('altitude')}</span>
+                                                                    <span className="text-sm font-bold text-slate-700">{location.altitude ? `${location.altitude}m` : 'N/D'}</span>
+                                                                </div>
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">{tLoc('services')}</span>
+                                                                    <span className="text-sm font-bold text-slate-700">{location.servicesCount ?? location.services?.length ?? 0}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Tags Preview */}
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {location.tags?.vibe?.slice(0, 3).map((t: string) => (
+                                                                <span key={t} className="text-[10px] uppercase font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 shadow-sm">{t}</span>
+                                                            ))}
+                                                            {location.tags?.highlights?.slice(0, 2).map((t: string) => (
+                                                                <span key={t} className="text-[10px] font-black text-primary bg-primary/5 px-2.5 py-1 rounded-lg border border-primary/10 shadow-sm">{t}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </Link>
+
+                                                {/* Quick Compare Button */}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        if (isSelected) {
+                                                            removeLocation(location.id);
+                                                        } else {
+                                                            if (selectedLocations.length >= 3) {
+                                                                setLimitModalOpen(true);
+                                                                return;
+                                                            }
+                                                            addLocation(location);
+                                                            setLastAddedLocation(location.name);
+                                                            setModalOpen(true);
+                                                        }
+                                                    }}
+                                                    className={`absolute top-4 right-4 p-2 rounded-xl transition-all z-10 shadow-lg backdrop-blur-md ${isSelected
+                                                        ? 'bg-primary text-white'
+                                                        : 'bg-white/70 text-slate-600 hover:bg-white hover:text-primary'
+                                                        }`}
+                                                    title={isSelected ? tLocDetail('remove_from_compare') : tLocDetail('add_to_compare')}
+                                                >
+                                                    {isSelected ? <Check size={20} /> : <Star size={20} />}
+                                                </button>
                                             </div>
-                                        </Link>
-                                    ))
+                                        );
+                                    })
                                 ) : (
                                     <div className="col-span-full text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 shadow-inner">
                                         <SearchIcon size={48} className="mx-auto text-slate-200 mb-6" />
@@ -418,8 +548,28 @@ export default function SearchClient() {
                     )}
                 </AnimatePresence>
 
+                <CompareAddedModal
+                    isOpen={modalOpen}
+                    onClose={() => setModalOpen(false)}
+                    locationName={lastAddedLocation}
+                />
+
+                <CompareLimitModal
+                    isOpen={limitModalOpen}
+                    onClose={() => setLimitModalOpen(false)}
+                    selectedLocations={selectedLocations}
+                    onRemove={removeLocation}
+                />
                 <SuggestLocationBanner />
             </div>
         </div>
+    );
+}
+
+export default function SearchClient() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center"><Loader2 className="animate-spin text-primary" size={32} /></div>}>
+            <SearchContent />
+        </Suspense>
     );
 }

@@ -142,7 +142,9 @@
         },
         "no_items": "No items listed.",
         "winter": "Winter",
-        "summer": "Summer"
+        "summer": "Summer",
+        "altitude": "Altitude",
+        "services": "Services"
     },
     "Compare": {
         "title": "Compare Locations",
@@ -308,6 +310,9 @@
             "austria": "Austria",
             "switzerland": "Switzerland",
             "france": "France",
+            "slovenia": "Slovenia",
+            "spain": "Spain",
+            "bulgaria": "Bulgaria",
             "any": "Anywhere"
         },
         "no_matches": "We couldn't find a perfect match, but here are some popular destinations.",
@@ -317,6 +322,15 @@
     "Common": {
         "suggest_location_title": "Don't see your favorite destination?",
         "suggest_location_desc": "Help us expand! Suggest a new mountain resort and we'll analyze it for the community.",
-        "suggest_location_button": "Suggest a Location"
+        "suggest_location_button": "Suggest a Location",
+        "added_to_compare_desc": "Successfully added to your comparison list!",
+        "go_to_compare": "Go to comparator",
+        "continue_browsing": "Continue browsing",
+        "compare_limit_title": "Limit reached",
+        "compare_limit_desc": "You can compare up to 3 locations. Remove one to add a new one.",
+        "remove": "Remove",
+        "close": "Close",
+        "copy_link": "Copy Link",
+        "link_copied": "Link Copied!"
     }
 }
