@@ -10,6 +10,7 @@ import { Check, Plus, X, ChevronDown, ChevronRight, ArrowLeft, ArrowRight, Spark
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
+import { RadarChart } from '@/components/ui/RadarChart';
 
 
 function CompareContent() {
@@ -564,6 +565,19 @@ function CompareContent() {
                                             const weights = getWeights('vibe');
                                             return (
                                                 <td key={`weights-vibe-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                    {Object.keys(weights).length > 0 && (
+                                                        <div className="mb-4 bg-slate-50/50 rounded-xl border border-slate-100 flex justify-center py-6 h-64">
+                                                            <RadarChart
+                                                                data={TAG_CATEGORIES.vibe.map(config => {
+                                                                    const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                                    const val = tagKey ? weights[tagKey] : 0;
+                                                                    return { label: config.label, value: val };
+                                                                }).filter(d => d.value > 0)}
+                                                                color="#a855f7"
+                                                                size={200}
+                                                            />
+                                                        </div>
+                                                    )}
                                                     <div className="flex flex-wrap gap-2">
                                                         {[...TAG_CATEGORIES.vibe].sort((a, b) => a.label.localeCompare(b.label)).map((config) => {
                                                             const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
@@ -571,7 +585,7 @@ function CompareContent() {
                                                             if (val === null || val === undefined) return null;
                                                             return (
                                                                 <div key={config.id} className="flex flex-col items-center bg-purple-50 border border-purple-100 rounded-lg px-2 py-1 min-w-[60px]">
-                                                                    <span className="text-[10px] font-bold text-purple-700 capitalize">{config.label}</span>
+                                                                    <span className="text-[10px] font-bold text-purple-700 capitalize leading-tight">{config.label}</span>
                                                                     <span className="text-sm font-black text-purple-900">{val}%</span>
                                                                 </div>
                                                             );
@@ -597,6 +611,19 @@ function CompareContent() {
                                             const weights = getWeights('target');
                                             return (
                                                 <td key={`weights-target-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                    {Object.keys(weights).length > 0 && (
+                                                        <div className="mb-4 bg-slate-50/50 rounded-xl border border-slate-100 flex justify-center py-6 h-64">
+                                                            <RadarChart
+                                                                data={TAG_CATEGORIES.target.map(config => {
+                                                                    const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                                    const val = tagKey ? weights[tagKey] : 0;
+                                                                    return { label: config.label, value: val };
+                                                                }).filter(d => d.value > 0)}
+                                                                color="#3b82f6"
+                                                                size={200}
+                                                            />
+                                                        </div>
+                                                    )}
                                                     <div className="flex flex-wrap gap-2">
                                                         {[...TAG_CATEGORIES.target].sort((a, b) => a.label.localeCompare(b.label)).map((config) => {
                                                             const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
@@ -604,7 +631,7 @@ function CompareContent() {
                                                             if (val === null || val === undefined) return null;
                                                             return (
                                                                 <div key={config.id} className="flex flex-col items-center bg-blue-50 border border-blue-100 rounded-lg px-2 py-1 min-w-[60px]">
-                                                                    <span className="text-[10px] font-bold text-blue-700 capitalize">{config.label}</span>
+                                                                    <span className="text-[10px] font-bold text-blue-700 capitalize leading-tight">{config.label}</span>
                                                                     <span className="text-sm font-black text-blue-900">{val}%</span>
                                                                 </div>
                                                             );
@@ -630,6 +657,19 @@ function CompareContent() {
                                             const weights = getWeights('activities');
                                             return (
                                                 <td key={`weights-act-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                    {Object.keys(weights).length > 0 && (
+                                                        <div className="mb-4 bg-slate-50/50 rounded-xl border border-slate-100 flex justify-center py-6 h-64">
+                                                            <RadarChart
+                                                                data={TAG_CATEGORIES.activities.map(config => {
+                                                                    const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                                    const val = tagKey ? weights[tagKey] : 0;
+                                                                    return { label: config.label, value: val };
+                                                                }).filter(d => d.value > 0)}
+                                                                color="#10b981"
+                                                                size={200}
+                                                            />
+                                                        </div>
+                                                    )}
                                                     <div className="flex flex-wrap gap-2">
                                                         {[...TAG_CATEGORIES.activities].sort((a, b) => a.label.localeCompare(b.label)).map((config) => {
                                                             const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
@@ -637,7 +677,7 @@ function CompareContent() {
                                                             if (val === null || val === undefined) return null;
                                                             return (
                                                                 <div key={config.id} className="flex flex-col items-center bg-green-50 border border-green-100 rounded-lg px-2 py-1 min-w-[60px]">
-                                                                    <span className="text-[10px] font-bold text-green-700 capitalize">{config.label}</span>
+                                                                    <span className="text-[10px] font-bold text-green-700 capitalize leading-tight">{config.label}</span>
                                                                     <span className="text-sm font-black text-green-900">{val}%</span>
                                                                 </div>
                                                             );

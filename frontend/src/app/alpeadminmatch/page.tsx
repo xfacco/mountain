@@ -672,7 +672,9 @@ function AdminDashboard() {
                                                                     {['winter', 'summer', 'autumn', 'spring'].map((s) => (
                                                                         <div key={s} className="w-full h-full">
                                                                             {loc.seasonalImages[s] ? (
-                                                                                <img src={loc.seasonalImages[s]} alt={s} className="w-full h-full object-cover" title={`${s.charAt(0).toUpperCase()}${s.slice(1)}`} />
+                                                                                <a href={loc.seasonalImages[s]} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+                                                                                    <img src={loc.seasonalImages[s]} alt={s} className="w-full h-full object-cover shadow-sm hover:opacity-80 transition-opacity" title={`${s.charAt(0).toUpperCase()}${s.slice(1)} - Apri immagine`} />
+                                                                                </a>
                                                                             ) : (
                                                                                 <div className="w-full h-full bg-slate-200" />
                                                                             )}
@@ -680,7 +682,9 @@ function AdminDashboard() {
                                                                     ))}
                                                                 </div>
                                                             ) : loc.coverImage ? (
-                                                                <img src={loc.coverImage} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                                                                <a href={loc.coverImage} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 hover:opacity-80 transition-opacity" title="Apri immagine">
+                                                                    <img src={loc.coverImage} alt="" className="w-12 h-12 rounded-lg object-cover shadow-sm" />
+                                                                </a>
                                                             ) : (
                                                                 <div className="w-12 h-12 rounded-lg bg-slate-100 flex-shrink-0" />
                                                             )}
@@ -1653,14 +1657,24 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                             <div className="col-span-2">
                                 <div className="flex justify-between items-center mb-2">
                                     <label className="block text-sm font-medium text-slate-700">Immagini Stagionali (URL)</label>
-                                    <a
-                                        href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' immagini di grandi dimensioni')}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold"
-                                    >
-                                        <Search size={10} /> Cerca immagini HQ
-                                    </a>
+                                    <div className="flex gap-4">
+                                        <a
+                                            href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' immagini di grandi dimensioni')}&tbm=isch`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold"
+                                        >
+                                            <Search size={10} /> Cerca immagini HQ
+                                        </a>
+                                        <a
+                                            href={`https://www.google.com/search?q=${encodeURIComponent('Search images about mountain location ' + formData.name + ' in ' + (formData.country || '') + '. Search it in freepik.com or pexels.com or unsplash.com or shotstash.com or in tourist information portals of the location')}&tbm=isch`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[10px] text-indigo-600 hover:underline flex items-center gap-1 font-bold"
+                                        >
+                                            <ExternalLink size={10} /> Free images
+                                        </a>
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     {['winter', 'spring', 'summer', 'autumn'].map((season) => (
@@ -1675,7 +1689,9 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                                     placeholder={`URL ${season}...`}
                                                 />
                                                 {(formData.seasonalImages?.[season]) && (
-                                                    <img src={formData.seasonalImages[season]} className="w-8 h-8 rounded object-cover border" alt={season} />
+                                                    <a href={formData.seasonalImages[season]} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" title="Apri immagine">
+                                                        <img src={formData.seasonalImages[season]} className="w-8 h-8 rounded object-cover border shadow-sm" alt={season} />
+                                                    </a>
                                                 )}
                                             </div>
                                         </div>

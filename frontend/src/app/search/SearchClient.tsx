@@ -9,7 +9,7 @@ import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SuggestLocationBanner } from '@/components/ui/SuggestLocationBanner';
 import { useCompareStore } from '@/store/compare-store';
-import { Search as SearchIcon, MapPin, X, Loader2, SlidersHorizontal, ChevronRight, ChevronDown, Check, Star, Link2 as LinkIcon } from 'lucide-react';
+import { Search as SearchIcon, MapPin, X, Loader2, SlidersHorizontal, ChevronRight, ChevronDown, Check, Star, Link2 as LinkIcon, Sparkles } from 'lucide-react';
 import { CompareAddedModal } from '@/components/ui/CompareAddedModal';
 import { CompareLimitModal } from '@/components/ui/CompareLimitModal';
 
@@ -23,7 +23,7 @@ function SearchContent() {
     const [loading, setLoading] = useState(true);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const [openCategories, setOpenCategories] = useState<string[]>(['vibe', 'target']);
+    const [openCategories, setOpenCategories] = useState<string[]>([]);
     const [userIP, setUserIP] = useState('0.0.0.0');
     const [currentLogId, setCurrentLogId] = useState<string | null>(null);
 
@@ -31,6 +31,7 @@ function SearchContent() {
     const tLoc = useTranslations('Locations');
     const tLocDetail = useTranslations('LocationDetail');
     const tCommon = useTranslations('Common');
+    const tNav = useTranslations('Navbar');
 
     const [copied, setCopied] = useState(false);
 
@@ -301,6 +302,14 @@ function SearchContent() {
                                 {isFilterOpen ? t('hide_filters') : t('show_filters')}
                             </button>
 
+                            <Link
+                                href="/match"
+                                className="hidden lg:flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all bg-slate-900 text-white shadow-lg shadow-slate-200/50 hover:bg-slate-800 hover:-translate-y-0.5 active:scale-95 cursor-pointer border border-slate-800"
+                            >
+                                <Sparkles size={18} className="text-yellow-400" />
+                                {tNav('match')}
+                            </Link>
+
                             {currentLogId && (
                                 <button
                                     onClick={copyLink}
@@ -367,13 +376,6 @@ function SearchContent() {
                                                             className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                                         />
                                                         <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent sm:block hidden" />
-
-                                                        {/* Match Indicator (Fake for aesthetic) */}
-                                                        <div className="absolute top-4 left-4">
-                                                            <div className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black uppercase text-primary shadow-lg flex items-center gap-1">
-                                                                <Check size={10} /> {t('recommended')}
-                                                            </div>
-                                                        </div>
                                                     </div>
 
                                                     {/* Content */}
@@ -503,29 +505,56 @@ function SearchContent() {
 
                                 {/* Scrollable Filter Categories */}
                                 <div className="p-8 overflow-y-auto space-y-8 flex-1">
-                                    {Object.entries(tagsByCategory).map(([category, tags]) => (
-                                        <div key={category} className="space-y-4">
-                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">
-                                                {t(`categories.${category}` as any)}
-                                            </h4>
-                                            <div className="flex flex-wrap gap-2">
-                                                {tags.map(tag => {
-                                                    const isSelected = selectedTags.includes(tag);
-                                                    return (
-                                                        <button
-                                                            key={tag}
-                                                            onClick={() => toggleTag(tag)}
-                                                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${isSelected
-                                                                ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
-                                                                : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-slate-300 hover:bg-white'}`}
+                                    {Object.entries(tagsByCategory).map(([category, tags]) => {
+                                        const isOpen = openCategories.includes(category);
+                                        return (
+                                            <div key={category} className="border-b border-slate-100 last:border-0 pb-4">
+                                                <button
+                                                    onClick={() => {
+                                                        setOpenCategories(prev =>
+                                                            prev.includes(category)
+                                                                ? prev.filter(c => c !== category)
+                                                                : [...prev, category]
+                                                        );
+                                                    }}
+                                                    className="w-full flex items-center justify-between py-2 group cursor-pointer"
+                                                >
+                                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] group-hover:text-slate-600 transition-colors">
+                                                        {t(`categories.${category}` as any)}
+                                                    </h4>
+                                                    {isOpen ? <ChevronDown size={16} className="text-slate-400" /> : <ChevronRight size={16} className="text-slate-400" />}
+                                                </button>
+
+                                                <AnimatePresence>
+                                                    {isOpen && (
+                                                        <motion.div
+                                                            initial={{ height: 0, opacity: 0 }}
+                                                            animate={{ height: 'auto', opacity: 1 }}
+                                                            exit={{ height: 0, opacity: 0 }}
+                                                            className="overflow-hidden"
                                                         >
-                                                            {tag}
-                                                        </button>
-                                                    );
-                                                })}
+                                                            <div className="flex flex-wrap gap-2 pt-4">
+                                                                {tags.map(tag => {
+                                                                    const isSelected = selectedTags.includes(tag);
+                                                                    return (
+                                                                        <button
+                                                                            key={tag}
+                                                                            onClick={() => toggleTag(tag)}
+                                                                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${isSelected
+                                                                                ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
+                                                                                : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-slate-300 hover:bg-white'}`}
+                                                                        >
+                                                                            {tag}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
 
                                 {/* Footer */}

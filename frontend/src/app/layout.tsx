@@ -20,9 +20,9 @@ export const metadata: Metadata = {
   creator: 'Alpe Match',
   publisher: 'Alpe Match',
   icons: {
-    icon: '/favicon.png',
-    shortcut: '/favicon.png',
-    apple: '/favicon.png',
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
   },
   openGraph: {
     type: 'website',
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     siteName: 'Alpe Match',
     images: [
       {
-        url: '/alpe_match_logo.png',
+        url: '/alpematch_logo_social.png',
         width: 1200,
         height: 630,
         alt: 'Alpe Match Preview',
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Alpe Match - The Alpine Comparator',
     description: 'Compare mountain destinations for every season.',
-    images: ['/alpe_match_logo.png'],
+    images: ['/alpematch_logo_social.png'],
   },
   robots: {
     index: true,

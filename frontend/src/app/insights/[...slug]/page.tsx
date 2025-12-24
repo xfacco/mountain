@@ -131,7 +131,7 @@ export default async function InsightPage({ params }: Props) {
                         {/* 3. LINK TO FULL LOCATION */}
                         <Link
                             href={`/locations/${encodeURIComponent(location.name)}`}
-                            className="inline-flex items-center gap-2 bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-primary hover:text-white transition-all group"
+                            className="inline-flex items-center gap-2 bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-slate-100 transition-all group"
                         >
                             {t('view_full_profile')}
                             <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />

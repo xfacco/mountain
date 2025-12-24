@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
-import { MapPin, Calendar, Star, Info, ChevronLeft, ArrowLeft, Sun, Snowflake, Cloud, Wind, Mountain, Home, Bus, Quote, AlertCircle, Check, X, Accessibility, HelpCircle, Layers, List, Search, ArrowRight, Sparkles, Link2 as LinkIcon } from 'lucide-react';
+import { MapPin, Calendar, Star, Info, ChevronLeft, ChevronRight, ArrowLeft, Sun, Snowflake, Cloud, Wind, Mountain, Home, Bus, Quote, AlertCircle, Check, X, Accessibility, HelpCircle, Layers, List, Search, ArrowRight, Sparkles, Link2 as LinkIcon } from 'lucide-react';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
 import Link from 'next/link';
 import { useSeasonStore } from '@/store/season-store';
@@ -11,6 +11,8 @@ import { useCompareStore } from '@/store/compare-store';
 import { useTranslations } from 'next-intl';
 import { CompareAddedModal } from '@/components/ui/CompareAddedModal';
 import { CompareLimitModal } from '@/components/ui/CompareLimitModal';
+import { RadarChart } from '@/components/ui/RadarChart';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function LocationDetailClient({ initialData }: { initialData?: any }) {
     const params = useParams();
@@ -43,6 +45,38 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
             .then(data => setUserIp(data.ip))
             .catch(err => console.error("Error fetching IP", err));
     }, []);
+
+    // Image Carousel Logic
+    const availableImagesData = [
+        ...(location?.seasonalImages?.winter ? [{ src: location.seasonalImages.winter, season: 'winter' }] : []),
+        ...(location?.seasonalImages?.spring ? [{ src: location.seasonalImages.spring, season: 'spring' }] : []),
+        ...(location?.seasonalImages?.summer ? [{ src: location.seasonalImages.summer, season: 'summer' }] : []),
+        ...(location?.seasonalImages?.autumn ? [{ src: location.seasonalImages.autumn, season: 'autumn' }] : []),
+    ];
+
+    // Filter duplicates if any (e.g. fallback images)
+    const availableImages = availableImagesData.filter((v, i, a) => a.findIndex(t => t.src === v.src) === i);
+
+    const [currentImgIdx, setCurrentImgIdx] = useState(0);
+
+    useEffect(() => {
+        if (!location) return;
+        const idx = availableImages.findIndex(img => img.season === currentSeason);
+        if (idx !== -1) {
+            setCurrentImgIdx(idx);
+        }
+    }, [currentSeason, location?.id]);
+
+    const nextImg = (e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        e?.preventDefault();
+        setCurrentImgIdx((prev) => (prev + 1) % availableImages.length);
+    };
+    const prevImg = (e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        e?.preventDefault();
+        setCurrentImgIdx((prev) => (prev - 1 + availableImages.length) % availableImages.length);
+    };
 
     // Log view if shared link
     useEffect(() => {
@@ -226,13 +260,56 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                     <div className="space-y-8 h-fit lg:sticky lg:bottom-8 self-end">
                         {/* Identity Card */}
                         <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                            <div className="aspect-[4/3] rounded-2xl overflow-hidden mb-6 relative">
-                                <img
-                                    src={location.seasonalImages?.[currentSeason] || location.coverImage || location.seasonalImages?.winter}
-                                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                                    alt={location.name}
-                                />
+                            <div className="aspect-[4/3] rounded-2xl overflow-hidden mb-6 relative group/carousel">
+                                <AnimatePresence mode="wait">
+                                    <motion.img
+                                        key={availableImages[currentImgIdx]?.src || 'fallback'}
+                                        src={availableImages[currentImgIdx]?.src || location.coverImage || location.seasonalImages?.winter || '/logo_alpematch.png'}
+                                        initial={{ opacity: 0, scale: 1.1 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        transition={{ duration: 0.5, ease: "easeInOut" }}
+                                        className="w-full h-full object-cover"
+                                        alt={location.name}
+                                    />
+                                </AnimatePresence>
 
+                                {/* Gradient Overlay */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 pointer-events-none" />
+
+                                {availableImages.length > 1 && (
+                                    <>
+                                        <button
+                                            onClick={prevImg}
+                                            className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/40 transition-all opacity-0 group-hover/carousel:opacity-100 z-10 border border-white/30"
+                                            aria-label="Previous image"
+                                        >
+                                            <ChevronLeft size={20} />
+                                        </button>
+                                        <button
+                                            onClick={nextImg}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/40 transition-all opacity-0 group-hover/carousel:opacity-100 z-10 border border-white/30"
+                                            aria-label="Next image"
+                                        >
+                                            <ChevronRight size={20} />
+                                        </button>
+
+                                        {/* Dots Navigation */}
+                                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                                            {availableImages.map((_, i) => (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => setCurrentImgIdx(i)}
+                                                    className={`h-1.5 rounded-full transition-all duration-300 ${i === currentImgIdx
+                                                        ? 'bg-white w-6 shadow-lg shadow-white/20'
+                                                        : 'bg-white/40 w-1.5 hover:bg-white/60'
+                                                        }`}
+                                                    aria-label={`Go to image ${i + 1}`}
+                                                />
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
                             <div className="px-2">
@@ -241,11 +318,7 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                     <span className="flex items-center gap-1">
                                         <MapPin size={14} /> {location.region}, {location.country}
                                     </span>
-                                    {location.altitude && (
-                                        <span className="flex items-center gap-1 font-medium bg-slate-100 px-2 py-0.5 rounded text-slate-700">
-                                            <Mountain size={14} /> {location.altitude}m
-                                        </span>
-                                    )}
+
                                     {location.coordinates && (
                                         <a
                                             href={`https://www.google.com/maps/search/?api=1&query=${location.coordinates.lat},${location.coordinates.lng}`}
@@ -448,19 +521,33 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                                         <div className="w-1 h-3 bg-purple-500 rounded-full"></div>
                                                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Vibe</h4>
                                                     </div>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {TAG_CATEGORIES.vibe.map(config => {
-                                                            const weights = location.tagWeights?.vibe || {};
-                                                            const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
-                                                            const val = tagKey ? weights[tagKey] : null;
-                                                            if (val === null || val === undefined) return null;
-                                                            return (
-                                                                <div key={config.id} className="flex flex-col items-center bg-purple-50 border border-purple-100 rounded-xl px-3 py-1.5 min-w-[80px]">
-                                                                    <span className="text-[10px] font-bold text-purple-700 capitalize leading-tight mb-0.5 text-center">{config.label}</span>
-                                                                    <span className="text-sm font-black text-purple-900">{val}%</span>
-                                                                </div>
-                                                            );
-                                                        })}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+                                                        <div className="flex justify-center order-2 md:order-1">
+                                                            <RadarChart
+                                                                data={TAG_CATEGORIES.vibe.map(config => {
+                                                                    const weights = location.tagWeights?.vibe || {};
+                                                                    const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                                    const val = tagKey ? weights[tagKey] : 0;
+                                                                    return { label: config.label, value: val };
+                                                                }).filter(d => d.value > 0)}
+                                                                color="#a855f7"
+                                                                size={280}
+                                                            />
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2 order-1 md:order-2 content-start">
+                                                            {TAG_CATEGORIES.vibe.map(config => {
+                                                                const weights = location.tagWeights?.vibe || {};
+                                                                const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                                const val = tagKey ? weights[tagKey] : null;
+                                                                if (val === null || val === undefined) return null;
+                                                                return (
+                                                                    <div key={config.id} className="flex flex-col items-center bg-purple-50 border border-purple-100 rounded-xl px-3 py-1.5 min-w-[80px]">
+                                                                        <span className="text-[10px] font-bold text-purple-700 capitalize leading-tight mb-0.5 text-center">{config.label}</span>
+                                                                        <span className="text-sm font-black text-purple-900">{val}%</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -470,19 +557,33 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                                         <div className="w-1 h-3 bg-blue-500 rounded-full"></div>
                                                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Target</h4>
                                                     </div>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {TAG_CATEGORIES.target.map(config => {
-                                                            const weights = location.tagWeights?.target || {};
-                                                            const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
-                                                            const val = tagKey ? weights[tagKey] : null;
-                                                            if (val === null || val === undefined) return null;
-                                                            return (
-                                                                <div key={config.id} className="flex flex-col items-center bg-blue-50 border border-blue-100 rounded-xl px-3 py-1.5 min-w-[80px]">
-                                                                    <span className="text-[10px] font-bold text-blue-700 capitalize leading-tight mb-0.5 text-center">{config.label}</span>
-                                                                    <span className="text-sm font-black text-blue-900">{val}%</span>
-                                                                </div>
-                                                            );
-                                                        })}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+                                                        <div className="flex justify-center order-2 md:order-1">
+                                                            <RadarChart
+                                                                data={TAG_CATEGORIES.target.map(config => {
+                                                                    const weights = location.tagWeights?.target || {};
+                                                                    const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                                    const val = tagKey ? weights[tagKey] : 0;
+                                                                    return { label: config.label, value: val };
+                                                                }).filter(d => d.value > 0)}
+                                                                color="#3b82f6"
+                                                                size={260}
+                                                            />
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2 order-1 md:order-2 content-start">
+                                                            {TAG_CATEGORIES.target.map(config => {
+                                                                const weights = location.tagWeights?.target || {};
+                                                                const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                                const val = tagKey ? weights[tagKey] : null;
+                                                                if (val === null || val === undefined) return null;
+                                                                return (
+                                                                    <div key={config.id} className="flex flex-col items-center bg-blue-50 border border-blue-100 rounded-xl px-3 py-1.5 min-w-[80px]">
+                                                                        <span className="text-[10px] font-bold text-blue-700 capitalize leading-tight mb-0.5 text-center">{config.label}</span>
+                                                                        <span className="text-sm font-black text-blue-900">{val}%</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -492,19 +593,33 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                                         <div className="w-1 h-3 bg-green-500 rounded-full"></div>
                                                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Activities</h4>
                                                     </div>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {TAG_CATEGORIES.activities.map(config => {
-                                                            const weights = location.tagWeights?.activities || {};
-                                                            const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
-                                                            const val = tagKey ? weights[tagKey] : null;
-                                                            if (val === null || val === undefined) return null;
-                                                            return (
-                                                                <div key={config.id} className="flex flex-col items-center bg-green-50 border border-green-100 rounded-xl px-3 py-1.5 min-w-[80px]">
-                                                                    <span className="text-[10px] font-bold text-green-700 capitalize leading-tight mb-0.5 text-center">{config.label}</span>
-                                                                    <span className="text-sm font-black text-green-900">{val}%</span>
-                                                                </div>
-                                                            );
-                                                        })}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+                                                        <div className="flex justify-center order-2 md:order-1">
+                                                            <RadarChart
+                                                                data={TAG_CATEGORIES.activities.map(config => {
+                                                                    const weights = location.tagWeights?.activities || {};
+                                                                    const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                                    const val = tagKey ? weights[tagKey] : 0;
+                                                                    return { label: config.label, value: val };
+                                                                }).filter(d => d.value > 0)}
+                                                                color="#10b981"
+                                                                size={280}
+                                                            />
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2 order-1 md:order-2 content-start">
+                                                            {TAG_CATEGORIES.activities.map(config => {
+                                                                const weights = location.tagWeights?.activities || {};
+                                                                const tagKey = Object.keys(weights).find(k => k.toLowerCase() === config.id.toLowerCase());
+                                                                const val = tagKey ? weights[tagKey] : null;
+                                                                if (val === null || val === undefined) return null;
+                                                                return (
+                                                                    <div key={config.id} className="flex flex-col items-center bg-green-50 border border-green-100 rounded-xl px-3 py-1.5 min-w-[80px]">
+                                                                        <span className="text-[10px] font-bold text-green-700 capitalize leading-tight mb-0.5 text-center">{config.label}</span>
+                                                                        <span className="text-sm font-black text-green-900">{val}%</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
