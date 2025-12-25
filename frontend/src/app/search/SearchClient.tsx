@@ -6,6 +6,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import Link from 'next/link';
 import { useSeasonStore } from '@/store/season-store';
 import { useTranslations } from 'next-intl';
+import { locationNameToSlug } from '@/lib/url-utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SuggestLocationBanner } from '@/components/ui/SuggestLocationBanner';
 import { useCompareStore } from '@/store/compare-store';
@@ -364,7 +365,7 @@ function SearchContent() {
                                         return (
                                             <div key={location.id} className="relative group">
                                                 <Link
-                                                    href={`/locations/${location.name}`}
+                                                    href={`/locations/${locationNameToSlug(location.name)}`}
                                                     onClick={() => handleResultClick(location.name)}
                                                     className="block bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col sm:flex-row min-h-[220px]"
                                                 >

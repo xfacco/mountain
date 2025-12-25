@@ -5,17 +5,62 @@ import { Navbar } from '@/components/layout/Navbar';
 import Link from 'next/link';
 import { MapPin, ArrowRight } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import { locationNameToSlug } from '@/lib/url-utils';
 
 type Props = {
     params: Promise<{ slug: string[] }>;
 }
 
-async function getLocationData(name: string) {
-    const locationsRef = collection(db, 'locations');
-    const q = query(locationsRef, where('name', '==', name));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-        return JSON.parse(JSON.stringify(querySnapshot.docs[0].data()));
+import { slugToLocationName } from '@/lib/url-utils';
+
+async function getLocationData(slugOrName: string) {
+    try {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const locationsRef = collection(db, 'locations');
+
+        // First try to find by slug
+        let q = query(locationsRef, where('slug', '==', slugOrName));
+        let querySnapshot = await getDocs(q);
+
+        // If not found by slug, try by name (backward compatibility)
+        if (querySnapshot.empty) {
+            const decodedName = decodeURIComponent(slugOrName);
+            q = query(locationsRef, where('name', '==', decodedName));
+            querySnapshot = await getDocs(q);
+
+            // Fallback: try converting slug back to name
+            if (querySnapshot.empty) {
+                const possibleName = slugToLocationName(slugOrName);
+                q = query(locationsRef, where('name', '==', possibleName));
+                querySnapshot = await getDocs(q);
+            }
+        }
+
+        if (!querySnapshot.empty) {
+            const snap = querySnapshot.docs[0];
+            const lightData = snap.data();
+            const locId = snap.id;
+
+            // Fetch details from the split collection
+            try {
+                const detailsDoc = await getDoc(doc(db, 'location_details', locId));
+                if (detailsDoc.exists()) {
+                    const combined = {
+                        ...lightData,
+                        ...detailsDoc.data(),
+                        id: locId
+                    };
+                    return JSON.parse(JSON.stringify(combined));
+                }
+            } catch (e) {
+                console.error("Error fetching details for", slugOrName, e);
+            }
+
+            // Fallback if details don't exist yet
+            return JSON.parse(JSON.stringify({ ...lightData, id: locId }));
+        }
+    } catch (error) {
+        console.error("Error fetching location data:", error);
     }
     return null;
 }
@@ -36,8 +81,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         contentTitle = `${season.charAt(0).toUpperCase() + season.slice(1)} in ${location.name}`;
         description = location.description?.[season] || '';
     } else if (type === 'services') {
-        const serviceName = rest[0];
-        const service = location.services?.find((s: any) => s.name === serviceName);
+        const serviceNameSlug = rest.join('/');
+        let service = location.services?.find((s: any) => s.name === serviceNameSlug);
+
+        if (!service && location.services) {
+            service = location.services.find((s: any) =>
+                locationNameToSlug(s.name) === serviceNameSlug ||
+                s.name.replace(/\s+/g, '-') === serviceNameSlug ||
+                s.name.toLowerCase().replace(/\s+/g, '-') === serviceNameSlug.toLowerCase()
+            );
+        }
+
         if (service) {
             contentTitle = `${service.name} - ${location.name}`;
             description = service.description || '';
@@ -76,14 +130,28 @@ export default async function InsightPage({ params }: Props) {
     let categoryLabel = '';
 
     if (type === 'seasons') {
-        const season = rest[0];
+        const season = rest[0]; // Assuming season is simple text not needing special decode
         mainTitle = `${season.charAt(0).toUpperCase() + season.slice(1)} Season at ${location.name}`;
         mainDescription = location.description?.[season];
         categoryLabel = t('seasonal_experience');
     } else if (type === 'services') {
-        const serviceName = rest[0];
-        const service = location.services?.find((s: any) => s.name === serviceName);
-        mainTitle = service?.name || 'Service Detail';
+        // We get the raw service name from the path segments.
+        const serviceNameSlug = rest.join('/');
+
+        // Try exact match first
+        let service = location.services?.find((s: any) => s.name === serviceNameSlug);
+
+        // If not found, try to match by comparing hyphenated versions
+        // This allows "Grindelwald-First-Adventure-Mountain" (URL) to match "Grindelwald-First Adventure Mountain" (DB)
+        if (!service && location.services) {
+            service = location.services.find((s: any) =>
+                locationNameToSlug(s.name) === serviceNameSlug ||
+                s.name.replace(/\s+/g, '-') === serviceNameSlug ||
+                s.name.toLowerCase().replace(/\s+/g, '-') === serviceNameSlug.toLowerCase()
+            );
+        }
+
+        mainTitle = service?.name || serviceNameSlug.replace(/-/g, ' ') || 'Service Detail';
         mainDescription = service?.description || '';
         categoryLabel = service?.category || 'Service';
     }
@@ -130,7 +198,7 @@ export default async function InsightPage({ params }: Props) {
 
                         {/* 3. LINK TO FULL LOCATION */}
                         <Link
-                            href={`/locations/${encodeURIComponent(location.name)}`}
+                            href={`/locations/${location.slug || locationNameToSlug(location.name)}`}
                             className="inline-flex items-center gap-2 bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-slate-100 transition-all group"
                         >
                             {t('view_full_profile')}

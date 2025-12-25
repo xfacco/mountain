@@ -1,6 +1,7 @@
 import { Navbar } from '@/components/layout/Navbar';
-import { collection, getDocs, query } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { locationNameToSlug } from '@/lib/url-utils';
 import Link from 'next/link';
 import { Metadata } from 'next';
 import { ArrowRight } from 'lucide-react';
@@ -17,7 +18,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
     if (locationName) {
         const title = `${locationName} - All Insights & Details | Alpe Match`;
-        const description = `Explore all seasonal descriptions, services, and detailed insights for ${locationName}. Complete mountain directory profile.`;
+        const description = `Explore all seasonal descriptions, services, and detailed insights for ${locationName}.Complete mountain directory profile.`;
 
         return {
             title: title,
@@ -80,8 +81,32 @@ export default async function DirectoryPage({ searchParams }: Props) {
     const filterLocation = resolvedSearchParams?.location as string;
 
     if (filterLocation) {
-        locations = locations.filter(loc => loc.name.toLowerCase() === filterLocation.toLowerCase());
+        locations = locations.filter(loc => {
+            const search = filterLocation.toLowerCase();
+            const name = loc.name.toLowerCase();
+            const slug = (loc.slug || locationNameToSlug(loc.name)).toLowerCase();
+
+            return name === search || slug === search || locationNameToSlug(name) === search;
+        });
     }
+
+    // Fetch heavy data (including services) for the locations we're about to display
+    // This is necessary because services was moved to a separate collection (location_details)
+    // for performance optimization in general views.
+    if (locations.length > 0) {
+        locations = await Promise.all(locations.map(async (loc) => {
+            try {
+                const detailsSnap = await getDoc(doc(db, 'location_details', loc.id));
+                if (detailsSnap.exists()) {
+                    return { ...loc, ...detailsSnap.data() };
+                }
+            } catch (err) {
+                console.error(`Error fetching details for ${loc.id}:`, err);
+            }
+            return loc;
+        }));
+    }
+
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -106,7 +131,7 @@ export default async function DirectoryPage({ searchParams }: Props) {
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 pb-4 border-b border-slate-50 gap-4">
                                 <h2 className="text-3xl font-black text-slate-900">{loc.name}</h2>
                                 <Link
-                                    href={`/locations/${encodeURIComponent(loc.name)}`}
+                                    href={`/locations/${loc.slug || locationNameToSlug(loc.name)}`}
                                     className="text-primary font-bold text-sm uppercase tracking-wider flex items-center gap-2 hover:underline"
                                 >
                                     {t('full_destination')} <ArrowRight size={14} />
@@ -123,7 +148,7 @@ export default async function DirectoryPage({ searchParams }: Props) {
                                         return (
                                             <Link
                                                 key={season}
-                                                href={`/insights/${encodeURIComponent(loc.name)}/seasons/${season}`}
+                                                href={`/insights/${loc.slug || locationNameToSlug(loc.name)}/seasons/${season}`}
                                                 className="block p-4 rounded-2xl hover:bg-slate-50 transition-colors group border border-transparent hover:border-slate-100"
                                             >
                                                 <h4 className="font-bold text-slate-900 capitalize flex items-center gap-2">
@@ -142,7 +167,7 @@ export default async function DirectoryPage({ searchParams }: Props) {
                                         {loc.services?.filter((s: any) => s.description).map((service: any, idx: number) => (
                                             <Link
                                                 key={idx}
-                                                href={`/insights/${encodeURIComponent(loc.name)}/services/${encodeURIComponent(service.name)}`}
+                                                href={`/insights/${loc.slug || locationNameToSlug(loc.name)}/services/${locationNameToSlug(service.name)}`}
                                                 className="block p-4 rounded-2xl hover:bg-slate-50 transition-colors group border border-transparent hover:border-slate-100"
                                             >
                                                 <div className="flex justify-between items-start">

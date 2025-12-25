@@ -29,6 +29,7 @@ import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
+import { locationNameToSlug } from '@/lib/url-utils';
 
 export default function AdminDashboardPage() {
     return (
@@ -757,7 +758,7 @@ function AdminDashboard() {
                                                     <td className="px-6 py-4 text-right">
                                                         <div className="flex justify-end gap-2">
                                                             <Link
-                                                                href={`/locations/${loc.name}`}
+                                                                href={`/locations/${locationNameToSlug(loc.name)}`}
                                                                 target="_blank"
                                                                 className="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
                                                                 title="Visualizza sul sito"
@@ -1464,6 +1465,7 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                 ...translatedData, // Overwrite with translated fields
                 id: crypto.randomUUID(), // New ID
                 name: `${formData.name} (IT)`,
+                slug: locationNameToSlug(`${formData.name} (IT)`),
                 language: 'it',
                 status: 'draft',
                 createdAt: new Date().toISOString(),
@@ -1517,52 +1519,83 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
-
                 {/* GENERAL TAB */}
                 {editTab === 'general' && (
-                    <div className="space-y-6 animate-in fade-in">
+                    <div className="space-y-8 animate-in fade-in">
+                        {/* ID and Basic Info */}
                         <div className="grid grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Nome Località</label>
-                                <input name="name" value={formData.name} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none" />
+                                <input
+                                    name="name"
+                                    value={formData.name}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                />
                             </div>
-                            <div className="grid grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Stato</label>
-                                    <select
-                                        value={formData.status || 'draft'}
-                                        onChange={e => setFormData({ ...formData, status: e.target.value })}
-                                        className="w-full p-2 border rounded-lg"
-                                    >
-                                        <option value="draft">Bozza</option>
-                                        <option value="published">Pubblicato</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Visibilità Frontend</label>
-                                    <div className="flex items-center gap-3 mt-2">
-                                        <label className="relative inline-flex items-center cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={formData.visible ?? false}
-                                                onChange={e => setFormData({ ...formData, visible: e.target.checked })}
-                                                className="sr-only peer"
-                                            />
-                                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                            <span className="ml-3 text-sm font-medium text-slate-900">{formData.visible ? 'Visibile' : 'Nascosto'}</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Ordine Visualizzazione</label>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">URL Slug (SEO)</label>
+                                <div className="flex gap-2">
                                     <input
-                                        type="number"
-                                        value={formData.order ?? 0}
-                                        onChange={e => setFormData({ ...formData, order: parseInt(e.target.value) })}
-                                        className="w-full p-2 border rounded-lg"
+                                        name="slug"
+                                        value={formData.slug || ''}
+                                        onChange={handleChange}
+                                        placeholder="es. abetone-monte-cimone"
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none font-mono text-sm bg-slate-50"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, slug: locationNameToSlug(formData.name) })}
+                                        className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 border border-slate-200"
+                                        title="Rigenera slug dal nome"
+                                    >
+                                        <Sparkles size={16} />
+                                    </button>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Status and Visibility */}
+                        <div className="grid grid-cols-3 gap-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Stato</label>
+                                <select
+                                    value={formData.status || 'draft'}
+                                    onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                    className="w-full p-2 border rounded-lg bg-white text-sm"
+                                >
+                                    <option value="draft">Bozza</option>
+                                    <option value="published">Pubblicato</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Visibilità (App Mobile)</label>
+                                <div className="flex items-center gap-3 mt-1">
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.visible ?? false}
+                                            onChange={e => setFormData({ ...formData, visible: e.target.checked })}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                        <span className="ml-3 text-sm font-medium text-slate-900">{formData.visible ? 'Visibile' : 'Nascosta'}</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Ordine Visualizzazione</label>
+                                <input
+                                    type="number"
+                                    value={formData.order ?? 0}
+                                    onChange={e => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })}
+                                    className="w-full p-2 border rounded-lg bg-white text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Location Details Grid */}
+                        <div className="grid grid-cols-3 gap-6">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Regione</label>
                                 <input name="region" value={formData.region} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none" />
@@ -1585,14 +1618,13 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                     <option value="Germania">Germania</option>
                                 </select>
                             </div>
-
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Lingua</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Lingua Originale</label>
                                 <select
                                     name="language"
                                     value={formData.language || 'it'}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none bg-white"
+                                    className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none bg-white font-bold"
                                 >
                                     <option value="it">Italiano (IT)</option>
                                     <option value="en">English (EN)</option>
@@ -1600,27 +1632,33 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                     <option value="fr">Français (FR)</option>
                                 </select>
                             </div>
+                        </div>
 
+                        {/* Utils & Coordinates */}
+                        <div className="grid grid-cols-2 gap-6 p-6 bg-slate-50 rounded-2xl border border-slate-100">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Altitudine (m)</label>
-                                <input
-                                    type="number"
-                                    value={formData.altitude || ''}
-                                    onChange={(e) => setFormData({ ...formData, altitude: parseInt(e.target.value) || 0 })}
-                                    className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                    placeholder="Es. 1200"
-                                />
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Altitudine Media (m)</label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        value={formData.altitude || ''}
+                                        onChange={(e) => setFormData({ ...formData, altitude: parseInt(e.target.value) || 0 })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. 1200"
+                                    />
+                                    <span className="absolute right-3 top-2 text-slate-400 font-bold text-sm">m s.l.m.</span>
+                                </div>
                             </div>
                             <div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-medium text-slate-700">Coordinate (Gradi Decimali es. 46.1234)</label>
+                                    <label className="block text-sm font-medium text-slate-700">Coordinate GPS (Decimali)</label>
                                     <a
-                                        href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' ' + (formData.region || '') + ' altitudine longitudine latitudine gradi decimali')}`}
+                                        href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' ' + (formData.region || '') + ' coordinate gps gradi decimali')}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold"
                                     >
-                                        <Search size={10} /> Cerca dati
+                                        <Search size={10} /> Trova su Google
                                     </a>
                                 </div>
                                 <div className="flex gap-2">
@@ -1633,10 +1671,10 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                                 ...formData,
                                                 coordinates: { ...formData.coordinates, lat: parseFloat(e.target.value) || 0 }
                                             })}
-                                            className="w-full pl-4 pr-8 py-2 border rounded-lg focus:border-primary outline-none"
-                                            placeholder="Lat (es. 46.55)"
+                                            className="w-full pl-4 pr-8 py-2 border rounded-lg focus:border-primary outline-none font-mono text-xs"
+                                            placeholder="Latitudine (es. 46.55)"
                                         />
-                                        <span className="absolute right-3 top-2 text-slate-400 text-xs font-bold">°N</span>
+                                        <span className="absolute right-2 top-2 text-slate-400 text-[10px] font-black uppercase">Lat</span>
                                     </div>
                                     <div className="flex-1 relative">
                                         <input
@@ -1647,257 +1685,194 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                                 ...formData,
                                                 coordinates: { ...formData.coordinates, lng: parseFloat(e.target.value) || 0 }
                                             })}
-                                            className="w-full pl-4 pr-8 py-2 border rounded-lg focus:border-primary outline-none"
-                                            placeholder="Lng (es. 11.23)"
+                                            className="w-full pl-4 pr-8 py-2 border rounded-lg focus:border-primary outline-none font-mono text-xs"
+                                            placeholder="Longitudine (es. 11.23)"
                                         />
-                                        <span className="absolute right-3 top-2 text-slate-400 text-xs font-bold">°E</span>
+                                        <span className="absolute right-2 top-2 text-slate-400 text-[10px] font-black uppercase">Lng</span>
                                     </div>
                                 </div>
                             </div>
-                            <div className="col-span-2">
-                                <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-medium text-slate-700">Immagini Stagionali (URL)</label>
-                                    <div className="flex gap-4">
-                                        <a
-                                            href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' immagini di grandi dimensioni')}&tbm=isch`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold"
-                                        >
-                                            <Search size={10} /> Cerca immagini HQ
-                                        </a>
-                                        <a
-                                            href={`https://www.google.com/search?q=${encodeURIComponent('Search images about mountain location ' + formData.name + ' in ' + (formData.country || '') + '. Search it in freepik.com or pexels.com or unsplash.com or shotstash.com or in tourist information portals of the location')}&tbm=isch`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-[10px] text-indigo-600 hover:underline flex items-center gap-1 font-bold"
-                                        >
-                                            <ExternalLink size={10} /> Free images
-                                        </a>
-                                    </div>
+                        </div>
+
+                        {/* Image urls section */}
+                        <div className="border border-slate-100 rounded-2xl p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="font-bold text-slate-900 border-l-4 border-indigo-500 pl-3">Immagini Stagionali</h3>
+                                <div className="flex gap-3">
+                                    <a
+                                        href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' mountain panorama wallpaper images')}&tbm=isch`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded text-slate-500 hover:text-primary transition-colors flex items-center gap-1 font-bold"
+                                    >
+                                        <Search size={10} /> Cerca HQ
+                                    </a>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    {['winter', 'spring', 'summer', 'autumn'].map((season) => (
-                                        <div key={season}>
-                                            <label className="block text-xs uppercase font-bold text-slate-500 mb-1">{season === 'winter' ? 'Inverno' : season === 'spring' ? 'Primavera' : season === 'summer' ? 'Estate' : 'Autunno'}</label>
-                                            <div className="flex gap-2">
-                                                <input
-                                                    name={`img_${season}`}
-                                                    value={formData.seasonalImages?.[season] || ''}
-                                                    onChange={handleChange}
-                                                    className="flex-1 px-3 py-2 border rounded-lg focus:border-primary outline-none text-xs font-mono text-slate-500"
-                                                    placeholder={`URL ${season}...`}
-                                                />
-                                                {(formData.seasonalImages?.[season]) && (
-                                                    <a href={formData.seasonalImages[season]} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" title="Apri immagine">
-                                                        <img src={formData.seasonalImages[season]} className="w-8 h-8 rounded object-cover border shadow-sm" alt={season} />
-                                                    </a>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {['winter', 'spring', 'summer', 'autumn'].map((season) => (
+                                    <div key={season}>
+                                        <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">{season}</label>
+                                        <div className="space-y-2">
+                                            <div className="aspect-video rounded-lg overflow-hidden bg-slate-50 border border-slate-100 shadow-inner relative group">
+                                                {formData.seasonalImages?.[season] ? (
+                                                    <img src={formData.seasonalImages[season]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={season} />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                                        <Plus size={20} />
+                                                    </div>
                                                 )}
                                             </div>
+                                            <input
+                                                name={`img_${season}`}
+                                                value={formData.seasonalImages?.[season] || ''}
+                                                onChange={handleChange}
+                                                className="w-full px-2 py-1.5 border rounded text-[10px] font-mono outline-none focus:border-indigo-400 text-slate-500"
+                                                placeholder="URL immagine..."
+                                            />
                                         </div>
-                                    ))}
-                                </div>
-                                <p className="text-[10px] text-slate-400 mt-2">L'immagine 'Inverno' verrà usata come copertina principale se non diversamente specificato.</p>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
-                        <div className="border-t border-slate-100 pt-6">
-                            <h3 className="font-bold text-slate-900 mb-4">Descrizioni Stagionali</h3>
-                            <div className="grid gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Inverno (Winter)</label>
-                                    <textarea name="desc_winter" value={formData.description.winter} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg focus:border-primary outline-none h-32 resize-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Estate (Summer)</label>
-                                    <textarea name="desc_summer" value={formData.description.summer} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg focus:border-primary outline-none h-32 resize-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Autunno (Autumn)</label>
-                                    <textarea name="desc_autumn" value={formData.description.autumn || ''} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg focus:border-primary outline-none h-32 resize-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Primavera (Spring)</label>
-                                    <textarea name="desc_spring" value={formData.description.spring || ''} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg focus:border-primary outline-none h-32 resize-none" />
-                                </div>
+                        {/* Seasonal Descriptions */}
+                        <div className="pt-4 space-y-6">
+                            <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                <MessageSquare size={18} className="text-primary" /> Descrizioni stagionali
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {['winter', 'summer', 'autumn', 'spring'].map((season) => (
+                                    <div key={season} className="space-y-2">
+                                        <label className="block text-xs font-black uppercase tracking-widest text-slate-400">{season === 'winter' ? 'Inverno' : season === 'summer' ? 'Estate' : season === 'autumn' ? 'Autunno' : 'Primavera'}</label>
+                                        <textarea
+                                            name={`desc_${season}`}
+                                            value={formData.description[season] || ''}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-3 border rounded-xl focus:border-primary outline-none h-40 resize-none text-sm leading-relaxed"
+                                            placeholder={`Descrivi la località in ${season}...`}
+                                        />
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
-                        <div className="mb-6">
-                            <h3 className="font-bold text-slate-900">Tags & Caratteristiche</h3>
-                            <p className="text-xs text-slate-500">Gestisci i tag per l'algoritmo e per la SEO.</p>
-                        </div>
-                        <div className="space-y-8">
-                            {/* Wizard Match Tags (Strict 1-to-1) */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
-                                <div className="col-span-full mb-2 flex justify-between items-center">
-                                    <div>
-                                        <h4 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                            <Sparkles size={16} /> Configurazione Match Wizard (1-a-1)
-                                        </h4>
-                                        <p className="text-xs text-slate-500 mt-1">Questi tag attivano direttamente l'algoritmo di abbinamento intelligente.</p>
+                        {/* Tags Section */}
+                        <div className="pt-8 space-y-8">
+                            <div>
+                                <h3 className="font-bold text-slate-900 border-l-4 border-purple-500 pl-3">Tags & Caratteristiche Match</h3>
+                                <p className="text-xs text-slate-500 ml-4 mt-1">Configura i pesi dell&apos;algoritmo per il Wizard e i meta-tag per il motore di ricerca.</p>
+
+                            </div>
+
+                            {/* Wizard Tags Container */}
+                            <div className="bg-slate-50 rounded-2xl border border-slate-200 p-6 space-y-8">
+                                <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                            <Sparkles size={20} />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-bold text-slate-900">Configurazione Match Wizard</h4>
+                                            <p className="text-[10px] text-slate-500 font-medium tracking-wide font-black uppercase">Algoritmo 1-a-1 & Pesi AI</p>
+                                        </div>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => generateTags('wizard')}
                                         disabled={generatingWizard}
-                                        className="text-[10px] bg-primary/10 text-primary px-3 py-1.5 rounded-lg border border-primary/20 font-bold hover:bg-primary/20 flex items-center gap-2 transition-colors uppercase tracking-wider"
+                                        className="bg-primary text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest shadow-md hover:shadow-lg disabled:opacity-50 transition-all flex items-center gap-2"
                                     >
-                                        {generatingWizard ? 'Analisi...' : '✨ Autoconfigura Wizard'}
+                                        {generatingWizard ? 'Analisi in corso...' : '✨ Autoconfigura Wizard'}
                                     </button>
                                 </div>
 
-                                {/* Vibe Selection */}
-                                <div>
-                                    <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Vibe / Atmosfera</label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {TAG_CATEGORIES.vibe.map(tag => (
-                                            <button
-                                                key={tag.id}
-                                                type="button"
-                                                onClick={() => toggleTag('vibe', tag.id)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-between gap-2 ${formData.tags?.vibe?.includes(tag.id)
-                                                    ? 'bg-primary text-white border-primary shadow-md'
-                                                    : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
-                                                    }`}
-                                            >
-                                                {tag.label}
-                                                {tagWeights?.vibe?.[tag.id] !== undefined && (
-                                                    <span className={`text-[9px] px-1 rounded-sm ${formData.tags?.vibe?.includes(tag.id) ? 'bg-white/20' : 'bg-slate-100 text-slate-400'}`}>
-                                                        {tagWeights.vibe[tag.id]}%
-                                                    </span>
-                                                )}
-                                            </button>
-                                        ))}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                    {/* Vibe Selection */}
+                                    <div>
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                                            <div className="w-1 h-3 bg-indigo-400 rounded-full"></div> Atmosfera / Vibe
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {TAG_CATEGORIES.vibe.map(tag => (
+                                                <button
+                                                    key={tag.id} type="button" onClick={() => toggleTag('vibe', tag.id)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-between gap-2 ${formData.tags?.vibe?.includes(tag.id) ? 'bg-primary text-white border-primary shadow-sm scale-[1.02]' : 'bg-white text-slate-600 border-slate-200 hover:border-primary/40'}`}
+                                                >
+                                                    {tag.label}
+                                                    {tagWeights?.vibe?.[tag.id] !== undefined && (
+                                                        <span className={`text-[9px] px-1 rounded-sm ${formData.tags?.vibe?.includes(tag.id) ? 'bg-white/20' : 'bg-slate-100 text-slate-400'}`}>{tagWeights.vibe[tag.id]}%</span>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Target Selection */}
-                                <div>
-                                    <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Target Utente</label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {TAG_CATEGORIES.target.map(tag => (
-                                            <button
-                                                key={tag.id}
-                                                type="button"
-                                                onClick={() => toggleTag('target', tag.id)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-between gap-2 ${formData.tags?.target?.includes(tag.id)
-                                                    ? 'bg-primary text-white border-primary shadow-md'
-                                                    : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
-                                                    }`}
-                                            >
-                                                {tag.label}
-                                                {tagWeights?.target?.[tag.id] !== undefined && (
-                                                    <span className={`text-[9px] px-1 rounded-sm ${formData.tags?.target?.includes(tag.id) ? 'bg-white/20' : 'bg-slate-100 text-slate-400'}`}>
-                                                        {tagWeights.target[tag.id]}%
-                                                    </span>
-                                                )}
-                                            </button>
-                                        ))}
+                                    {/* Target Selection */}
+                                    <div>
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                                            <div className="w-1 h-3 bg-pink-400 rounded-full"></div> Target Utente
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {TAG_CATEGORIES.target.map(tag => (
+                                                <button
+                                                    key={tag.id} type="button" onClick={() => toggleTag('target', tag.id)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-between gap-2 ${formData.tags?.target?.includes(tag.id) ? 'bg-primary text-white border-primary shadow-sm scale-[1.02]' : 'bg-white text-slate-600 border-slate-200 hover:border-primary/40'}`}
+                                                >
+                                                    {tag.label}
+                                                    {tagWeights?.target?.[tag.id] !== undefined && (
+                                                        <span className={`text-[9px] px-1 rounded-sm ${formData.tags?.target?.includes(tag.id) ? 'bg-white/20' : 'bg-slate-100 text-slate-400'}`}>{tagWeights.target[tag.id]}%</span>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Activities Match */}
-                                <div>
-                                    <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Attività Chiave</label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {TAG_CATEGORIES.activities.map(tag => (
-                                            <button
-                                                key={tag.id}
-                                                type="button"
-                                                onClick={() => toggleTag('activities', tag.id)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-between gap-2 ${formData.tags?.activities?.includes(tag.id)
-                                                    ? 'bg-primary text-white border-primary shadow-md'
-                                                    : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
-                                                    }`}
-                                            >
-                                                {tag.label}
-                                                {tagWeights?.activities?.[tag.id] !== undefined && (
-                                                    <span className={`text-[9px] px-1 rounded-sm ${formData.tags?.activities?.includes(tag.id) ? 'bg-white/20' : 'bg-slate-100 text-slate-400'}`}>
-                                                        {tagWeights.activities[tag.id]}%
-                                                    </span>
-                                                )}
-                                            </button>
-                                        ))}
+                                    {/* Activities Match */}
+                                    <div>
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                                            <div className="w-1 h-3 bg-green-400 rounded-full"></div> Attività Chiave
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {TAG_CATEGORIES.activities.map(tag => (
+                                                <button
+                                                    key={tag.id} type="button" onClick={() => toggleTag('activities', tag.id)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-between gap-2 ${formData.tags?.activities?.includes(tag.id) ? 'bg-primary text-white border-primary shadow-sm scale-[1.02]' : 'bg-white text-slate-600 border-slate-200 hover:border-primary/40'}`}
+                                                >
+                                                    {tag.label}
+                                                    {tagWeights?.activities?.[tag.id] !== undefined && (
+                                                        <span className={`text-[9px] px-1 rounded-sm ${formData.tags?.activities?.includes(tag.id) ? 'bg-white/20' : 'bg-slate-100 text-slate-400'}`}>{tagWeights.activities[tag.id]}%</span>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SEO & Extra Tags (Free Text) */}
-                            <div className="grid grid-cols-3 gap-6">
-                                <div className="col-span-full flex justify-between items-end mb-4 border-b border-slate-100 pb-2">
-                                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Tag SEO & Approfondimenti (Testo Libero)</h4>
+                            {/* Extra SEO Tags (Free Text) */}
+                            <div className="p-6 bg-white rounded-2xl border border-slate-100 space-y-6">
+                                <div className="flex justify-between items-end border-b border-slate-50 pb-4">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tag SEO & Insight (Testo Libero)</h4>
                                     <button
-                                        type="button"
-                                        onClick={() => generateTags('seo')}
-                                        disabled={generatingSEO}
-                                        className="text-[10px] bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 font-bold hover:bg-slate-200 flex items-center gap-2 transition-colors uppercase tracking-wider"
+                                        type="button" onClick={() => generateTags('seo')} disabled={generatingSEO}
+                                        className="text-[10px] bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 font-bold hover:bg-slate-200 flex items-center gap-2 transition-all"
                                     >
-                                        {generatingSEO ? 'Generazione...' : '✨ Estrai Parole Chiave SEO'}
+                                        {generatingSEO ? 'Analisi SEO...' : '✨ Estrai Insight SEO'}
                                     </button>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Highlights</label>
-                                    <input
-                                        value={formData.tags?.highlights?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, highlights: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Spa, Ghiacciaio..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Attività (Tourism)</label>
-                                    <input
-                                        value={formData.tags?.tourism?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, tourism: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Freeride, MTB..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Ospitalità (Accom.)</label>
-                                    <input
-                                        value={formData.tags?.accommodation?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, accommodation: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Lusso, Glamping..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Impianti (Infrastr.)</label>
-                                    <input
-                                        value={formData.tags?.infrastructure?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, infrastructure: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Skibus, Funivia..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Sport</label>
-                                    <input
-                                        value={formData.tags?.sport?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, sport: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Tennis, Nuoto..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Info</label>
-                                    <input
-                                        value={formData.tags?.info?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, info: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. App, Guide..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tag Generali</label>
-                                    <input
-                                        value={formData.tags?.general?.join(', ') || ''}
-                                        onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, general: e.target.value.split(',').map(s => s.trim()) } })}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
-                                        placeholder="Es. Storico, Panoramico..."
-                                    />
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                                    {['highlights', 'tourism', 'accommodation', 'infrastructure', 'sport', 'info', 'general'].map((key) => (
+                                        <div key={key}>
+                                            <label className="block text-[10px] font-black uppercase text-slate-500 mb-2">{key}</label>
+                                            <input
+                                                value={formData.tags?.[key]?.join(', ') || ''}
+                                                onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, [key]: e.target.value.split(',').map(s => s.trim()) } })}
+                                                className="w-full px-3 py-2 border rounded-lg text-xs font-medium focus:border-primary outline-none"
+                                                placeholder="Virgola per separare..."
+                                            />
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -1907,61 +1882,73 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                 {/* SERVICES TAB */}
                 {editTab === 'services' && (
                     <div className="space-y-6 animate-in fade-in">
-                        <div className="flex justify-between items-center bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4">
-                            <p className="text-sm text-slate-600">Gestisci i singoli servizi offerti dalla località.</p>
-                            <button onClick={addService} className="text-sm bg-slate-900 text-white px-3 py-2 rounded-lg font-bold hover:bg-slate-800 flex items-center gap-2">
-                                <Plus size={16} /> Aggiungi Servizio
+                        <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6">
+                            <div>
+                                <h3 className="font-bold text-slate-900">Servizi & Attività</h3>
+                                <p className="text-xs text-slate-500">Gestisci l'elenco dettagliato dei servizi per questa località.</p>
+                            </div>
+                            <button onClick={addService} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-800 flex items-center gap-2 shadow-sm transition-all">
+                                <Plus size={16} /> Aggiungi Nuovo
                             </button>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-1 gap-4">
                             {formData.services.map((service: any, idx: number) => (
-                                <div key={idx} className="border border-slate-200 rounded-xl p-4 hover:border-primary/30 transition-colors bg-slate-50/30">
-                                    <div className="flex gap-4 items-start">
-                                        <div className="flex-1 grid grid-cols-2 gap-4">
-                                            <input
-                                                value={service.name}
-                                                onChange={(e) => handleServiceChange(idx, 'name', e.target.value)}
-                                                className="w-full px-3 py-2 border rounded-md text-sm font-bold placeholder-slate-400"
-                                                placeholder="Nome Servizio"
-                                            />
-                                            <select
-                                                value={service.category}
-                                                onChange={(e) => handleServiceChange(idx, 'category', e.target.value)}
-                                                className="w-full px-3 py-2 border rounded-md text-sm bg-white"
-                                            >
-                                                <option value="tourism">Attività / Turismo</option>
-                                                <option value="accommodation">Ospitalità</option>
-                                                <option value="infrastructure">Impianti / Trasporti</option>
-                                                <option value="essential">Servizi Essenziali</option>
-                                                <option value="sport">Sport</option>
-                                                <option value="info">Informazioni</option>
-                                                <option value="general">Generale</option>
-                                            </select>
-                                            <textarea
-                                                value={service.description}
-                                                onChange={(e) => handleServiceChange(idx, 'description', e.target.value)}
-                                                className="col-span-2 w-full px-3 py-2 border rounded-md text-sm h-16 resize-none placeholder-slate-400"
-                                                placeholder="Descrizione breve..."
-                                            />
-                                            <div className="col-span-2 flex gap-4 items-center">
-                                                <span className="text-xs font-bold uppercase text-slate-400">Stagioni:</span>
-                                                {['winter', 'summer', 'autumn', 'spring'].map(season => (
-                                                    <label key={season} className="flex items-center gap-2 text-sm cursor-pointer select-none">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={service.seasonAvailability?.includes(season)}
-                                                            onChange={() => handleSeasonToggle(idx, season)}
-                                                            className="rounded text-primary focus:ring-primary"
-                                                        />
-                                                        <span className="capitalize">{season}</span>
-                                                    </label>
-                                                ))}
+                                <div key={idx} className="group border border-slate-200 rounded-2xl p-5 hover:border-primary/40 hover:shadow-md transition-all bg-white relative">
+                                    <button onClick={() => removeService(idx)} className="absolute top-4 right-4 text-slate-300 hover:text-red-600 transition-colors">
+                                        <Trash2 size={18} />
+                                    </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                                        <div className="md:col-span-4 space-y-4">
+                                            <div>
+                                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Nome Servizio</label>
+                                                <input
+                                                    value={service.name} onChange={(e) => handleServiceChange(idx, 'name', e.target.value)}
+                                                    className="w-full px-3 py-2 border rounded-lg text-sm font-bold focus:border-primary outline-none"
+                                                    placeholder="Es. Noleggio Sci Rossi"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Categoria</label>
+                                                <select
+                                                    value={service.category} onChange={(e) => handleServiceChange(idx, 'category', e.target.value)}
+                                                    className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 font-medium"
+                                                >
+                                                    <option value="tourism">Attività / Turismo</option>
+                                                    <option value="accommodation">Ospitalità</option>
+                                                    <option value="infrastructure">Impianti / Trasporti</option>
+                                                    <option value="essential">Servizi Essenziali</option>
+                                                    <option value="sport">Sport</option>
+                                                    <option value="info">Informazioni</option>
+                                                    <option value="general">Generale</option>
+                                                </select>
                                             </div>
                                         </div>
-                                        <button onClick={() => removeService(idx)} className="text-slate-400 hover:text-red-600 p-2">
-                                            <Trash2 size={18} />
-                                        </button>
+                                        <div className="md:col-span-8 space-y-4">
+                                            <div>
+                                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Descrizione Dettagliata</label>
+                                                <textarea
+                                                    value={service.description} onChange={(e) => handleServiceChange(idx, 'description', e.target.value)}
+                                                    className="w-full px-4 py-2 border rounded-lg text-sm h-24 resize-none focus:border-primary outline-none leading-relaxed"
+                                                    placeholder="Descrivi il servizio, orari, costi o link utili..."
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-6 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                <span className="text-[10px] font-black uppercase text-slate-400">Disponibilità:</span>
+                                                <div className="flex gap-4">
+                                                    {['winter', 'summer', 'autumn', 'spring'].map(season => (
+                                                        <label key={season} className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer select-none">
+                                                            <input
+                                                                type="checkbox" checked={service.seasonAvailability?.includes(season)}
+                                                                onChange={() => handleSeasonToggle(idx, season)}
+                                                                className="rounded text-primary border-slate-300 focus:ring-primary w-4 h-4"
+                                                            />
+                                                            <span className="capitalize">{season}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -1969,12 +1956,13 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                     </div>
                 )}
 
-                <div className="flex justify-end gap-4 pt-6 mt-6 border-t border-slate-100">
-                    <button onClick={onCancel} className="px-6 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors">
-                        Annulla
+                {/* Footer Buttons */}
+                <div className="flex justify-end gap-3 mt-12 pt-8 border-t border-slate-100">
+                    <button onClick={onCancel} className="px-6 py-2.5 text-slate-500 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all border border-transparent hover:border-slate-200">
+                        Annulla modifiche
                     </button>
-                    <button onClick={() => onSave(formData)} className="px-6 py-2 bg-primary text-white rounded-lg font-bold hover:bg-opacity-90 transition-colors flex items-center gap-2">
-                        <Save size={18} /> Salva Modifiche
+                    <button onClick={() => onSave(formData)} className="px-8 py-2.5 bg-gradient-to-r from-primary to-indigo-600 text-white rounded-xl font-black uppercase tracking-widest text-xs shadow-lg hover:shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3">
+                        <Save size={18} /> Salva Scheda Località
                     </button>
                 </div>
             </div>
@@ -2141,6 +2129,7 @@ function AITaskRunner() {
 
             const fullData: any = {
                 name: result.data.name,
+                slug: locationNameToSlug(result.data.name),
                 region: 'Da verificare',
                 country: 'Italia',
                 coverImage: 'https://images.unsplash.com/photo-1519681393784-d120267933ba',
@@ -3361,4 +3350,3 @@ function ShareLogsView() {
     );
 }
 
-// ... existing AITaskRunner, HomeConfigView etc ...

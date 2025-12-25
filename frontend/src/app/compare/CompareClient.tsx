@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
 import { RadarChart } from '@/components/ui/RadarChart';
+import { locationNameToSlug } from '@/lib/url-utils';
 
 
 function CompareContent() {
@@ -460,7 +461,7 @@ function CompareContent() {
                                                             </p>
                                                         </div>
                                                         <Link
-                                                            href={`/locations/${loc.name}`}
+                                                            href={`/locations/${locationNameToSlug(loc.name)}`}
 
                                                             className="shrink-0 flex items-center gap-1.5 p-2 bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                                                             title="See Destination"
@@ -490,7 +491,7 @@ function CompareContent() {
                                             <td key={`img-row-${loc.id}`} className="p-4 w-[330px] min-w-[330px] border-r border-b border-slate-100 last:border-r-0">
                                                 <div className="relative group">
                                                     <Link
-                                                        href={`/locations/${loc.name}`}
+                                                        href={`/locations/${locationNameToSlug(loc.name)}`}
 
                                                         className="block aspect-video rounded-lg overflow-hidden shadow-sm bg-slate-100 ring-1 ring-slate-200/50 hover:ring-primary/50 transition-all relative"
                                                     >

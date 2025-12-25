@@ -7,6 +7,7 @@ import { Search, Map, BarChart3, ArrowRight } from 'lucide-react';
 import { useSeasonStore } from "@/store/season-store";
 import { useEffect, useState } from "react";
 import { useTranslations } from 'next-intl';
+import { locationNameToSlug } from '@/lib/url-utils';
 
 export default function Home() {
   const { currentSeason } = useSeasonStore();
@@ -28,14 +29,17 @@ export default function Home() {
           setHomeConfig(configSnap.data());
         }
 
-        // 2. Fetch Featured Locations
-        const q = query(collection(db, 'locations'), orderBy('createdAt', 'desc'));
+        // 2. Fetch Featured Locations (Random)
+        const q = query(collection(db, 'locations'));
         const querySnapshot = await getDocs(q);
 
-        const lightDocs = querySnapshot.docs
+        const publishedDocs = querySnapshot.docs
           .map(snap => ({ id: snap.id, ...snap.data() } as any))
-          .filter(loc => loc.status === 'published')
-          .slice(0, 3);
+          .filter(loc => loc.status === 'published');
+
+        // Shuffle and take 3 random locations
+        const shuffled = publishedDocs.sort(() => 0.5 - Math.random());
+        const lightDocs = shuffled.slice(0, 3);
 
         // Fetch details for these 3 featured locations to get descriptions and images
         const fullDocs = await Promise.all(lightDocs.map(async (loc) => {
@@ -149,7 +153,7 @@ export default function Home() {
           ) : (
             <div className="grid md:grid-cols-3 gap-8">
               {featuredLocations.map((loc) => (
-                <Link key={loc.id} href={`/locations/${loc.name}`} className="group relative h-[400px] rounded-2xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all">
+                <Link key={loc.id} href={`/locations/${locationNameToSlug(loc.name)}`} className="group relative h-[400px] rounded-2xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all">
                   <img
                     src={loc.seasonalImages?.[currentSeason] || loc.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba'}
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"

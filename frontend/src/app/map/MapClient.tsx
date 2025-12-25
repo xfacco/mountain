@@ -7,6 +7,7 @@ import { Loader2, AlertTriangle, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { useSeasonStore } from '@/store/season-store';
 import { useTranslations } from 'next-intl';
+import { locationNameToSlug } from '@/lib/url-utils';
 
 const defaultCenter = {
     lat: 46.0748, // Trento/Dolomites area center
@@ -159,7 +160,7 @@ export default function MapClient() {
                                         </p>
 
                                         <Link
-                                            href={`/locations/${selectedLocation.name}`}
+                                            href={`/locations/${locationNameToSlug(selectedLocation.name)}`}
                                             className="block w-full text-center py-2.5 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
                                         >
                                             {t('explore')}

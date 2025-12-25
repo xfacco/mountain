@@ -5,6 +5,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { useSeasonStore } from '@/store/season-store';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { locationNameToSlug } from '@/lib/url-utils';
 import { SuggestLocationBanner } from '@/components/ui/SuggestLocationBanner';
 import { useCompareStore } from '@/store/compare-store';
 import { Search, SortAsc, TrendingUp, Layers, ArrowRight, Globe, Sparkles, Star, Check } from 'lucide-react';
@@ -133,7 +134,7 @@ export default function LocationsClient() {
                             return (
                                 <div key={location.id} className="relative group">
                                     <Link
-                                        href={`/locations/${location.name}`}
+                                        href={`/locations/${locationNameToSlug(location.name)}`}
                                         className="block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
                                     >
                                         <div className="aspect-[4/3] relative overflow-hidden bg-slate-200">
@@ -194,8 +195,8 @@ export default function LocationsClient() {
                                             }
                                         }}
                                         className={`absolute top-4 right-4 p-2 rounded-xl transition-all z-10 shadow-lg backdrop-blur-md ${isSelected
-                                            ? 'bg-primary text-white'
-                                            : 'bg-white/80 text-slate-600 hover:bg-white hover:text-primary'
+                                                ? 'bg-primary text-white'
+                                                : 'bg-white/80 text-slate-600 hover:bg-white hover:text-primary'
                                             }`}
                                         title={isSelected ? tCommon('remove_from_compare') : tCommon('add_to_compare')}
                                     >

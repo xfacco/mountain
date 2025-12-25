@@ -1,19 +1,37 @@
 import { Metadata } from 'next';
 import LocationDetailClient from './LocationClient';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, or } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { locationNameToSlug, slugToLocationName } from '@/lib/url-utils';
 
 type Props = {
     params: Promise<{ id: string }>;
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-async function getLocationData(name: string) {
+async function getLocationData(slugOrName: string) {
     try {
         const { doc, getDoc } = await import('firebase/firestore');
         const locationsRef = collection(db, 'locations');
-        const q = query(locationsRef, where('name', '==', name));
-        const querySnapshot = await getDocs(q);
+
+        // First try to find by slug (new format)
+        let q = query(locationsRef, where('slug', '==', slugOrName));
+        let querySnapshot = await getDocs(q);
+
+        // If not found by slug, try by name (backward compatibility)
+        if (querySnapshot.empty) {
+            // Try exact name match
+            const decodedName = decodeURIComponent(slugOrName);
+            q = query(locationsRef, where('name', '==', decodedName));
+            querySnapshot = await getDocs(q);
+
+            // If still not found, try converting slug back to name format
+            if (querySnapshot.empty) {
+                const possibleName = slugToLocationName(slugOrName);
+                q = query(locationsRef, where('name', '==', possibleName));
+                querySnapshot = await getDocs(q);
+            }
+        }
 
         if (!querySnapshot.empty) {
             const snap = querySnapshot.docs[0];
@@ -32,7 +50,7 @@ async function getLocationData(name: string) {
                     return JSON.parse(JSON.stringify(combined));
                 }
             } catch (e) {
-                console.error("Error fetching details for", name, e);
+                console.error("Error fetching details for", slugOrName, e);
             }
 
             // Fallback if details don't exist yet (migration period)
@@ -68,7 +86,8 @@ export async function generateMetadata(
         location.seasonalImages?.spring ||
         '/logo_alpematch.png';
 
-    const canonical = `https://www.alpematch.com/locations/${encodeURIComponent(location.name)}`;
+    const slug = location.slug || locationNameToSlug(location.name);
+    const canonical = `https://www.alpematch.com/locations/${slug}`;
 
     // Build keywords
     const keywords = [

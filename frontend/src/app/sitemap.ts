@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next';
 import { collection, getDocs, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { locationNameToSlug } from '@/lib/url-utils';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.alpematch.com';
@@ -41,7 +42,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
                 // Full Location Page
                 dynamicPages.push({
-                    url: `${baseUrl}/locations/${encodeURIComponent(locationName)}`,
+                    url: `${baseUrl}/locations/${locationNameToSlug(locationName)}`,
                     lastModified: new Date(),
                     changeFrequency: 'monthly' as const,
                     priority: 0.8,
@@ -52,7 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                     Object.keys(data.description).forEach(season => {
                         if (data.description[season]) {
                             dynamicPages.push({
-                                url: `${baseUrl}/insights/${encodeURIComponent(locationName)}/seasons/${season}`,
+                                url: `${baseUrl}/insights/${locationNameToSlug(locationName)}/seasons/${season}`,
                                 lastModified: new Date(),
                                 changeFrequency: 'monthly' as const,
                                 priority: 0.6,
@@ -66,7 +67,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                     data.services.forEach((service: any) => {
                         if (service.description) {
                             dynamicPages.push({
-                                url: `${baseUrl}/insights/${encodeURIComponent(locationName)}/services/${encodeURIComponent(service.name)}`,
+                                url: `${baseUrl}/insights/${locationNameToSlug(locationName)}/services/${locationNameToSlug(service.name)}`,
                                 lastModified: new Date(),
                                 changeFrequency: 'monthly' as const,
                                 priority: 0.5,

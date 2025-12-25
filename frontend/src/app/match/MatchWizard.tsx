@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Navbar } from '@/components/layout/Navbar';
 import { useSeasonStore } from '@/store/season-store';
 import Link from 'next/link';
+import { locationNameToSlug } from '@/lib/url-utils';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
 import { MatchScoreBreakdown } from '@/components/match/MatchScoreBreakdown';
 import { useCompareStore } from '@/store/compare-store';
@@ -774,7 +775,7 @@ function MatchWizardContent() {
                                                 <MatchScoreBreakdown location={location} preferences={preferences} />
 
                                                 <Link
-                                                    href={`/locations/${location.name}`}
+                                                    href={`/locations/${locationNameToSlug(location.name)}`}
                                                     onClick={() => handleChoice(location.name)}
                                                     className="mt-8 block w-full py-4 text-center bg-slate-900 text-white rounded-xl font-bold hover:bg-primary transition-colors duration-300"
                                                 >

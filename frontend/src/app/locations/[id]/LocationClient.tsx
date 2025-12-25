@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { MapPin, Calendar, Star, Info, ChevronLeft, ChevronRight, ArrowLeft, Sun, Snowflake, Cloud, Wind, Mountain, Home, Bus, Quote, AlertCircle, Check, X, Accessibility, HelpCircle, Layers, List, Search, ArrowRight, Sparkles, Link2 as LinkIcon } from 'lucide-react';
+import { locationNameToSlug } from '@/lib/url-utils';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
 import Link from 'next/link';
 import { useSeasonStore } from '@/store/season-store';
@@ -470,7 +471,7 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                     {/* SEO Index Link */}
                                     <div className="pt-6 border-t border-slate-100">
                                         <Link
-                                            href={`/directory?location=${encodeURIComponent(location.name)}`}
+                                            href={`/directory?location=${locationNameToSlug(location.name)}`}
                                             className="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors py-2"
                                         >
                                             <List size={12} /> See the details in reduced format
