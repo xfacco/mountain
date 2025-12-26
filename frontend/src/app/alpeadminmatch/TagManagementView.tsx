@@ -39,7 +39,15 @@ export default function TagManagementView({ onUpdate }: { onUpdate?: () => void 
                 const snap = await getDoc(docRef);
 
                 if (snap.exists()) {
-                    setConfig(snap.data() as TagConfig);
+                    const data = snap.data();
+                    setConfig({
+                        vibe: data.vibe || [...TAG_CATEGORIES.vibe],
+                        target: data.target || [...TAG_CATEGORIES.target],
+                        activities: data.activities || [...TAG_CATEGORIES.activities],
+                        nations: data.nations || [...TAG_CATEGORIES.nations],
+                        // Preserve any other categories already in DB
+                        ...data
+                    });
                 } else {
                     // Fallback to static config if no DB config exists
                     setConfig({
@@ -100,16 +108,17 @@ export default function TagManagementView({ onUpdate }: { onUpdate?: () => void 
         // Simple ID generation from label
         const id = label.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-        // Ensure ID is unique
-        if (config[category].some(t => t.id === id)) {
-            alert('Esiste già un tag con questo ID.');
-            return;
-        }
-
-        setConfig(prev => ({
-            ...prev,
-            [category]: [...prev[category], { id, label }]
-        }));
+        setConfig(prev => {
+            // Ensure ID is unique
+            if (prev[category].some(t => t.id === id)) {
+                alert('Esiste già un tag con questo ID.');
+                return prev;
+            }
+            return {
+                ...prev,
+                [category]: [...prev[category], { id, label }]
+            };
+        });
     };
 
     const editTag = (category: keyof TagConfig, index: number) => {
@@ -117,17 +126,20 @@ export default function TagManagementView({ onUpdate }: { onUpdate?: () => void 
         const newLabel = prompt('Nuova etichetta:', tag.label);
         if (newLabel === null || newLabel === tag.label) return;
 
-        const newList = [...config[category]];
-        newList[index] = { ...tag, label: newLabel };
-
-        setConfig(prev => ({ ...prev, [category]: newList }));
+        setConfig(prev => {
+            const newList = [...prev[category]];
+            newList[index] = { ...newList[index], label: newLabel };
+            return { ...prev, [category]: newList };
+        });
     };
 
     const deleteTag = (category: keyof TagConfig, index: number) => {
         if (!confirm('Sei sicuro di voler eliminare questo tag? Le località che lo usano potrebbero avere dati inconsistenti.')) return;
 
-        const newList = config[category].filter((_, i) => i !== index);
-        setConfig(prev => ({ ...prev, [category]: newList }));
+        setConfig(prev => ({
+            ...prev,
+            [category]: prev[category].filter((_, i) => i !== index)
+        }));
     };
 
     if (loading) return <div className="p-8 text-center text-slate-500">Caricamento configurazione...</div>;
@@ -201,7 +213,7 @@ export default function TagManagementView({ onUpdate }: { onUpdate?: () => void 
 
                     <div className="grid grid-cols-1 gap-3">
                         {config[activeCategory].map((tag, idx) => (
-                            <div key={tag.id} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-lg hover:border-indigo-100 hover:shadow-sm transition-all group">
+                            <div key={`${tag.id}-${idx}`} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-lg hover:border-indigo-100 hover:shadow-sm transition-all group">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center text-xs font-mono text-slate-400">
                                         {idx + 1}
@@ -211,7 +223,7 @@ export default function TagManagementView({ onUpdate }: { onUpdate?: () => void 
                                         <div className="text-[10px] text-slate-400 font-mono">ID: {tag.id}</div>
                                     </div>
                                 </div>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex gap-1">
                                     <button
                                         onClick={() => editTag(activeCategory, idx)}
                                         className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded"

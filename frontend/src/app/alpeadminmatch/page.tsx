@@ -25,7 +25,9 @@ import {
     Mail,
     Check,
     Tags,
-    AlertTriangle
+    AlertTriangle,
+    HelpCircle,
+    Info
 } from 'lucide-react';
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -451,6 +453,15 @@ function AdminDashboard() {
                         Gestione Località
                     </button>
                     <button
+                        onClick={() => { setActiveTab('ai-tasks'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'ai-tasks' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <LayoutDashboard size={18} />
+                        Richieste AI
+                    </button>
+
+                    <button
                         onClick={() => { setActiveTab('tags'); setEditingLocation(null); }}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'tags' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
                             }`}
@@ -474,14 +485,7 @@ function AdminDashboard() {
                         <AlertTriangle size={18} />
                         Ispettore Duplicati
                     </button>
-                    <button
-                        onClick={() => { setActiveTab('ai-tasks'); setEditingLocation(null); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'ai-tasks' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
-                            }`}
-                    >
-                        <LayoutDashboard size={18} />
-                        Richieste AI
-                    </button>
+
                     <button
                         onClick={() => { setActiveTab('home-config'); setEditingLocation(null); }}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'home-config' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
@@ -498,11 +502,23 @@ function AdminDashboard() {
                         <MessageSquare size={18} />
                         Messaggi
                     </button>
+
+
+                    <button
+                        onClick={() => { setActiveTab('search-data'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'search-data' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <Search size={18} />
+                        Dati Search per AI
+                    </button>
+
                     <button
                         onClick={() => { setActiveTab('match-logs'); setEditingLocation(null); }}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'match-logs' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
                             }`}
                     >
+
                         <Activity size={18} />
                         Log Match
                     </button>
@@ -530,14 +546,7 @@ function AdminDashboard() {
                         <Search size={18} />
                         Log Ricerche
                     </button>
-                    <button
-                        onClick={() => { setActiveTab('search-data'); setEditingLocation(null); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'search-data' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
-                            }`}
-                    >
-                        <Search size={18} />
-                        Dati Search per AI
-                    </button>
+
                     <button
                         onClick={() => { setActiveTab('share-logs'); setEditingLocation(null); }}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'share-logs' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
@@ -1382,6 +1391,7 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
 
     // UI State for Active Tab inside Editor
     const [editTab, setEditTab] = useState<'general' | 'services'>('general');
+    const [showExplanation, setShowExplanation] = useState<null | 'wizard' | 'seo'>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -1972,14 +1982,24 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                                             <p className="text-[10px] text-slate-500 font-medium tracking-wide font-black uppercase">Algoritmo 1-a-1 & Pesi AI</p>
                                         </div>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => generateTags('wizard')}
-                                        disabled={generatingWizard}
-                                        className="bg-primary text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest shadow-md hover:shadow-lg disabled:opacity-50 transition-all flex items-center gap-2"
-                                    >
-                                        {generatingWizard ? 'Analisi in corso...' : '✨ Autoconfigura Wizard'}
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowExplanation('wizard')}
+                                            className="p-2 text-slate-400 hover:text-primary transition-colors"
+                                            title="Cos'è l'Autoconfigurazione Wizard?"
+                                        >
+                                            <HelpCircle size={18} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => generateTags('wizard')}
+                                            disabled={generatingWizard}
+                                            className="bg-primary text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest shadow-md hover:shadow-lg disabled:opacity-50 transition-all flex items-center gap-2"
+                                        >
+                                            {generatingWizard ? 'Analisi in corso...' : '✨ Autoconfigura Wizard'}
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -2049,12 +2069,22 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                             <div className="p-6 bg-white rounded-2xl border border-slate-100 space-y-6">
                                 <div className="flex justify-between items-end border-b border-slate-50 pb-4">
                                     <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tag SEO & Insight (Testo Libero)</h4>
-                                    <button
-                                        type="button" onClick={() => generateTags('seo')} disabled={generatingSEO}
-                                        className="text-[10px] bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 font-bold hover:bg-slate-200 flex items-center gap-2 transition-all"
-                                    >
-                                        {generatingSEO ? 'Analisi SEO...' : '✨ Estrai Insight SEO'}
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowExplanation('seo')}
+                                            className="p-2 text-slate-400 hover:text-primary transition-colors"
+                                            title="Cos'è l'Estrazione Insight SEO?"
+                                        >
+                                            <HelpCircle size={16} />
+                                        </button>
+                                        <button
+                                            type="button" onClick={() => generateTags('seo')} disabled={generatingSEO}
+                                            className="text-[10px] bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 font-bold hover:bg-slate-200 flex items-center gap-2 transition-all"
+                                        >
+                                            {generatingSEO ? 'Analisi SEO...' : '✨ Estrai Insight SEO'}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                                     {['highlights', 'tourism', 'accommodation', 'infrastructure', 'sport', 'info', 'general'].map((key) => (
@@ -2160,6 +2190,136 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                         <Save size={18} /> Salva Scheda Località
                     </button>
                 </div>
+
+                {/* Explanation Modal */}
+                {showExplanation && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowExplanation(null)}>
+                        <div
+                            className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-200"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="p-8">
+                                <div className="flex justify-between items-start mb-6">
+                                    <div className={`p-3 rounded-2xl ${showExplanation === 'wizard' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-700'}`}>
+                                        <Info size={24} />
+                                    </div>
+                                    <button onClick={() => setShowExplanation(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                                        <X size={20} />
+                                    </button>
+                                </div>
+
+                                <h3 className="text-xl font-bold text-slate-900 mb-2">
+                                    {showExplanation === 'wizard' ? 'Autoconfigurazione Match Wizard' : 'Estrazione Insight SEO'}
+                                </h3>
+
+                                <div className="space-y-4 overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
+                                    {showExplanation === 'wizard' ? (
+                                        <div className="space-y-6 text-sm text-slate-600 leading-relaxed">
+                                            <p>
+                                                La funzione <strong>"✨ Autoconfigura Wizard"</strong> è uno strumento di intelligenza artificiale avanzato che serve a istruire l'algoritmo di matching su quanto una località sia adatta a determinati profili utente.
+                                            </p>
+                                            <p className="text-xs bg-indigo-50 text-indigo-700 p-3 rounded-xl border border-indigo-100">
+                                                Mentre l'estrazione SEO si occupa di "testo libero", questa funzione lavora su <strong>tag predefiniti e pesi matematici</strong>.
+                                            </p>
+
+                                            <div className="space-y-4">
+                                                <h4 className="font-black text-[10px] uppercase tracking-widest text-primary border-b border-slate-100 pb-2">Come funziona nel dettaglio:</h4>
+
+                                                <div className="space-y-2">
+                                                    <p className="font-bold text-slate-900 flex items-center gap-2">
+                                                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-900 text-white text-[10px]">1</span>
+                                                        Il Contesto dell'Analisi
+                                                    </p>
+                                                    <p className="text-xs">L'IA riceve nome, descrizioni e servizi, agendo come un <strong>esperto di marketing turistico</strong> per valutare il posizionamento della località.</p>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <p className="font-bold text-slate-900 flex items-center gap-2">
+                                                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-900 text-white text-[10px]">2</span>
+                                                        Scoring e Pesi Percentuali (0-100%)
+                                                    </p>
+                                                    <p className="text-xs">Per ognuno dei 20 tag fondamentali, l'IA assegna un punteggio di rilevanza:</p>
+                                                    <div className="bg-slate-50 p-3 rounded-xl space-y-2 text-[11px] border border-slate-100">
+                                                        <p><strong>Vibe:</strong> relax, sport, party, luxury, nature, tradition, work, silence.</p>
+                                                        <p><strong>Target:</strong> family, couple, friends, solo.</p>
+                                                        <p><strong>Activities:</strong> ski, hiking, wellness, food, culture, adrenaline, shopping, photography.</p>
+                                                    </div>
+                                                    <p className="text-[11px] italic text-slate-400">Esempio: "ski: 100%" e "party: 80%", ma magari "silence: 20%".</p>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <p className="font-bold text-slate-900 flex items-center gap-2">
+                                                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-900 text-white text-[10px]">3</span>
+                                                        Selezione e Configurazione Algoritmo
+                                                    </p>
+                                                    <ul className="text-xs space-y-1 list-disc pl-4 text-slate-500">
+                                                        <li><strong>Seleziona i tag:</strong> Attiva i bottoni nella scheda admin (bordi colorati).</li>
+                                                        <li><strong>Salva i pesi nel DB:</strong> Memorizza le percentuali per l'algoritmo.</li>
+                                                        <li><strong>Istruisce il Match Wizard:</strong> Determina la posizione della località nei risultati basata sull'affinità con l'utente.</li>
+                                                    </ul>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <p className="font-bold text-slate-900 flex items-center gap-2">
+                                                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-900 text-white text-[10px]">4</span>
+                                                        Il Differenziale con il SEO
+                                                    </p>
+                                                    <p className="text-xs">Serve a <strong>ordinare i risultati interni</strong> al sito in modo scientifico e imparziale, evitando che una località sia "tutto per tutti" e catturando le sfumature reali dell'offerta turistica.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-6 text-sm text-slate-600 leading-relaxed">
+                                            <p>
+                                                La funzione <strong>"Estrai Insight SEO"</strong> nell'area admin delle location è uno strumento basato sull'intelligenza artificiale (Gemini) progettato per generare automaticamente tag descrittivi e parole chiave ottimizzate per ogni località.
+                                            </p>
+
+                                            <div className="space-y-4">
+                                                <h4 className="font-black text-[10px] uppercase tracking-widest text-primary">Cosa succede quando la attivi:</h4>
+
+                                                <div className="space-y-2">
+                                                    <p className="font-bold text-slate-900">1. Analisi dei Dati Esistenti</p>
+                                                    <p className="text-xs">Il sistema invia all'IA tutto quello che sa sulla località: nome, descrizioni (estate/inverno) e l'elenco dei servizi configurati.</p>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <p className="font-bold text-slate-900">2. Generazione Smart dei Tag</p>
+                                                    <p className="text-xs">L'IA estrae concetti chiave divisi in 7 categorie:</p>
+                                                    <ul className="text-[11px] grid grid-cols-1 gap-1 list-disc pl-4 text-slate-500">
+                                                        <li><strong>Highlights:</strong> Punti di forza (es. "Ghiacciaio perenne").</li>
+                                                        <li><strong>Tourism:</strong> Attività (es. "Freeride", "MTB").</li>
+                                                        <li><strong>Accommodation:</strong> Soggiorni (es. "Eco-rifugi").</li>
+                                                        <li><strong>Infrastructure:</strong> Impianti (es. "Skibus gratuito").</li>
+                                                        <li><strong>Sport:</strong> Discipline praticabili.</li>
+                                                        <li><strong>Info:</strong> Info utili (es. "WiFi in quota").</li>
+                                                        <li><strong>General:</strong> Aggettivi (es. "Panoramico").</li>
+                                                    </ul>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <p className="font-bold text-slate-900">3. Normalizzazione "Standard Tag"</p>
+                                                    <p className="text-xs">Il sistema corregge automaticamente i tag suggeriti confrontandoli con quelli già presenti nel DB per evitare duplicati e mantenere il database pulito.</p>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <p className="font-bold text-slate-900">4. Risultato Finale</p>
+                                                    <p className="text-xs">I campi vengono popolati automaticamente, trasformando descrizioni prolisse in metadati strutturati per filtri e comparazioni.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button
+                                    onClick={() => setShowExplanation(null)}
+                                    className="w-full mt-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-md active:scale-95"
+                                >
+                                    Ho capito
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -2432,6 +2592,47 @@ function AITaskRunner() {
                 ) : 'Avvia Analisi AI'}
             </button>
 
+            <div className="mt-6 p-5 bg-slate-50 rounded-2xl border border-slate-200">
+                <div className="flex items-center gap-2 mb-3">
+                    <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg">
+                        <Info size={16} />
+                    </div>
+                    <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Documentazione Tecnica Ricerca AI</p>
+                </div>
+
+                <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black text-blue-600 uppercase">🤖 Algoritmo</p>
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                                Utilizza <strong>Gemini</strong> con un sistema di agent-searching. L&apos;AI simula una navigazione umana per validare dati tecnici (km piste, altimetria) e descrizioni.
+                            </p>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black text-purple-600 uppercase">📂 Duplicati</p>
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                                Se la località esiste, il sistema lo rileva e genera un <strong>Prompt di Esclusione</strong>. Questo evita di duplicare servizi già salvati, concentrandosi solo sulle novità.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black text-amber-600 uppercase">⚙️ Parametri</p>
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                                Puoi raffinare l&apos;analisi con le <strong>Istruzioni Speciali</strong>. Es: <em>&quot;Aggiungi solo hotel 4 stelle&quot;</em> o <em>&quot;Focus estremo sui dati freeride&quot;</em>.
+                            </p>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black text-emerald-600 uppercase">📄 Configurazione & DB</p>
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                                I prompt sono in <code>backend/prompts.py</code>. L&apos;AI è istruita a trovare un <strong>numero illimitato</strong> di servizi, ma è vincolata a un set predefinito di ID per i tag di base per garantire la compatibilità con il DB esistente.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* PROMPT PREVIEW MODAL */}
             {showPromptPreview && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
@@ -2614,6 +2815,7 @@ function MatchLogsView() {
     const [loadingMore, setLoadingMore] = useState(false);
     const [lastDoc, setLastDoc] = useState<any>(null);
     const [hasMore, setHasMore] = useState(true);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [ipMap, setIpMap] = useState<Record<string, string>>({});
 
     const PAGE_SIZE = 10;
@@ -2692,6 +2894,52 @@ function MatchLogsView() {
         }
     };
 
+    const handleDeleteLog = async (id: string) => {
+        if (!confirm('Sei sicuro di voler eliminare questo log?')) return;
+        try {
+            const { doc, deleteDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await deleteDoc(doc(db, 'match_logs', id));
+            setLogs(prev => prev.filter(log => log.id !== id));
+        } catch (e) {
+            console.error(e);
+            alert('Errore durante l\'eliminazione del log.');
+        }
+    };
+
+    const handleDeleteSelected = async () => {
+        if (!selectedIds.length) return;
+        if (!confirm(`Sei sicuro di voler eliminare ${selectedIds.length} log selezionati?`)) return;
+
+        try {
+            const { doc, writeBatch } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            const batch = writeBatch(db);
+
+            selectedIds.forEach(id => {
+                batch.delete(doc(db, 'match_logs', id));
+            });
+
+            await batch.commit();
+            setLogs(prev => prev.filter(log => !selectedIds.includes(log.id)));
+            setSelectedIds([]);
+        } catch (e) {
+            console.error(e);
+            alert('Errore durante l\'eliminazione massiva dei log.');
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === logs.length) setSelectedIds([]);
+        else setSelectedIds(logs.map(l => l.id));
+    };
+
+    const toggleSelectOne = (id: string) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
     useEffect(() => {
         fetchLogs();
     }, []);
@@ -2700,19 +2948,50 @@ function MatchLogsView() {
 
     return (
         <div className="space-y-4">
+            {selectedIds.length > 0 && (
+                <div className="flex justify-between items-center bg-red-50 border border-red-100 p-4 rounded-xl animate-in fade-in slide-in-from-top-2">
+                    <div className="text-red-700 text-sm font-medium">
+                        Hai selezionato <span className="font-black">{selectedIds.length}</span> log
+                    </div>
+                    <button
+                        onClick={handleDeleteSelected}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg shadow-sm hover:bg-red-700 font-bold text-xs transition-all"
+                    >
+                        <Trash2 size={14} /> Elimina Selezionati
+                    </button>
+                </div>
+            )}
+
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <table className="w-full text-left text-sm">
                     <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
                         <tr>
+                            <th className="px-6 py-4 w-10">
+                                <input
+                                    type="checkbox"
+                                    checked={logs.length > 0 && selectedIds.length === logs.length}
+                                    onChange={toggleSelectAll}
+                                    className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                                />
+                            </th>
                             <th className="px-6 py-4">Data / IP</th>
                             <th className="px-6 py-4">Preferenze</th>
                             <th className="px-6 py-4">Risultati Match (%)</th>
-                            <th className="px-6 py-4">Scelta Utente</th>
+                            <th className="px-6 py-4 text-center">Scelta Utente</th>
+                            <th className="px-6 py-4 text-right">Azioni</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {logs.map(log => (
-                            <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                            <tr key={log.id} className={`hover:bg-slate-50 transition-colors ${selectedIds.includes(log.id) ? 'bg-indigo-50/30' : ''}`}>
+                                <td className="px-6 py-4">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.includes(log.id)}
+                                        onChange={() => toggleSelectOne(log.id)}
+                                        className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                                    />
+                                </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="text-slate-500 text-xs font-medium">
                                         {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('it-IT') : 'N/A'}
@@ -2763,6 +3042,15 @@ function MatchLogsView() {
                                             <span className="text-[10px] text-slate-300 italic uppercase font-bold tracking-widest">Nessun click</span>
                                         )}
                                     </div>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <button
+                                        onClick={() => handleDeleteLog(log.id)}
+                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Elimina Log"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
                                 </td>
                             </tr>
                         ))}
@@ -2929,6 +3217,7 @@ function CompareRawLogsView() {
     const [loadingMore, setLoadingMore] = useState(false);
     const [lastDoc, setLastDoc] = useState<any>(null);
     const [hasMore, setHasMore] = useState(true);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [ipMap, setIpMap] = useState<Record<string, string>>({});
 
     const PAGE_SIZE = 15;
@@ -3003,6 +3292,53 @@ function CompareRawLogsView() {
         }
     };
 
+    const handleDeleteLog = async (id: string) => {
+        if (!confirm('Sei sicuro di voler eliminare questo log?')) return;
+        try {
+            const { doc, deleteDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await deleteDoc(doc(db, 'compare_logs', id));
+            setLogs(prev => prev.filter(log => log.id !== id));
+            setSelectedIds(prev => prev.filter(i => i !== id));
+        } catch (e) {
+            console.error(e);
+            alert('Errore durante l\'eliminazione del log.');
+        }
+    };
+
+    const handleDeleteSelected = async () => {
+        if (!selectedIds.length) return;
+        if (!confirm(`Sei sicuro di voler eliminare ${selectedIds.length} log selezionati?`)) return;
+
+        try {
+            const { doc, writeBatch } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            const batch = writeBatch(db);
+
+            selectedIds.forEach(id => {
+                batch.delete(doc(db, 'compare_logs', id));
+            });
+
+            await batch.commit();
+            setLogs(prev => prev.filter(log => !selectedIds.includes(log.id)));
+            setSelectedIds([]);
+        } catch (e) {
+            console.error(e);
+            alert('Errore durante l\'eliminazione massiva dei log.');
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === logs.length) setSelectedIds([]);
+        else setSelectedIds(logs.map(l => l.id));
+    };
+
+    const toggleSelectOne = (id: string) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
     useEffect(() => {
         fetchLogs();
     }, []);
@@ -3010,83 +3346,125 @@ function CompareRawLogsView() {
     if (loading) return <div className="p-8 text-center text-slate-500">Caricamento log comparazioni...</div>;
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-                <h3 className="font-bold text-slate-700 text-sm">Dettaglio Singole Comparazioni (Raw Logs)</h3>
-            </div>
-            <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
-                    <tr>
-                        <th className="px-6 py-4">Data / IP</th>
-                        <th className="px-6 py-4">Località Comparate</th>
-                        <th className="px-6 py-4">Scelte Utente</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                    {logs.map((log: any) => (
-                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-slate-500 text-xs font-medium">
-                                    {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('it-IT') : 'N/A'}
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-1 text-[10px] font-mono">
-                                    <span className="text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                                        {log.ip || '0.0.0.0'}
-                                    </span>
-                                    {(log.country || ipMap[log.ip]) && (
-                                        <span className="text-indigo-500 font-black uppercase text-[9px]">
-                                            {log.country || ipMap[log.ip]}
-                                        </span>
-                                    )}
-                                </div>
-                            </td>
-                            <td className="px-6 py-4">
-                                <div className="flex flex-wrap gap-1">
-                                    {log.locations?.map((loc: any, i: number) => (
-                                        <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded border border-indigo-100">
-                                            {loc.name}
-                                        </span>
-                                    ))}
-                                </div>
-                            </td>
-                            <td className="px-6 py-4">
-                                <div className="flex flex-wrap gap-1">
-                                    {log.choices?.length > 0 ? (
-                                        log.choices.map((choice: string, i: number) => (
-                                            <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-50 text-green-700 text-[9px] font-bold border border-green-100">
-                                                <Check size={10} /> {choice}
-                                            </span>
-                                        ))
-                                    ) : (
-                                        <span className="text-[9px] text-slate-300 italic uppercase font-bold text-[8px]">Nessun click</span>
-                                    )}
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-
-            {hasMore && (
-                <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex justify-center">
+        <div className="space-y-4">
+            {selectedIds.length > 0 && (
+                <div className="flex justify-between items-center bg-red-50 border border-red-100 p-4 rounded-xl animate-in fade-in slide-in-from-top-2">
+                    <div className="text-red-700 text-sm font-medium">
+                        Hai selezionato <span className="font-black">{selectedIds.length}</span> log
+                    </div>
                     <button
-                        onClick={() => fetchLogs(true)}
-                        disabled={loadingMore}
-                        className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:border-primary/30 hover:text-primary transition-all shadow-sm flex items-center gap-2"
+                        onClick={handleDeleteSelected}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg shadow-sm hover:bg-red-700 font-bold text-xs transition-all"
                     >
-                        {loadingMore ? (
-                            <>
-                                <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                                Caricamento...
-                            </>
-                        ) : (
-                            <>
-                                <Plus size={14} /> Carica altri log
-                            </>
-                        )}
+                        <Trash2 size={14} /> Elimina Selezionati
                     </button>
                 </div>
             )}
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="font-bold text-slate-700 text-sm">Dettaglio Singole Comparazioni (Raw Logs)</h3>
+                </div>
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                        <tr>
+                            <th className="px-6 py-4 w-10">
+                                <input
+                                    type="checkbox"
+                                    checked={logs.length > 0 && selectedIds.length === logs.length}
+                                    onChange={toggleSelectAll}
+                                    className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                                />
+                            </th>
+                            <th className="px-6 py-4">Data / IP</th>
+                            <th className="px-6 py-4">Località Comparate</th>
+                            <th className="px-6 py-4">Scelte Utente</th>
+                            <th className="px-6 py-4 text-right">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {logs.map((log: any) => (
+                            <tr key={log.id} className={`hover:bg-slate-50 transition-colors ${selectedIds.includes(log.id) ? 'bg-indigo-50/30' : ''}`}>
+                                <td className="px-6 py-4">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.includes(log.id)}
+                                        onChange={() => toggleSelectOne(log.id)}
+                                        className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                                    />
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-slate-500 text-xs font-medium">
+                                        {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('it-IT') : 'N/A'}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-1 text-[10px] font-mono">
+                                        <span className="text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                            {log.ip || '0.0.0.0'}
+                                        </span>
+                                        {(log.country || ipMap[log.ip]) && (
+                                            <span className="text-indigo-500 font-black uppercase text-[9px]">
+                                                {log.country || ipMap[log.ip]}
+                                            </span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex flex-wrap gap-1">
+                                        {log.locations?.map((loc: any, i: number) => (
+                                            <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded border border-indigo-100">
+                                                {loc.name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex flex-wrap gap-1">
+                                        {log.choices?.length > 0 ? (
+                                            log.choices.map((choice: string, i: number) => (
+                                                <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-50 text-green-700 text-[9px] font-bold border border-green-100">
+                                                    <Check size={10} /> {choice}
+                                                </span>
+                                            ))
+                                        ) : (
+                                            <span className="text-[9px] text-slate-300 italic uppercase font-bold text-[8px]">Nessun click</span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <button
+                                        onClick={() => handleDeleteLog(log.id)}
+                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Elimina Log"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+
+                {hasMore && (
+                    <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex justify-center">
+                        <button
+                            onClick={() => fetchLogs(true)}
+                            disabled={loadingMore}
+                            className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:border-primary/30 hover:text-primary transition-all shadow-sm flex items-center gap-2"
+                        >
+                            {loadingMore ? (
+                                <>
+                                    <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                                    Caricamento...
+                                </>
+                            ) : (
+                                <>
+                                    <Plus size={14} /> Carica altri log
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
@@ -3107,7 +3485,7 @@ function SearchDataView({ locations }: { locations: any[] }) {
     const textData = useMemo(() => {
         return filteredLocations
             .map(loc => `${loc.name}, ${loc.country || 'Italia'}`)
-            .sort((a, b) => a.localeCompare(b)) // Alphabetical order
+            .sort((a, b) => a.localeCompare(b))
             .join('\n');
     }, [filteredLocations]);
 
@@ -3163,12 +3541,14 @@ function SearchDataView({ locations }: { locations: any[] }) {
         </div>
     );
 }
+
 function SearchLogsView() {
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [lastDoc, setLastDoc] = useState<any>(null);
     const [hasMore, setHasMore] = useState(true);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [ipMap, setIpMap] = useState<Record<string, string>>({});
 
     const PAGE_SIZE = 15;
@@ -3243,6 +3623,53 @@ function SearchLogsView() {
         }
     };
 
+    const handleDeleteLog = async (id: string) => {
+        if (!confirm('Sei sicuro di voler eliminare questo log?')) return;
+        try {
+            const { doc, deleteDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await deleteDoc(doc(db, 'search_logs', id));
+            setLogs(prev => prev.filter(log => log.id !== id));
+            setSelectedIds(prev => prev.filter(i => i !== id));
+        } catch (e) {
+            console.error(e);
+            alert('Errore durante l\'eliminazione del log.');
+        }
+    };
+
+    const handleDeleteSelected = async () => {
+        if (!selectedIds.length) return;
+        if (!confirm(`Sei sicuro di voler eliminare ${selectedIds.length} log selezionati?`)) return;
+
+        try {
+            const { doc, writeBatch } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            const batch = writeBatch(db);
+
+            selectedIds.forEach(id => {
+                batch.delete(doc(db, 'search_logs', id));
+            });
+
+            await batch.commit();
+            setLogs(prev => prev.filter(log => !selectedIds.includes(log.id)));
+            setSelectedIds([]);
+        } catch (e) {
+            console.error(e);
+            alert('Errore durante l\'eliminazione massiva dei log.');
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === logs.length) setSelectedIds([]);
+        else setSelectedIds(logs.map(l => l.id));
+    };
+
+    const toggleSelectOne = (id: string) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
     useEffect(() => {
         fetchLogs();
     }, []);
@@ -3250,101 +3677,145 @@ function SearchLogsView() {
     if (loading) return <div className="p-8 text-center text-slate-500">Caricamento log ricerche...</div>;
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-                <h3 className="font-bold text-slate-700 text-sm">Cronologia Ricerche Sito</h3>
-            </div>
-            <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
-                    <tr>
-                        <th className="px-6 py-4">Data / IP</th>
-                        <th className="px-6 py-4">Query / Filtri</th>
-                        <th className="px-6 py-4">Risultati</th>
-                        <th className="px-6 py-4">Destinazione Scelta</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                    {logs.map((log: any) => (
-                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-slate-500 text-xs font-medium">
-                                    {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('it-IT') : 'N/A'}
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-1 text-[10px] font-mono">
-                                    <span className="text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                                        {log.ip || '0.0.0.0'}
-                                    </span>
-                                    {(log.country || ipMap[log.ip]) && (
-                                        <span className="text-indigo-500 font-black uppercase text-[9px]">
-                                            {log.country || ipMap[log.ip]}
-                                        </span>
-                                    )}
-                                </div>
-                            </td>
-                            <td className="px-6 py-4">
-                                {log.query && (
-                                    <div className="font-bold text-slate-900 mb-1 italic">"{log.query}"</div>
-                                )}
-                                <div className="flex flex-wrap gap-1">
-                                    {log.tags?.map((tag: string) => (
-                                        <span key={tag} className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-bold rounded border border-slate-200">
-                                            {tag}
-                                        </span>
-                                    ))}
-                                </div>
-                            </td>
-                            <td className="px-6 py-4">
-                                <span className="text-xs font-bold text-slate-500">
-                                    {log.resultsCount || 0} match
-                                </span>
-                            </td>
-                            <td className="px-6 py-4">
-                                <div className="flex flex-wrap gap-1">
-                                    {log.choices?.length > 0 ? (
-                                        log.choices.map((choice: string, i: number) => (
-                                            <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-50 text-green-700 text-[9px] font-bold border border-green-100">
-                                                <Check size={10} /> {choice}
-                                            </span>
-                                        ))
-                                    ) : (
-                                        <span className="text-[9px] text-slate-300 italic uppercase font-bold text-[8px]">Nessun click</span>
-                                    )}
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-
-            {hasMore && (
-                <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex justify-center">
+        <div className="space-y-4">
+            {selectedIds.length > 0 && (
+                <div className="flex justify-between items-center bg-red-50 border border-red-100 p-4 rounded-xl animate-in fade-in slide-in-from-top-2">
+                    <div className="text-red-700 text-sm font-medium">
+                        Hai selezionato <span className="font-black">{selectedIds.length}</span> log
+                    </div>
                     <button
-                        onClick={() => fetchLogs(true)}
-                        disabled={loadingMore}
-                        className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:border-primary/30 hover:text-primary transition-all shadow-sm flex items-center gap-2"
+                        onClick={handleDeleteSelected}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg shadow-sm hover:bg-red-700 font-bold text-xs transition-all"
                     >
-                        {loadingMore ? (
-                            <>
-                                <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                                Caricamento...
-                            </>
-                        ) : (
-                            <>
-                                <Plus size={14} /> Carica altri log ricerche
-                            </>
-                        )}
+                        <Trash2 size={14} /> Elimina Selezionati
                     </button>
                 </div>
             )}
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="font-bold text-slate-700 text-sm">Cronologia Ricerche Sito</h3>
+                </div>
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                        <tr>
+                            <th className="px-6 py-4 w-10">
+                                <input
+                                    type="checkbox"
+                                    checked={logs.length > 0 && selectedIds.length === logs.length}
+                                    onChange={toggleSelectAll}
+                                    className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                                />
+                            </th>
+                            <th className="px-6 py-4">Data / IP</th>
+                            <th className="px-6 py-4">Query / Filtri</th>
+                            <th className="px-6 py-4 text-center">Risultati</th>
+                            <th className="px-6 py-4">Destinazione Scelta</th>
+                            <th className="px-6 py-4 text-right">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {logs.map((log: any) => (
+                            <tr key={log.id} className={`hover:bg-slate-50 transition-colors ${selectedIds.includes(log.id) ? 'bg-indigo-50/30' : ''}`}>
+                                <td className="px-6 py-4">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.includes(log.id)}
+                                        onChange={() => toggleSelectOne(log.id)}
+                                        className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                                    />
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-slate-500 text-xs font-medium">
+                                        {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('it-IT') : 'N/A'}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-1 text-[10px] font-mono">
+                                        <span className="text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                            {log.ip || '0.0.0.0'}
+                                        </span>
+                                        {(log.country || ipMap[log.ip]) && (
+                                            <span className="text-indigo-500 font-black uppercase text-[9px]">
+                                                {log.country || ipMap[log.ip]}
+                                            </span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    {log.query && (
+                                        <div className="font-bold text-slate-900 mb-1 italic">"{log.query}"</div>
+                                    )}
+                                    <div className="flex flex-wrap gap-1">
+                                        {log.tags?.map((tag: string) => (
+                                            <span key={tag} className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-bold rounded border border-slate-200">
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                    <span className="text-xs font-bold text-slate-500">
+                                        {log.resultsCount || 0}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex flex-wrap gap-1">
+                                        {log.choices?.length > 0 ? (
+                                            log.choices.map((choice: string, i: number) => (
+                                                <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-50 text-green-700 text-[9px] font-bold border border-green-100">
+                                                    <Check size={10} /> {choice}
+                                                </span>
+                                            ))
+                                        ) : (
+                                            <span className="text-[9px] text-slate-300 italic uppercase font-bold text-[8px]">Nessun click</span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <button
+                                        onClick={() => handleDeleteLog(log.id)}
+                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Elimina Log"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+
+                {hasMore && (
+                    <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex justify-center">
+                        <button
+                            onClick={() => fetchLogs(true)}
+                            disabled={loadingMore}
+                            className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:border-primary/30 hover:text-primary transition-all shadow-sm flex items-center gap-2"
+                        >
+                            {loadingMore ? (
+                                <>
+                                    <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                                    Caricamento...
+                                </>
+                            ) : (
+                                <>
+                                    <Plus size={14} /> Carica altri log ricerche
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
+
 function ShareLogsView() {
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [lastDoc, setLastDoc] = useState<any>(null);
     const [hasMore, setHasMore] = useState(true);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [ipMap, setIpMap] = useState<Record<string, string>>({});
 
     const PAGE_SIZE = 15;
@@ -3419,6 +3890,53 @@ function ShareLogsView() {
         }
     };
 
+    const handleDeleteLog = async (id: string) => {
+        if (!confirm('Sei sicuro di voler eliminare questo log?')) return;
+        try {
+            const { doc, deleteDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await deleteDoc(doc(db, 'share_logs', id));
+            setLogs(prev => prev.filter(log => log.id !== id));
+            setSelectedIds(prev => prev.filter(i => i !== id));
+        } catch (e) {
+            console.error(e);
+            alert('Errore durante l\'eliminazione del log.');
+        }
+    };
+
+    const handleDeleteSelected = async () => {
+        if (!selectedIds.length) return;
+        if (!confirm(`Sei sicuro di voler eliminare ${selectedIds.length} log selezionati?`)) return;
+
+        try {
+            const { doc, writeBatch } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            const batch = writeBatch(db);
+
+            selectedIds.forEach(id => {
+                batch.delete(doc(db, 'share_logs', id));
+            });
+
+            await batch.commit();
+            setLogs(prev => prev.filter(log => !selectedIds.includes(log.id)));
+            setSelectedIds([]);
+        } catch (e) {
+            console.error(e);
+            alert('Errore durante l\'eliminazione massiva dei log.');
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === logs.length) setSelectedIds([]);
+        else setSelectedIds(logs.map(l => l.id));
+    };
+
+    const toggleSelectOne = (id: string) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
     useEffect(() => {
         fetchLogs();
     }, []);
@@ -3439,7 +3957,7 @@ function ShareLogsView() {
         switch (action) {
             case 'copy': return 'Copiato';
             case 'view': return 'Visualizzato';
-            default: return 'Copiato'; // fallback for old logs
+            default: return 'Copiato';
         }
     };
 
@@ -3462,85 +3980,127 @@ function ShareLogsView() {
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-                <h3 className="font-bold text-slate-700 text-sm">Cronologia Condivisioni Link</h3>
-            </div>
-            <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
-                    <tr>
-                        <th className="px-6 py-4">Data / IP</th>
-                        <th className="px-6 py-4">Azione</th>
-                        <th className="px-6 py-4">Pagina Sorgente</th>
-                        <th className="px-6 py-4">Link Condiviso / Oggetto</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                    {logs.map((log: any) => (
-                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-slate-500 text-xs font-medium">
-                                    {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('it-IT') : 'N/A'}
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-1 text-[10px] font-mono">
-                                    <span className="text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                                        {log.ip || '0.0.0.0'}
-                                    </span>
-                                    {(log.country || ipMap[log.ip]) && (
-                                        <span className="text-indigo-500 font-black uppercase text-[9px]">
-                                            {log.country || ipMap[log.ip]}
-                                        </span>
-                                    )}
-                                </div>
-                            </td>
-                            <td className="px-6 py-4">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${getActionColor(log.action)}`}>
-                                    {getActionLabel(log.action)}
-                                </span>
-                            </td>
-                            <td className="px-6 py-4">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${getPageColor(log.page)}`}>
-                                    {getPageLabel(log.page)}
-                                </span>
-                            </td>
-                            <td className="px-6 py-4">
-                                <div className="max-w-md">
-                                    {log.locationName && (
-                                        <div className="font-bold text-slate-900 mb-1">{log.locationName}</div>
-                                    )}
-                                    {log.logId && (
-                                        <div className="text-[10px] text-slate-400 font-mono mb-1">ID Log: {log.logId}</div>
-                                    )}
-                                    <div className="text-[10px] text-primary truncate hover:underline cursor-help" title={log.url}>
-                                        {log.url}
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-
-            {hasMore && (
-                <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex justify-center">
+        <div className="space-y-4">
+            {selectedIds.length > 0 && (
+                <div className="flex justify-between items-center bg-red-50 border border-red-100 p-4 rounded-xl animate-in fade-in slide-in-from-top-2">
+                    <div className="text-red-700 text-sm font-medium">
+                        Hai selezionato <span className="font-black">{selectedIds.length}</span> log
+                    </div>
                     <button
-                        onClick={() => fetchLogs(true)}
-                        disabled={loadingMore}
-                        className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:border-primary/30 hover:text-primary transition-all shadow-sm flex items-center gap-2"
+                        onClick={handleDeleteSelected}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg shadow-sm hover:bg-red-700 font-bold text-xs transition-all"
                     >
-                        {loadingMore ? (
-                            <>
-                                <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                                Caricamento...
-                            </>
-                        ) : (
-                            <>
-                                <Plus size={14} /> Carica altri log
-                            </>
-                        )}
+                        <Trash2 size={14} /> Elimina Selezionati
                     </button>
                 </div>
             )}
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="font-bold text-slate-700 text-sm">Cronologia Condivisioni Link</h3>
+                </div>
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                        <tr>
+                            <th className="px-6 py-4 w-10">
+                                <input
+                                    type="checkbox"
+                                    checked={logs.length > 0 && selectedIds.length === logs.length}
+                                    onChange={toggleSelectAll}
+                                    className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                                />
+                            </th>
+                            <th className="px-6 py-4">Data / IP</th>
+                            <th className="px-6 py-4">Azione</th>
+                            <th className="px-6 py-4">Pagina Sorgente</th>
+                            <th className="px-6 py-4">Link Condiviso / Oggetto</th>
+                            <th className="px-6 py-4 text-right">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {logs.map((log: any) => (
+                            <tr key={log.id} className={`hover:bg-slate-50 transition-colors ${selectedIds.includes(log.id) ? 'bg-indigo-50/30' : ''}`}>
+                                <td className="px-6 py-4">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.includes(log.id)}
+                                        onChange={() => toggleSelectOne(log.id)}
+                                        className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                                    />
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-slate-500 text-xs font-medium">
+                                        {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('it-IT') : 'N/A'}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-1 text-[10px] font-mono">
+                                        <span className="text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                            {log.ip || '0.0.0.0'}
+                                        </span>
+                                        {(log.country || ipMap[log.ip]) && (
+                                            <span className="text-indigo-500 font-black uppercase text-[9px]">
+                                                {log.country || ipMap[log.ip]}
+                                            </span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${getActionColor(log.action)}`}>
+                                        {getActionLabel(log.action)}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${getPageColor(log.page)}`}>
+                                        {getPageLabel(log.page)}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="max-w-md">
+                                        {log.locationName && (
+                                            <div className="font-bold text-slate-900 mb-1">{log.locationName}</div>
+                                        )}
+                                        {log.logId && (
+                                            <div className="text-[10px] text-slate-400 font-mono mb-1">ID Log: {log.logId}</div>
+                                        )}
+                                        <div className="text-[10px] text-primary truncate hover:underline cursor-help" title={log.url}>
+                                            {log.url}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <button
+                                        onClick={() => handleDeleteLog(log.id)}
+                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Elimina Log"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+
+                {hasMore && (
+                    <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex justify-center">
+                        <button
+                            onClick={() => fetchLogs(true)}
+                            disabled={loadingMore}
+                            className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:border-primary/30 hover:text-primary transition-all shadow-sm flex items-center gap-2"
+                        >
+                            {loadingMore ? (
+                                <>
+                                    <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                                    Caricamento...
+                                </>
+                            ) : (
+                                <>
+                                    <Plus size={14} /> Carica altri log
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

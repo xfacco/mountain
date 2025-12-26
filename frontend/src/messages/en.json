@@ -317,7 +317,18 @@
         },
         "no_matches": "We couldn't find a perfect match, but here are some popular destinations.",
         "match_score": "Match Score",
-        "view_details": "View Details"
+        "view_details": "View Details",
+        "history": {
+            "welcome_back": "Welcome back!",
+            "subtitle": "View your previous matches or start a new search.",
+            "new_search": "New Research",
+            "recent_searches": "Recent Searches",
+            "delete_hint": "Delete from browser",
+            "locations_found": "Locations Found",
+            "view_results": "View Full Results",
+            "no_history": "No saved searches",
+            "my_matches": "My Matches"
+        }
     },
     "Common": {
         "suggest_location_title": "Don't see your favorite destination?",

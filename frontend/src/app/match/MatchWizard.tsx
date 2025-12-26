@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { Navbar } from '@/components/layout/Navbar';
@@ -16,6 +16,7 @@ import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { CompareAddedModal } from '@/components/ui/CompareAddedModal';
 import { CompareLimitModal } from '@/components/ui/CompareLimitModal';
+import { MatchHistoryList } from '@/components/match/MatchHistoryList';
 
 
 // Helper for classes 
@@ -43,6 +44,7 @@ interface Preferences {
 
 function MatchWizardContent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const t = useTranslations('Match');
     const tLoc = useTranslations('Locations');
     const tLocDetail = useTranslations('LocationDetail');
@@ -56,6 +58,10 @@ function MatchWizardContent() {
     const [limitModalOpen, setLimitModalOpen] = useState(false);
     const [lastAddedLocation, setLastAddedLocation] = useState('');
     const [copied, setCopied] = useState(false);
+
+    // History State
+    const [history, setHistory] = useState<any[]>([]);
+    const [showHistory, setShowHistory] = useState(false);
 
 
 
@@ -117,6 +123,26 @@ function MatchWizardContent() {
         };
         fetchLocations();
     }, []);
+
+    // Load local history on mount
+    useEffect(() => {
+        const saved = localStorage.getItem('match_history');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    setHistory(parsed);
+                    // Only show history if we are at 'intro' step and not sharing a specific ID
+                    const shareId = searchParams.get('id');
+                    if (!shareId) {
+                        setShowHistory(true);
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to parse match history", e);
+            }
+        }
+    }, [searchParams]);
 
     // Load shared match if ID present
     useEffect(() => {
@@ -379,6 +405,22 @@ function MatchWizardContent() {
                     choices: [] // Initialize empty choices
                 });
                 setLogId(docRef.id);
+
+                // Save to local history ONLY if we're not loading an existing result from URL
+                if (!searchParams.get('id')) {
+                    const historyItem = {
+                        timestamp: Date.now(),
+                        date: new Date().toISOString(),
+                        logId: docRef.id,
+                        results: results.map(m => ({ name: m.name, score: m.matchScore })),
+                        preferences
+                    };
+                    setHistory(prev => {
+                        const newHistory = [historyItem, ...prev].slice(0, 10);
+                        localStorage.setItem('match_history', JSON.stringify(newHistory));
+                        return newHistory;
+                    });
+                }
             } catch (err) {
                 console.error("Error logging", err);
             }
@@ -416,6 +458,15 @@ function MatchWizardContent() {
         }
     };
 
+    const handleDeleteHistory = (timestamp: number) => {
+        const newHistory = history.filter(item => item.timestamp !== timestamp);
+        setHistory(newHistory);
+        localStorage.setItem('match_history', JSON.stringify(newHistory));
+        if (newHistory.length === 0) {
+            setShowHistory(false);
+        }
+    };
+
     const nextStep = () => {
         if (currentStep === 'intro') setCurrentStep('season');
         else if (currentStep === 'season') setCurrentStep('target');
@@ -447,9 +498,33 @@ function MatchWizardContent() {
         });
         setCurrentStep('intro');
         setMatches([]);
+        setLogId(null);
+        // Show history list again if it has items
+        if (history.length > 0) {
+            setShowHistory(true);
+        }
+        // Clear shared ID from URL if present
+        if (searchParams.get('id')) {
+            router.replace('/match', { scroll: false });
+        }
     };
 
     // Render Steps
+
+    // History Step
+    if (showHistory && currentStep === 'intro') {
+        return (
+            <>
+                <Navbar />
+                <MatchHistoryList
+                    history={history}
+                    onStartNew={() => setShowHistory(false)}
+                    onDeleteHistory={handleDeleteHistory}
+                />
+            </>
+        );
+    }
+
     // Intro
     if (currentStep === 'intro') {
         return (
@@ -517,9 +592,22 @@ function MatchWizardContent() {
                                         {copied ? tCommon('link_copied') : tCommon('copy_link')}
                                     </button>
                                 )}
-                                <button onClick={restart} className="text-slate-500 hover:text-slate-900 underline text-sm">
+                                <button
+                                    onClick={restart}
+                                    className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all shadow-sm active:scale-95"
+                                >
+                                    <Sparkles size={16} className="text-primary" />
                                     {t('restart')}
                                 </button>
+                                {history.length > 0 && (
+                                    <button
+                                        onClick={() => { restart(); setShowHistory(true); }}
+                                        className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-primary transition-all shadow-md active:scale-95"
+                                    >
+                                        <History size={16} />
+                                        {t('history.my_matches')}
+                                    </button>
+                                )}
                             </div>
                         </div>
 
