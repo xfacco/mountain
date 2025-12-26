@@ -61,8 +61,7 @@ export const metadata: Metadata = {
 
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
-
-// ... (imports)
+import JsonLd from '@/components/seo/JsonLd';
 
 export default async function RootLayout({
   children,
@@ -71,9 +70,37 @@ export default async function RootLayout({
 }>) {
   const messages = await getMessages();
 
+  const websiteSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    'name': 'Alpe Match',
+    'url': 'https://www.alpematch.com',
+    'potentialAction': {
+      '@type': 'SearchAction',
+      'target': {
+        '@type': 'EntryPoint',
+        'urlTemplate': 'https://www.alpematch.com/search?q={search_term_string}'
+      },
+      'query-input': 'required name=search_term_string'
+    }
+  };
+
+  const organizationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    'name': 'Alpe Match',
+    'url': 'https://www.alpematch.com',
+    'logo': 'https://www.alpematch.com/alpematch_logo_social.png',
+    'sameAs': [
+      // Add social links here if available
+    ]
+  };
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${outfit.variable} antialiased`}>
+        <JsonLd data={websiteSchema} />
+        <JsonLd data={organizationSchema} />
         {/* Google Analytics */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-FWTMGB9GWC"

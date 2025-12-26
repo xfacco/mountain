@@ -31,13 +31,35 @@ export async function generateMetadata({
     };
 }
 
+import JsonLd from '@/components/seo/JsonLd';
+
 export default function Page() {
+    const breadcrumbSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+            {
+                '@type': 'ListItem',
+                'position': 1,
+                'name': 'Home',
+                'item': 'https://www.alpematch.com'
+            },
+            {
+                '@type': 'ListItem',
+                'position': 2,
+                'name': 'Search',
+                'item': 'https://www.alpematch.com/search'
+            }
+        ]
+    };
+
     return (
         <Suspense fallback={
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
         }>
+            <JsonLd data={breadcrumbSchema} />
             <SearchClient />
         </Suspense>
     );

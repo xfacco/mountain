@@ -32,7 +32,13 @@ Struttura JSON richiesta in output:
      "vibe": ["relax", "sport", "party", "luxury", "nature"],
      "target": ["family", "couple", "friends", "solo"],
      "activities": ["ski", "hiking", "wellness", "food", "culture"],
-     "highlights": ["Highlight 1", "Highlight 2"]
+     "highlights": ["Highlight 1", "Highlight 2"],
+     "tourism": ["Tag Turismo 1", "Tag Turismo 2"],
+     "sport": ["Tag Sport 1", "Tag Sport 2"],
+     "accommodation": ["Tag Accom 1", "Tag Accom 2"],
+     "infrastructure": ["Tag Infra 1", "Tag Infra 2"],
+     "info": ["Tag Info 1", "Tag Info 2"],
+     "general": ["Tag General 1", "Tag General 2"]
   },
   "technicalData": {
       "totalSkiKm": 0,

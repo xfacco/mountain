@@ -140,6 +140,8 @@ export async function generateMetadata(
     };
 }
 
+import JsonLd from '@/components/seo/JsonLd';
+
 export default async function Page({ params }: Props) {
     const resolvedParams = await params;
     const decodedName = decodeURIComponent(resolvedParams.id);
@@ -164,14 +166,35 @@ export default async function Page({ params }: Props) {
         } : undefined
     } : null;
 
+    const breadcrumbSchema = location ? {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+            {
+                '@type': 'ListItem',
+                'position': 1,
+                'name': 'Home',
+                'item': 'https://www.alpematch.com'
+            },
+            {
+                '@type': 'ListItem',
+                'position': 2,
+                'name': 'Locations',
+                'item': 'https://www.alpematch.com/locations'
+            },
+            {
+                '@type': 'ListItem',
+                'position': 3,
+                'name': location.name,
+                'item': `https://www.alpematch.com/locations/${location.slug || locationNameToSlug(location.name)}`
+            }
+        ]
+    } : null;
+
     return (
         <>
-            {jsonLd && (
-                <script
-                    type="application/ld+json"
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-                />
-            )}
+            {jsonLd && <JsonLd data={jsonLd} />}
+            {breadcrumbSchema && <JsonLd data={breadcrumbSchema} />}
             <LocationDetailClient initialData={location ? { ...location, id: decodedName } : null} />
         </>
     );

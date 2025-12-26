@@ -24,6 +24,7 @@ function CompareContent() {
     const [compareLogId, setCompareLogId] = useState<string | null>(null);
     const [userIp, setUserIp] = useState<string>('');
     const [copied, setCopied] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const [loading, setLoading] = useState(true);
     const [loadingDetails, setLoadingDetails] = useState(false);
@@ -280,6 +281,71 @@ function CompareContent() {
         }
     };
 
+    const checkSimilarity = (tag1: string, tag2: string) => {
+        const normalize = (s: string) => s.toLowerCase().trim();
+        const t1 = normalize(tag1);
+        const t2 = normalize(tag2);
+
+        if (t1 === t2) return true;
+        if (t1.includes(t2) || t2.includes(t1)) return true; // Substring match
+
+        // Word overlap
+        const stopWords = new Set(['della', 'delle', 'degli', 'nella', 'nelle', 'negli', 'con', 'per', 'tra', 'fra', 'and', 'the', 'del', 'al', 'i', 'le', 'gli']);
+        const getWords = (s: string) => s.split(/[\s\-_]+/).filter(w => w.length >= 2 && !stopWords.has(w));
+
+        const words1 = getWords(t1);
+        const words2 = getWords(t2);
+
+        return words1.some(w => words2.includes(w));
+    };
+
+    const getCommonTags = (category: string): Set<string> => {
+        if (selectedLocations.length < 2) return new Set();
+
+        const commonTags = new Set<string>();
+
+        selectedLocations.forEach((loc, locIndex) => {
+            const effectiveLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+            const myTags = effectiveLoc.tags?.[category] || [];
+
+            myTags.forEach((myTag: string) => {
+                myTags.forEach((myTag: string) => {
+                    // Check if this tag is present in AT LEAST ONE other location (fuzzy match)
+                    // Previously this was "strict all", but "common" often implies shared by the subset we are looking at.
+                    // Especially with 3+ locations, highlighting pairwise matches is useful.
+                    let matchFoundInAny = false;
+
+                    for (let otherIndex = 0; otherIndex < selectedLocations.length; otherIndex++) {
+                        if (otherIndex === locIndex) continue;
+
+                        const otherEffectiveLoc = fullSelectedLocations.find(fl => fl.id === selectedLocations[otherIndex].id) || selectedLocations[otherIndex];
+                        const otherTags = otherEffectiveLoc.tags?.[category] || [];
+                        const match = otherTags.some((otherTag: string) => checkSimilarity(myTag, otherTag));
+
+                        if (match) {
+                            matchFoundInAny = true;
+                            break;
+                        }
+                    }
+
+                    if (matchFoundInAny) {
+                        commonTags.add(myTag);
+                    }
+                });
+            });
+        });
+
+        return commonTags;
+    };
+
+    const commonHighlights = getCommonTags('highlights');
+    const commonTourism = getCommonTags('tourism');
+    const commonSport = getCommonTags('sport');
+    const commonInfrastructure = getCommonTags('infrastructure');
+    const commonInfo = getCommonTags('info');
+    const commonGeneral = getCommonTags('general');
+    const commonAccommodation = getCommonTags('accommodation');
+
     return (
         <main className="min-h-screen bg-slate-50">
             <Navbar />
@@ -338,46 +404,69 @@ function CompareContent() {
                         >
                             <div className="p-6 bg-white rounded-xl shadow-lg border border-slate-100">
                                 <h4 className="text-sm font-bold text-slate-500 uppercase mb-4">{t('select_max')}</h4>
+
+                                {/* Search Input */}
+                                <div className="mb-6 relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Sparkles className="h-4 w-4 text-slate-400" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Cerca località..." // You might want to use translation here if available: t('search_placeholder')
+                                        className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        autoFocus
+                                    />
+                                </div>
+
                                 {loading ? (
                                     <div className="text-center py-4 text-slate-400">{t('loading_list')}</div>
                                 ) : locationOptions.length === 0 ? (
                                     <div className="text-center py-4 text-slate-400">{t('no_locations_db')}</div>
                                 ) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                                        {locationOptions.map((loc) => {
-                                            const isSelected = !!selectedLocations.find(
-                                                (l) => l.id === loc.id
-                                            );
-                                            return (
-                                                <button
-                                                    key={loc.id}
-                                                    onClick={() => toggleLocation(loc)}
-                                                    className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${isSelected
-                                                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                                                        : 'border-slate-200 hover:border-primary/50'
-                                                        }`}
-                                                >
-                                                    <img
-                                                        src={loc.seasonalImages?.[currentSeason] || loc.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba'}
-                                                        alt={loc.name}
-                                                        className="w-12 h-12 rounded-md object-cover"
-                                                    />
-                                                    <div className="flex-1">
-                                                        <div className="font-bold text-slate-900 text-sm line-clamp-1">
-                                                            {loc.name}
+                                        {locationOptions
+                                            .filter(loc => loc.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                                            .map((loc) => {
+                                                const isSelected = !!selectedLocations.find(
+                                                    (l) => l.id === loc.id
+                                                );
+                                                return (
+                                                    <button
+                                                        key={loc.id}
+                                                        onClick={() => toggleLocation(loc)}
+                                                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${isSelected
+                                                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                                                            : 'border-slate-200 hover:border-primary/50'
+                                                            }`}
+                                                    >
+                                                        <img
+                                                            src={loc.seasonalImages?.[currentSeason] || loc.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba'}
+                                                            alt={loc.name}
+                                                            className="w-12 h-12 rounded-md object-cover"
+                                                        />
+                                                        <div className="flex-1">
+                                                            <div className="font-bold text-slate-900 text-sm line-clamp-1">
+                                                                {loc.name}
+                                                            </div>
+                                                            <div className="text-xs text-slate-500">
+                                                                {loc.country || 'IT'}
+                                                            </div>
                                                         </div>
-                                                        <div className="text-xs text-slate-500">
-                                                            {loc.country || 'IT'}
-                                                        </div>
-                                                    </div>
-                                                    {isSelected && (
-                                                        <div className="text-primary">
-                                                            <Check size={16} />
-                                                        </div>
-                                                    )}
-                                                </button>
-                                            );
-                                        })}
+                                                        {isSelected && (
+                                                            <div className="text-primary">
+                                                                <Check size={16} />
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        {locationOptions.filter(loc => loc.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                                            <div className="col-span-full text-center py-8 text-slate-400 italic">
+                                                Nessuna località trovata per "{searchTerm}"
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -700,16 +789,24 @@ function CompareContent() {
                                         <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
                                             {t('highlights')}
                                         </td>
-                                        {selectedLocations.map((loc) => (
-                                            <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                <div className="flex flex-wrap gap-2">
-                                                    {[...(loc.tags?.highlights || [])].sort().map((t: string) => (
-                                                        <span key={t} className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-md border border-yellow-200">{t}</span>
-                                                    ))}
-                                                    {(!loc.tags?.highlights || loc.tags.highlights.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
-                                                </div>
-                                            </td>
-                                        ))}
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            return (
+                                                <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {[...(fullLoc.tags?.highlights || [])].sort().map((t: string) => {
+                                                            const isCommon = commonHighlights.has(t);
+                                                            return (
+                                                                <span key={t} className={`px-2 py-1 text-xs rounded-md border ${isCommon ? 'bg-white text-black border-slate-300 shadow-sm' : 'font-bold bg-yellow-100 text-yellow-700 border-yellow-200'}`}>
+                                                                    {t}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                        {(!fullLoc.tags?.highlights || fullLoc.tags.highlights.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
 
                                     {/* 2. ATTIVITÀ (Tourism) */}
@@ -728,16 +825,24 @@ function CompareContent() {
                                         <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
                                             {t('tag_tourism')}
                                         </td>
-                                        {selectedLocations.map((loc) => (
-                                            <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                <div className="flex flex-wrap gap-1">
-                                                    {[...(loc.tags?.tourism || [])].sort().map((t: string) => (
-                                                        <span key={t} className="px-2 py-0.5 bg-green-50 text-green-700 text-xs rounded border border-green-100">{t}</span>
-                                                    ))}
-                                                    {(!loc.tags?.tourism || loc.tags.tourism.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
-                                                </div>
-                                            </td>
-                                        ))}
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            return (
+                                                <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {[...(fullLoc.tags?.tourism || [])].sort().map((t: string) => {
+                                                            const isCommon = commonTourism.has(t);
+                                                            return (
+                                                                <span key={t} className={`px-2 py-0.5 text-xs rounded border ${isCommon ? 'bg-white text-black border-slate-300 shadow-sm' : 'bg-green-50 text-green-700 border-green-100'}`}>
+                                                                    {t}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                        {(!fullLoc.tags?.tourism || fullLoc.tags.tourism.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
                                     {/* Toggler Dettagli */}
                                     <tr
@@ -765,162 +870,23 @@ function CompareContent() {
                                                 <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 align-top">
                                                     {t('details_tourism')}
                                                 </td>
-                                                {selectedLocations.map((loc) => (
-                                                    <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                        <div className="space-y-4">
-                                                            {loc.services?.filter((s: any) => s.category === 'tourism').length > 0 ? (
-                                                                loc.services?.filter((s: any) => s.category === 'tourism').map((s: any, i: number) => (
-                                                                    <div key={i} className="bg-white p-3 rounded border border-slate-100 shadow-sm">
-                                                                        <div className="font-bold text-slate-800 text-sm mb-1">{s.name}</div>
-                                                                        <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{s.description}</div>
-                                                                    </div>
-                                                                ))
-                                                            ) : <span className="text-slate-400 text-xs italic">-</span>}
-                                                        </div>
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        </>
-                                    )}
-
-                                    {/* 3. OSPITALITÀ (Accommodation) */}
-                                    <tr>
-                                        <td colSpan={selectedLocations.length + 1} className="p-4 py-3 bg-slate-100 font-bold text-slate-900 border-b border-slate-200">
-                                            {t('hospitality')}
-                                        </td>
-                                    </tr>
-                                    {/* Accommodation Tags */}
-                                    <tr className="lg:hidden bg-slate-50/10">
-                                        <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
-                                            {t('tag_accommodation')}
-                                        </td>
-                                    </tr>
-                                    <tr className="border-b border-slate-100 lg:bg-slate-50/10">
-                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
-                                            {t('tag_accommodation')}
-                                        </td>
-                                        {selectedLocations.map((loc) => (
-                                            <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                <div className="flex flex-wrap gap-1">
-                                                    {[...(loc.tags?.accommodation || [])].sort().map((t: string) => (
-                                                        <span key={t} className="px-2 py-0.5 bg-orange-50 text-orange-700 text-xs rounded border border-orange-100">{t}</span>
-                                                    ))}
-                                                    {(!loc.tags?.accommodation || loc.tags.accommodation.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
-                                                </div>
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    {/* Toggler Dettagli */}
-                                    <tr
-                                        className="cursor-pointer transition-all border-b border-slate-100 bg-slate-50 hover:bg-slate-100"
-                                        onClick={() => setShowDetails(prev => ({ ...prev, accommodation: !prev.accommodation }))}
-                                    >
-                                        <td className="hidden lg:table-cell w-40 bg-slate-50/50 border-r border-slate-100"></td>
-                                        <td colSpan={selectedLocations.length} className="p-0">
-                                            <div className="flex items-center justify-center gap-2 py-3 px-4 group transition-all">
-                                                <div className={`flex items-center gap-2 px-6 py-2 rounded-full text-[12px] font-black uppercase tracking-widest shadow-sm transition-all ${showDetails.accommodation ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 group-hover:border-primary group-hover:text-primary'}`}>
-                                                    {showDetails.accommodation ? <ChevronDown size={16} className="mt-0.5" /> : <Plus size={16} />}
-                                                    {showDetails.accommodation ? t('hide_details') : t('show_details')}
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {showDetails.accommodation && (
-                                        <>
-                                            <tr className="lg:hidden bg-slate-50/20">
-                                                <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
-                                                    {t('details_accommodation')}
-                                                </td>
-                                            </tr>
-                                            <tr className="border-b border-slate-200 bg-slate-50/20">
-                                                <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 align-top">
-                                                    {t('details_accommodation')}
-                                                </td>
-                                                {selectedLocations.map((loc) => (
-                                                    <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                        <div className="space-y-4">
-                                                            {loc.services?.filter((s: any) => s.category === 'accommodation').length > 0 ? (
-                                                                loc.services?.filter((s: any) => s.category === 'accommodation').map((s: any, i: number) => (
-                                                                    <div key={i} className="bg-white p-3 rounded border border-slate-100 shadow-sm">
-                                                                        <div className="font-bold text-slate-800 text-sm mb-1">{s.name}</div>
-                                                                        <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{s.description}</div>
-                                                                    </div>
-                                                                ))
-                                                            ) : <span className="text-slate-400 text-xs italic">-</span>}
-                                                        </div>
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        </>
-                                    )}
-
-                                    {/* 4. IMPIANTI (Infrastructure) */}
-                                    <tr>
-                                        <td colSpan={selectedLocations.length + 1} className="p-4 py-3 bg-slate-100 font-bold text-slate-900 border-b border-slate-200">
-                                            {t('infrastructure')}
-                                        </td>
-                                    </tr>
-                                    {/* Infrastructure Tags */}
-                                    <tr className="lg:hidden bg-slate-50/10">
-                                        <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
-                                            {t('tag_infrastructure')}
-                                        </td>
-                                    </tr>
-                                    <tr className="border-b border-slate-100 lg:bg-slate-50/10">
-                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
-                                            {t('tag_infrastructure')}
-                                        </td>
-                                        {selectedLocations.map((loc) => (
-                                            <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                <div className="flex flex-wrap gap-1">
-                                                    {[...(loc.tags?.infrastructure || [])].sort().map((t: string) => (
-                                                        <span key={t} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded border border-slate-200">{t}</span>
-                                                    ))}
-                                                    {(!loc.tags?.infrastructure || loc.tags.infrastructure.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
-                                                </div>
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    {/* Toggler Dettagli */}
-                                    <tr
-                                        className="cursor-pointer transition-all border-b border-slate-100 bg-slate-50 hover:bg-slate-100"
-                                        onClick={() => setShowDetails(prev => ({ ...prev, infrastructure: !prev.infrastructure }))}
-                                    >
-                                        <td className="hidden lg:table-cell w-40 bg-slate-50/50 border-r border-slate-100"></td>
-                                        <td colSpan={selectedLocations.length} className="p-0">
-                                            <div className="flex items-center justify-center gap-2 py-3 px-4 group transition-all">
-                                                <div className={`flex items-center gap-2 px-6 py-2 rounded-full text-[12px] font-black uppercase tracking-widest shadow-sm transition-all ${showDetails.infrastructure ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 group-hover:border-primary group-hover:text-primary'}`}>
-                                                    {showDetails.infrastructure ? <ChevronDown size={16} className="mt-0.5" /> : <Plus size={16} />}
-                                                    {showDetails.infrastructure ? t('hide_details') : t('show_details')}
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {showDetails.infrastructure && (
-                                        <>
-                                            <tr className="lg:hidden bg-slate-50/20">
-                                                <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
-                                                    {t('details_infrastructure')}
-                                                </td>
-                                            </tr>
-                                            <tr className="border-b border-slate-200 bg-slate-50/20">
-                                                <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 align-top">
-                                                    {t('details_infrastructure')}
-                                                </td>
-                                                {selectedLocations.map((loc) => (
-                                                    <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                        <div className="space-y-4">
-                                                            {loc.services?.filter((s: any) => s.category === 'infrastructure').length > 0 ? (
-                                                                loc.services?.filter((s: any) => s.category === 'infrastructure').map((s: any, i: number) => (
-                                                                    <div key={i} className="bg-white p-3 rounded border border-slate-100 shadow-sm">
-                                                                        <div className="font-bold text-slate-800 text-sm mb-1">{s.name}</div>
-                                                                        <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{s.description}</div>
-                                                                    </div>
-                                                                ))
-                                                            ) : <span className="text-slate-400 text-xs italic">-</span>}
-                                                        </div>
-                                                    </td>
-                                                ))}
+                                                {selectedLocations.map((loc) => {
+                                                    const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                                    return (
+                                                        <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                            <div className="space-y-4">
+                                                                {fullLoc.services?.filter((s: any) => s.category === 'tourism').length > 0 ? (
+                                                                    fullLoc.services?.filter((s: any) => s.category === 'tourism').map((s: any, i: number) => (
+                                                                        <div key={i} className="bg-white p-3 rounded border border-slate-100 shadow-sm">
+                                                                            <div className="font-bold text-slate-800 text-sm mb-1">{s.name}</div>
+                                                                            <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{s.description}</div>
+                                                                        </div>
+                                                                    ))
+                                                                ) : <span className="text-slate-400 text-xs italic">-</span>}
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                })}
                                             </tr>
                                         </>
                                     )}
@@ -941,16 +907,24 @@ function CompareContent() {
                                         <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
                                             {t('tag_sport')}
                                         </td>
-                                        {selectedLocations.map((loc) => (
-                                            <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                <div className="flex flex-wrap gap-1">
-                                                    {[...(loc.tags?.sport || [])].sort().map((t: string) => (
-                                                        <span key={t} className="px-2 py-0.5 bg-red-50 text-red-700 text-xs rounded border border-red-100">{t}</span>
-                                                    ))}
-                                                    {(!loc.tags?.sport || loc.tags.sport.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
-                                                </div>
-                                            </td>
-                                        ))}
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            return (
+                                                <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {[...(fullLoc.tags?.sport || [])].sort().map((t: string) => {
+                                                            const isCommon = commonSport.has(t);
+                                                            return (
+                                                                <span key={t} className={`px-2 py-0.5 text-xs rounded border ${isCommon ? 'bg-white text-black border-slate-300 shadow-sm' : 'bg-red-50 text-red-700 border-red-100'}`}>
+                                                                    {t}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                        {(!fullLoc.tags?.sport || fullLoc.tags.sport.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
                                     {/* Toggler Dettagli */}
                                     <tr
@@ -978,23 +952,110 @@ function CompareContent() {
                                                 <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 align-top">
                                                     {t('details_sport')}
                                                 </td>
-                                                {selectedLocations.map((loc) => (
-                                                    <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                        <div className="space-y-4">
-                                                            {loc.services?.filter((s: any) => s.category === 'sport').length > 0 ? (
-                                                                loc.services?.filter((s: any) => s.category === 'sport').map((s: any, i: number) => (
-                                                                    <div key={i} className="bg-white p-3 rounded border border-slate-100 shadow-sm">
-                                                                        <div className="font-bold text-slate-800 text-sm mb-1">{s.name}</div>
-                                                                        <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{s.description}</div>
-                                                                    </div>
-                                                                ))
-                                                            ) : <span className="text-slate-400 text-xs italic">-</span>}
-                                                        </div>
-                                                    </td>
-                                                ))}
+                                                {selectedLocations.map((loc) => {
+                                                    const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                                    return (
+                                                        <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                            <div className="space-y-4">
+                                                                {fullLoc.services?.filter((s: any) => s.category === 'sport').length > 0 ? (
+                                                                    fullLoc.services?.filter((s: any) => s.category === 'sport').map((s: any, i: number) => (
+                                                                        <div key={i} className="bg-white p-3 rounded border border-slate-100 shadow-sm">
+                                                                            <div className="font-bold text-slate-800 text-sm mb-1">{s.name}</div>
+                                                                            <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{s.description}</div>
+                                                                        </div>
+                                                                    ))
+                                                                ) : <span className="text-slate-400 text-xs italic">-</span>}
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                })}
                                             </tr>
                                         </>
                                     )}
+
+
+                                    {/* 4. IMPIANTI (Infrastructure) */}
+                                    <tr>
+                                        <td colSpan={selectedLocations.length + 1} className="p-4 py-3 bg-slate-100 font-bold text-slate-900 border-b border-slate-200">
+                                            {t('infrastructure')}
+                                        </td>
+                                    </tr>
+                                    {/* Infrastructure Tags */}
+                                    <tr className="lg:hidden bg-slate-50/10">
+                                        <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                                            {t('tag_infrastructure')}
+                                        </td>
+                                    </tr>
+                                    <tr className="border-b border-slate-100 lg:bg-slate-50/10">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
+                                            {t('tag_infrastructure')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            return (
+                                                <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {[...(fullLoc.tags?.infrastructure || [])].sort().map((t: string) => {
+                                                            const isCommon = commonInfrastructure.has(t);
+                                                            return (
+                                                                <span key={t} className={`px-2 py-0.5 text-xs rounded border ${isCommon ? 'bg-white text-black border-slate-300 shadow-sm' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                                                    {t}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                        {(!fullLoc.tags?.infrastructure || fullLoc.tags.infrastructure.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                    {/* Toggler Dettagli */}
+                                    <tr
+                                        className="cursor-pointer transition-all border-b border-slate-100 bg-slate-50 hover:bg-slate-100"
+                                        onClick={() => setShowDetails(prev => ({ ...prev, infrastructure: !prev.infrastructure }))}
+                                    >
+                                        <td className="hidden lg:table-cell w-40 bg-slate-50/50 border-r border-slate-100"></td>
+                                        <td colSpan={selectedLocations.length} className="p-0">
+                                            <div className="flex items-center justify-center gap-2 py-3 px-4 group transition-all">
+                                                <div className={`flex items-center gap-2 px-6 py-2 rounded-full text-[12px] font-black uppercase tracking-widest shadow-sm transition-all ${showDetails.infrastructure ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 group-hover:border-primary group-hover:text-primary'}`}>
+                                                    {showDetails.infrastructure ? <ChevronDown size={16} className="mt-0.5" /> : <Plus size={16} />}
+                                                    {showDetails.infrastructure ? t('hide_details') : t('show_details')}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {showDetails.infrastructure && (
+                                        <>
+                                            <tr className="lg:hidden bg-slate-50/20">
+                                                <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                                                    {t('details_infrastructure')}
+                                                </td>
+                                            </tr>
+                                            <tr className="border-b border-slate-200 bg-slate-50/20">
+                                                <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 align-top">
+                                                    {t('details_infrastructure')}
+                                                </td>
+                                                {selectedLocations.map((loc) => {
+                                                    const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                                    return (
+                                                        <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                            <div className="space-y-4">
+                                                                {fullLoc.services?.filter((s: any) => s.category === 'infrastructure').length > 0 ? (
+                                                                    fullLoc.services?.filter((s: any) => s.category === 'infrastructure').map((s: any, i: number) => (
+                                                                        <div key={i} className="bg-white p-3 rounded border border-slate-100 shadow-sm">
+                                                                            <div className="font-bold text-slate-800 text-sm mb-1">{s.name}</div>
+                                                                            <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{s.description}</div>
+                                                                        </div>
+                                                                    ))
+                                                                ) : <span className="text-slate-400 text-xs italic">-</span>}
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        </>
+                                    )}
+
 
                                     {/* 6. INFO */}
                                     <tr>
@@ -1012,16 +1073,24 @@ function CompareContent() {
                                         <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
                                             {t('tag_info')}
                                         </td>
-                                        {selectedLocations.map((loc) => (
-                                            <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                <div className="flex flex-wrap gap-1">
-                                                    {[...(loc.tags?.info || [])].sort().map((t: string) => (
-                                                        <span key={t} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded border border-indigo-100">{t}</span>
-                                                    ))}
-                                                    {(!loc.tags?.info || loc.tags.info.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
-                                                </div>
-                                            </td>
-                                        ))}
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            return (
+                                                <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {[...(fullLoc.tags?.info || [])].sort().map((t: string) => {
+                                                            const isCommon = commonInfo.has(t);
+                                                            return (
+                                                                <span key={t} className={`px-2 py-0.5 text-xs rounded border ${isCommon ? 'bg-white text-black border-slate-300 shadow-sm' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}>
+                                                                    {t}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                        {(!fullLoc.tags?.info || fullLoc.tags.info.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
                                     {/* Toggler Dettagli */}
                                     <tr
@@ -1049,20 +1118,23 @@ function CompareContent() {
                                                 <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 align-top">
                                                     {t('details_info')}
                                                 </td>
-                                                {selectedLocations.map((loc) => (
-                                                    <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                        <div className="space-y-4">
-                                                            {loc.services?.filter((s: any) => s.category === 'info').length > 0 ? (
-                                                                loc.services?.filter((s: any) => s.category === 'info').map((s: any, i: number) => (
-                                                                    <div key={i} className="bg-white p-3 rounded border border-slate-100 shadow-sm">
-                                                                        <div className="font-bold text-slate-800 text-sm mb-1">{s.name}</div>
-                                                                        <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{s.description}</div>
-                                                                    </div>
-                                                                ))
-                                                            ) : <span className="text-slate-400 text-xs italic">-</span>}
-                                                        </div>
-                                                    </td>
-                                                ))}
+                                                {selectedLocations.map((loc) => {
+                                                    const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                                    return (
+                                                        <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                            <div className="space-y-4">
+                                                                {fullLoc.services?.filter((s: any) => s.category === 'info').length > 0 ? (
+                                                                    fullLoc.services?.filter((s: any) => s.category === 'info').map((s: any, i: number) => (
+                                                                        <div key={i} className="bg-white p-3 rounded border border-slate-100 shadow-sm">
+                                                                            <div className="font-bold text-slate-800 text-sm mb-1">{s.name}</div>
+                                                                            <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{s.description}</div>
+                                                                        </div>
+                                                                    ))
+                                                                ) : <span className="text-slate-400 text-xs italic">-</span>}
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                })}
                                             </tr>
                                         </>
                                     )}
@@ -1083,16 +1155,24 @@ function CompareContent() {
                                         <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
                                             {t('tag_general')}
                                         </td>
-                                        {selectedLocations.map((loc) => (
-                                            <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                <div className="flex flex-wrap gap-1">
-                                                    {[...(loc.tags?.general || [])].sort().map((t: string) => (
-                                                        <span key={t} className="px-2 py-0.5 bg-slate-50 text-slate-700 text-xs rounded border border-slate-200">{t}</span>
-                                                    ))}
-                                                    {(!loc.tags?.general || loc.tags.general.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
-                                                </div>
-                                            </td>
-                                        ))}
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            return (
+                                                <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {[...(fullLoc.tags?.general || [])].sort().map((t: string) => {
+                                                            const isCommon = commonGeneral.has(t);
+                                                            return (
+                                                                <span key={t} className={`px-2 py-0.5 text-xs rounded border ${isCommon ? 'bg-white text-black border-slate-300 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>
+                                                                    {t}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                        {(!fullLoc.tags?.general || fullLoc.tags.general.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
                                     {/* Toggler Dettagli */}
                                     <tr
@@ -1120,24 +1200,107 @@ function CompareContent() {
                                                 <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 align-top">
                                                     {t('details_general')}
                                                 </td>
-                                                {selectedLocations.map((loc) => (
-                                                    <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                        <div className="space-y-4">
-                                                            {loc.services?.filter((s: any) => s.category === 'general').length > 0 ? (
-                                                                loc.services?.filter((s: any) => s.category === 'general').map((s: any, i: number) => (
-                                                                    <div key={i} className="bg-white p-3 rounded border border-slate-100 shadow-sm">
-                                                                        <div className="font-bold text-slate-800 text-sm mb-1">{s.name}</div>
-                                                                        <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{s.description}</div>
-                                                                    </div>
-                                                                ))
-                                                            ) : <span className="text-slate-400 text-xs italic">-</span>}
-                                                        </div>
-                                                    </td>
-                                                ))}
+                                                {selectedLocations.map((loc) => {
+                                                    const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                                    return (
+                                                        <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                            <div className="space-y-4">
+                                                                {fullLoc.services?.filter((s: any) => s.category === 'general').length > 0 ? (
+                                                                    fullLoc.services?.filter((s: any) => s.category === 'general').map((s: any, i: number) => (
+                                                                        <div key={i} className="bg-white p-3 rounded border border-slate-100 shadow-sm">
+                                                                            <div className="font-bold text-slate-800 text-sm mb-1">{s.name}</div>
+                                                                            <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{s.description}</div>
+                                                                        </div>
+                                                                    ))
+                                                                ) : <span className="text-slate-400 text-xs italic">-</span>}
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                })}
                                             </tr>
                                         </>
                                     )}
-
+                                    {/* 3. OSPITALITÀ (Accommodation) */}
+                                    <tr>
+                                        <td colSpan={selectedLocations.length + 1} className="p-4 py-3 bg-slate-100 font-bold text-slate-900 border-b border-slate-200">
+                                            {t('hospitality')}
+                                        </td>
+                                    </tr>
+                                    {/* Accommodation Tags */}
+                                    <tr className="lg:hidden bg-slate-50/10">
+                                        <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                                            {t('tag_accommodation')}
+                                        </td>
+                                    </tr>
+                                    <tr className="border-b border-slate-100 lg:bg-slate-50/10">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
+                                            {t('tag_accommodation')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            return (
+                                                <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {[...(fullLoc.tags?.accommodation || [])].sort().map((t: string) => {
+                                                            const isCommon = commonAccommodation.has(t);
+                                                            return (
+                                                                <span key={t} className={`px-2 py-0.5 text-xs rounded border ${isCommon ? 'bg-white text-black border-slate-300 shadow-sm' : 'bg-orange-50 text-orange-700 border-orange-100'}`}>
+                                                                    {t}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                        {(!fullLoc.tags?.accommodation || fullLoc.tags.accommodation.length === 0) && <span className="text-slate-400 text-xs italic">-</span>}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                    {/* Toggler Dettagli */}
+                                    <tr
+                                        className="cursor-pointer transition-all border-b border-slate-100 bg-slate-50 hover:bg-slate-100"
+                                        onClick={() => setShowDetails(prev => ({ ...prev, accommodation: !prev.accommodation }))}
+                                    >
+                                        <td className="hidden lg:table-cell w-40 bg-slate-50/50 border-r border-slate-100"></td>
+                                        <td colSpan={selectedLocations.length} className="p-0">
+                                            <div className="flex items-center justify-center gap-2 py-3 px-4 group transition-all">
+                                                <div className={`flex items-center gap-2 px-6 py-2 rounded-full text-[12px] font-black uppercase tracking-widest shadow-sm transition-all ${showDetails.accommodation ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 group-hover:border-primary group-hover:text-primary'}`}>
+                                                    {showDetails.accommodation ? <ChevronDown size={16} className="mt-0.5" /> : <Plus size={16} />}
+                                                    {showDetails.accommodation ? t('hide_details') : t('show_details')}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {showDetails.accommodation && (
+                                        <>
+                                            <tr className="lg:hidden bg-slate-50/20">
+                                                <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                                                    {t('details_accommodation')}
+                                                </td>
+                                            </tr>
+                                            <tr className="border-b border-slate-200 bg-slate-50/20">
+                                                <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 align-top">
+                                                    {t('details_accommodation')}
+                                                </td>
+                                                {selectedLocations.map((loc) => {
+                                                    const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                                    return (
+                                                        <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                            <div className="space-y-4">
+                                                                {fullLoc.services?.filter((s: any) => s.category === 'accommodation').length > 0 ? (
+                                                                    fullLoc.services?.filter((s: any) => s.category === 'accommodation').map((s: any, i: number) => (
+                                                                        <div key={i} className="bg-white p-3 rounded border border-slate-100 shadow-sm">
+                                                                            <div className="font-bold text-slate-800 text-sm mb-1">{s.name}</div>
+                                                                            <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{s.description}</div>
+                                                                        </div>
+                                                                    ))
+                                                                ) : <span className="text-slate-400 text-xs italic">-</span>}
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        </>
+                                    )}
                                 </tbody>
                             </table>
                         </div>

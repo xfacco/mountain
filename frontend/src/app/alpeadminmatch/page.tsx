@@ -23,13 +23,18 @@ import {
     MessageSquare,
     Link as ShareIcon,
     Mail,
-    Check
+    Check,
+    Tags,
+    AlertTriangle
 } from 'lucide-react';
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
 import { locationNameToSlug } from '@/lib/url-utils';
+import TagManagementView from './TagManagementView';
+import SeoInsightsManager from './SeoInsightsManager';
+import DuplicateTagsInspector from './DuplicateTagsInspector';
 
 export default function AdminDashboardPage() {
     return (
@@ -48,6 +53,24 @@ function AdminDashboard() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+    const [systemTags, setSystemTags] = useState(TAG_CATEGORIES);
+
+    const fetchSystemTags = async () => {
+        try {
+            const { doc, getDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            const snap = await getDoc(doc(db, 'system_configs', 'tags'));
+            if (snap.exists()) {
+                setSystemTags(prev => ({ ...prev, ...snap.data() }));
+            }
+        } catch (e) {
+            console.error("Error fetching tags", e);
+        }
+    };
+
+    useEffect(() => {
+        if (isAuthenticated) fetchSystemTags();
+    }, [isAuthenticated]);
 
     const handleSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'asc';
@@ -224,6 +247,21 @@ function AdminDashboard() {
 
             const lightData: any = { updatedAt: serverTimestamp() };
             const heavyData: any = { updatedAt: serverTimestamp() };
+
+            // Ensure all tag categories exist
+            if (updatedData.tags) {
+                const requiredCategories = ['vibe', 'target', 'highlights', 'activities', 'tourism', 'sport', 'accommodation', 'infrastructure', 'info', 'general'];
+                requiredCategories.forEach(cat => {
+                    if (!updatedData.tags[cat]) {
+                        updatedData.tags[cat] = [];
+                    }
+                });
+            } else {
+                updatedData.tags = {
+                    vibe: [], target: [], highlights: [], activities: [],
+                    tourism: [], sport: [], accommodation: [], infrastructure: [], info: [], general: []
+                };
+            }
 
             Object.entries(updatedData).forEach(([key, value]) => {
                 if (key === 'id') return;
@@ -413,6 +451,30 @@ function AdminDashboard() {
                         Gestione Località
                     </button>
                     <button
+                        onClick={() => { setActiveTab('tags'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'tags' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <Tags size={18} />
+                        Gestione Tag
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('seo-tags'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'seo-tags' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <Sparkles size={18} />
+                        Highlights & SEO
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('duplicate-tags'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'duplicate-tags' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <AlertTriangle size={18} />
+                        Ispettore Duplicati
+                    </button>
+                    <button
                         onClick={() => { setActiveTab('ai-tasks'); setEditingLocation(null); }}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'ai-tasks' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
                             }`}
@@ -502,6 +564,8 @@ function AdminDashboard() {
                         location={editingLocation}
                         onSave={handleSaveEdit}
                         onCancel={() => setEditingLocation(null)}
+                        systemTags={systemTags}
+                        allLocations={locations}
                     />
                 ) : activeTab === 'merge' ? (
                     <MergeTool
@@ -522,7 +586,11 @@ function AdminDashboard() {
                                                         : activeTab === 'search-logs' ? 'Log Ricerche Sito'
                                                             : activeTab === 'search-data' ? 'Dati per Motori di Ricerca'
                                                                 : activeTab === 'share-logs' ? 'Log Condivisioni Link location'
-                                                                    : 'Motore AI Ricerca'}
+                                                                    : activeTab === 'share-logs' ? 'Log Condivisioni Link location'
+                                                                        : activeTab === 'tags' ? 'Gestione Tag Sistema'
+                                                                            : activeTab === 'seo-tags' ? 'Highlights & SEO Refactoring'
+                                                                                : activeTab === 'duplicate-tags' ? 'Controllo Duplicati Tag'
+                                                                                    : 'Motore AI Ricerca'}
                                 </h1>
                                 <p className="text-slate-500 text-sm mt-1">
                                     {activeTab === 'locations' ? 'Gestisci le destinazioni pubblicate.'
@@ -798,6 +866,9 @@ function AdminDashboard() {
                         )}
 
                         {activeTab === 'messages' && <MessagesView />}
+                        {activeTab === 'tags' && <TagManagementView onUpdate={fetchSystemTags} />}
+                        {activeTab === 'seo-tags' && <SeoInsightsManager />}
+                        {activeTab === 'duplicate-tags' && <DuplicateTagsInspector />}
                         {activeTab === 'match-logs' && <MatchLogsView />}
                         {activeTab === 'compare-ranking' && <CompareRankingView />}
                         {activeTab === 'compare-raw' && <CompareRawLogsView />}
@@ -1011,6 +1082,36 @@ function MergeTool({ selectedLocations: initialSelected, onCancel, onComplete }:
             const allServices = selectedLocations.flatMap(l => l.services || []);
             const finalServices = allServices.filter(s => selectedServiceIds.has(s.id || s.name));
             finalData.services = finalServices;
+
+            // Merge Tags (Union of all tags from Master + Sources)
+            // This ensures we keep the rich "Compare" tags even if Master didn't have them
+            const mergedTags = { ...(masterLoc.tags || {}) };
+            const allTagsCategories = new Set([
+                'vibe', 'target', 'activities', 'highlights',
+                'tourism', 'sport', 'accommodation', 'infrastructure', 'info', 'general'
+            ]);
+
+            // Add any other categories found in master
+            Object.keys(mergedTags).forEach(k => allTagsCategories.add(k));
+
+            sourceLocs.forEach(source => {
+                if (!source.tags) return;
+
+                // Add categories found in source
+                Object.keys(source.tags).forEach(k => allTagsCategories.add(k));
+
+                // Merge arrays
+                allTagsCategories.forEach(category => {
+                    const masterList = mergedTags[category] || [];
+                    const sourceList = source.tags[category] || [];
+
+                    // Union
+                    const unionSet = new Set([...masterList, ...sourceList]);
+                    mergedTags[category] = Array.from(unionSet);
+                });
+            });
+            finalData.tags = mergedTags;
+
             finalData.updatedAt = serverTimestamp();
 
             // 2. Separate into Thin/Full structure
@@ -1258,12 +1359,15 @@ function MergeTool({ selectedLocations: initialSelected, onCancel, onComplete }:
 
 // --- Sub-Components ---
 
-function EditLocationView({ location, onSave, onCancel }: { location: any, onSave: (data: any) => void, onCancel: () => void }) {
+function EditLocationView({ location, onSave, onCancel, systemTags, allLocations }: { location: any, onSave: (data: any) => void, onCancel: () => void, systemTags: any, allLocations?: any[] }) {
     const [formData, setFormData] = useState({
         ...location,
         description: location.description || { winter: '', summer: '' },
         services: location.services || [],
-        tags: location.tags || { vibe: [], target: [], highlights: [], activities: [] },
+        tags: location.tags || {
+            vibe: [], target: [], highlights: [], activities: [],
+            tourism: [], sport: [], accommodation: [], infrastructure: [], info: [], general: []
+        },
         tagWeights: location.tagWeights || {},
         seasonalImages: location.seasonalImages || {
             winter: location.coverImage || '',
@@ -1402,12 +1506,91 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                         tagWeights: data.data.weights || {}
                     }));
                 } else {
-                    // SEO Mode
+                    // SEO Mode with Fuzzy Matching against Existing tags
+                    let optimizedTags = { ...data.data };
+
+                    if (allLocations && allLocations.length > 0) {
+                        // 1. Build a reference set of "Standard Tags" currently in use
+                        // Structure: { category: Set<existingTagString> }
+                        const referenceTags: Record<string, Set<string>> = {
+                            highlights: new Set(), tourism: new Set(), accommodation: new Set(),
+                            infrastructure: new Set(), sport: new Set(), info: new Set(), general: new Set()
+                        };
+
+                        allLocations.forEach((loc: any) => {
+                            if (!loc.tags) return;
+                            Object.keys(referenceTags).forEach(cat => {
+                                if (loc.tags[cat]) {
+                                    loc.tags[cat].forEach((t: string) => referenceTags[cat].add(t));
+                                }
+                            });
+                        });
+
+                        // 2. Fuzzy Match Function (similar to CompareClient)
+                        const checkSimilarity = (tag1: string, tag2: string) => {
+                            const normalize = (s: string) => s.toLowerCase().trim();
+                            const t1 = normalize(tag1);
+                            const t2 = normalize(tag2);
+
+                            if (t1 === t2) return true;
+                            if (t1.includes(t2) || t2.includes(t1)) return true; // Substring
+
+                            const stopWords = new Set(['della', 'delle', 'degli', 'nella', 'nelle', 'negli', 'con', 'per', 'tra', 'fra', 'and', 'the', 'del', 'al', 'i', 'le', 'gli']);
+                            const getWords = (s: string) => s.split(/[\s\-_]+/).filter(w => w.length >= 2 && !stopWords.has(w));
+                            const words1 = getWords(t1);
+                            const words2 = getWords(t2);
+
+                            // Intersection
+                            return words1.some(w => words2.includes(w));
+                        };
+
+                        // 3. Process new tags and try to match
+                        Object.keys(optimizedTags).forEach(cat => {
+                            if (!referenceTags[cat]) return;
+
+                            const newTagList = optimizedTags[cat] || [];
+                            const processedList: string[] = [];
+
+                            newTagList.forEach((newTag: string) => {
+                                // Find if there is a match in referenceTags[cat]
+                                let match = null;
+
+                                // Prioritize exact match (case insensitive)
+                                for (const existingTag of Array.from(referenceTags[cat])) {
+                                    if (existingTag.toLowerCase() === newTag.toLowerCase()) {
+                                        match = existingTag;
+                                        break;
+                                    }
+                                }
+
+                                // If no exact match, try fuzzy
+                                if (!match) {
+                                    for (const existingTag of Array.from(referenceTags[cat])) {
+                                        if (checkSimilarity(newTag, existingTag)) {
+                                            match = existingTag;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if (match) {
+                                    console.log(`[SEO Tag Match] Converted "${newTag}" to existing "${match}"`);
+                                    processedList.push(match);
+                                } else {
+                                    processedList.push(newTag);
+                                }
+                            });
+
+                            // Remove duplicates within the new list itself
+                            optimizedTags[cat] = Array.from(new Set(processedList));
+                        });
+                    }
+
                     setFormData((prev: any) => ({
                         ...prev,
                         tags: {
                             ...(prev.tags || {}),
-                            ...data.data
+                            ...optimizedTags
                         }
                     }));
                 }
@@ -1494,6 +1677,10 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
             setTranslating(false);
         }
     };
+
+    const seasonalImagesSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(
+        (formData.name || '') + ' ' + (formData.region || '') + ' mountain panorama wallpaper images from Unsplash, Pexels, Pixabay, StockSnap.io, Picjumbo, Freepik, Burst (by Shopify), Kaboompics, Reshot, Gratisography, Rawpixel, ISO Republic, Morguefile, Wikimedia Commons'
+    )}&tbm=isch`;
 
     return (
         <div className="max-w-5xl mx-auto">
@@ -1599,6 +1786,14 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Regione</label>
                                 <input name="region" value={formData.region} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none" />
+                                <a
+                                    href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' ' + (formData.region || '') + ' - regione della location in inglese ')}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold"
+                                >
+                                    <Search size={10} /> Trova su Google
+                                </a>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Paese</label>
@@ -1609,7 +1804,7 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                     className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none bg-white"
                                 >
                                     <option value="">Seleziona...</option>
-                                    {TAG_CATEGORIES.nations.map(n => (
+                                    {(systemTags?.nations || TAG_CATEGORIES.nations).map((n: any) => (
                                         <option key={n.id} value={n.label}>{n.label}</option>
                                     ))}
                                     <option value="Austria">Austria</option>
@@ -1653,7 +1848,7 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                 <div className="flex justify-between items-center mb-2">
                                     <label className="block text-sm font-medium text-slate-700">Coordinate GPS (Decimali)</label>
                                     <a
-                                        href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' ' + (formData.region || '') + ' coordinate gps gradi decimali')}`}
+                                        href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' ' + (formData.region || '') + ' altitudine, coordinate gps gradi decimali')}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold"
@@ -1700,12 +1895,12 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                 <h3 className="font-bold text-slate-900 border-l-4 border-indigo-500 pl-3">Immagini Stagionali</h3>
                                 <div className="flex gap-3">
                                     <a
-                                        href={`https://www.google.com/search?q=${encodeURIComponent(formData.name + ' mountain panorama wallpaper images')}&tbm=isch`}
+                                        href={seasonalImagesSearchUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded text-slate-500 hover:text-primary transition-colors flex items-center gap-1 font-bold"
                                     >
-                                        <Search size={10} /> Cerca HQ
+                                        Cerca immagine<Search size={10} />
                                     </a>
                                 </div>
                             </div>
@@ -1794,7 +1989,7 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                             <div className="w-1 h-3 bg-indigo-400 rounded-full"></div> Atmosfera / Vibe
                                         </label>
                                         <div className="flex flex-wrap gap-2">
-                                            {TAG_CATEGORIES.vibe.map(tag => (
+                                            {(systemTags?.vibe || TAG_CATEGORIES.vibe).map((tag: any) => (
                                                 <button
                                                     key={tag.id} type="button" onClick={() => toggleTag('vibe', tag.id)}
                                                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-between gap-2 ${formData.tags?.vibe?.includes(tag.id) ? 'bg-primary text-white border-primary shadow-sm scale-[1.02]' : 'bg-white text-slate-600 border-slate-200 hover:border-primary/40'}`}
@@ -1814,7 +2009,7 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                             <div className="w-1 h-3 bg-pink-400 rounded-full"></div> Target Utente
                                         </label>
                                         <div className="flex flex-wrap gap-2">
-                                            {TAG_CATEGORIES.target.map(tag => (
+                                            {(systemTags?.target || TAG_CATEGORIES.target).map((tag: any) => (
                                                 <button
                                                     key={tag.id} type="button" onClick={() => toggleTag('target', tag.id)}
                                                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-between gap-2 ${formData.tags?.target?.includes(tag.id) ? 'bg-primary text-white border-primary shadow-sm scale-[1.02]' : 'bg-white text-slate-600 border-slate-200 hover:border-primary/40'}`}
@@ -1834,7 +2029,7 @@ function EditLocationView({ location, onSave, onCancel }: { location: any, onSav
                                             <div className="w-1 h-3 bg-green-400 rounded-full"></div> Attività Chiave
                                         </label>
                                         <div className="flex flex-wrap gap-2">
-                                            {TAG_CATEGORIES.activities.map(tag => (
+                                            {(systemTags?.activities || TAG_CATEGORIES.activities).map((tag: any) => (
                                                 <button
                                                     key={tag.id} type="button" onClick={() => toggleTag('activities', tag.id)}
                                                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-between gap-2 ${formData.tags?.activities?.includes(tag.id) ? 'bg-primary text-white border-primary shadow-sm scale-[1.02]' : 'bg-white text-slate-600 border-slate-200 hover:border-primary/40'}`}

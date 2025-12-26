@@ -74,11 +74,41 @@ async function getLocations() {
     }
 }
 
+import JsonLd from '@/components/seo/JsonLd';
+
 export default async function DirectoryPage({ searchParams }: Props) {
     let locations = await getLocations();
     const t = await getTranslations('Directory');
     const resolvedSearchParams = await searchParams;
     const filterLocation = resolvedSearchParams?.location as string;
+
+    const breadcrumbSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+            {
+                '@type': 'ListItem',
+                'position': 1,
+                'name': 'Home',
+                'item': 'https://www.alpematch.com'
+            },
+            {
+                '@type': 'ListItem',
+                'position': 2,
+                'name': 'Directory',
+                'item': 'https://www.alpematch.com/directory'
+            }
+        ]
+    };
+
+    if (filterLocation) {
+        breadcrumbSchema.itemListElement.push({
+            '@type': 'ListItem',
+            'position': 3,
+            'name': filterLocation,
+            'item': `https://www.alpematch.com/directory?location=${encodeURIComponent(filterLocation)}`
+        });
+    }
 
     if (filterLocation) {
         locations = locations.filter(loc => {
@@ -91,8 +121,6 @@ export default async function DirectoryPage({ searchParams }: Props) {
     }
 
     // Fetch heavy data (including services) for the locations we're about to display
-    // This is necessary because services was moved to a separate collection (location_details)
-    // for performance optimization in general views.
     if (locations.length > 0) {
         locations = await Promise.all(locations.map(async (loc) => {
             try {
@@ -107,9 +135,9 @@ export default async function DirectoryPage({ searchParams }: Props) {
         }));
     }
 
-
     return (
         <div className="min-h-screen bg-slate-50">
+            <JsonLd data={breadcrumbSchema} />
             <Navbar />
 
             <main className="pt-32 pb-20 container mx-auto px-6 max-w-6xl">

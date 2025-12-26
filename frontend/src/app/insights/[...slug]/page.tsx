@@ -111,6 +111,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
 }
 
+import JsonLd from '@/components/seo/JsonLd';
+
 export default async function InsightPage({ params }: Props) {
     const resolvedParams = await params;
     const [locationName, type, ...rest] = resolvedParams.slug.map(s => decodeURIComponent(s));
@@ -128,6 +130,7 @@ export default async function InsightPage({ params }: Props) {
     let mainTitle = '';
     let mainDescription = '';
     let categoryLabel = '';
+    let canonicalUrl = `https://www.alpematch.com/insights/${resolvedParams.slug.join('/')}`;
 
     if (type === 'seasons') {
         const season = rest[0]; // Assuming season is simple text not needing special decode
@@ -142,7 +145,6 @@ export default async function InsightPage({ params }: Props) {
         let service = location.services?.find((s: any) => s.name === serviceNameSlug);
 
         // If not found, try to match by comparing hyphenated versions
-        // This allows "Grindelwald-First-Adventure-Mountain" (URL) to match "Grindelwald-First Adventure Mountain" (DB)
         if (!service && location.services) {
             service = location.services.find((s: any) =>
                 locationNameToSlug(s.name) === serviceNameSlug ||
@@ -156,8 +158,59 @@ export default async function InsightPage({ params }: Props) {
         categoryLabel = service?.category || 'Service';
     }
 
+    const articleSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        'headline': mainTitle,
+        'description': mainDescription?.substring(0, 160),
+        'image': location.coverImage || 'https://www.alpematch.com/alpematch_logo_social.png',
+        'author': {
+            '@type': 'Organization',
+            'name': 'Alpe Match'
+        },
+        'publisher': {
+            '@type': 'Organization',
+            'name': 'Alpe Match',
+            'logo': {
+                '@type': 'ImageObject',
+                'url': 'https://www.alpematch.com/alpematch_logo_social.png'
+            }
+        },
+        'mainEntityOfPage': {
+            '@type': 'WebPage',
+            '@id': canonicalUrl
+        }
+    };
+
+    const breadcrumbSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+            {
+                '@type': 'ListItem',
+                'position': 1,
+                'name': 'Home',
+                'item': 'https://www.alpematch.com'
+            },
+            {
+                '@type': 'ListItem',
+                'position': 2,
+                'name': location.name,
+                'item': `https://www.alpematch.com/locations/${location.slug || locationNameToSlug(location.name)}`
+            },
+            {
+                '@type': 'ListItem',
+                'position': 3,
+                'name': mainTitle,
+                'item': canonicalUrl
+            }
+        ]
+    };
+
     return (
         <div className="min-h-screen bg-slate-50">
+            <JsonLd data={articleSchema} />
+            <JsonLd data={breadcrumbSchema} />
             <Navbar />
 
             <main className="pt-32 pb-20 container mx-auto px-6 max-w-4xl">

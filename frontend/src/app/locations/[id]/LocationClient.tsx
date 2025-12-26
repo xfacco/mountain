@@ -14,6 +14,7 @@ import { CompareAddedModal } from '@/components/ui/CompareAddedModal';
 import { CompareLimitModal } from '@/components/ui/CompareLimitModal';
 import { RadarChart } from '@/components/ui/RadarChart';
 import { motion, AnimatePresence } from 'framer-motion';
+import { normalizeTags } from '@/lib/tag-utils';
 
 export default function LocationDetailClient({ initialData }: { initialData?: any }) {
     const params = useParams();
@@ -134,11 +135,11 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
     const tabs = [
         { id: 'overview', label: t('tabs.overview'), icon: Info },
         { id: 'tourism', label: t('tabs.tourism'), icon: Mountain },
-        { id: 'accommodation', label: t('tabs.accommodation'), icon: Home },
-        { id: 'infrastructure', label: t('tabs.infrastructure'), icon: Bus },
         { id: 'sport', label: t('tabs.sport'), icon: Accessibility },
+        { id: 'infrastructure', label: t('tabs.infrastructure'), icon: Bus },
         { id: 'info', label: t('tabs.info'), icon: HelpCircle },
         { id: 'general', label: t('tabs.general'), icon: Layers },
+        { id: 'accommodation', label: t('tabs.accommodation'), icon: Home },
         { id: 'all', label: t('tabs.all'), icon: List }
     ];
 
@@ -211,7 +212,7 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                     <Icon size={14} className={colorClass} /> {title}
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                    {tags.map((tag: string, i: number) => (
+                    {normalizeTags(tags).map((tag: string, i: number) => (
                         <Link
                             href={`/search?tag=${encodeURIComponent(tag)}`}
                             key={i}
@@ -270,7 +271,18 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                         animate={{ opacity: 1, scale: 1 }}
                                         exit={{ opacity: 0, scale: 0.95 }}
                                         transition={{ duration: 0.5, ease: "easeInOut" }}
-                                        className="w-full h-full object-cover"
+                                        drag="x"
+                                        dragConstraints={{ left: 0, right: 0 }}
+                                        dragElastic={1}
+                                        onDragEnd={(e, { offset, velocity }) => {
+                                            const swipe = offset.x;
+                                            if (swipe < -50) {
+                                                nextImg();
+                                            } else if (swipe > 50) {
+                                                prevImg();
+                                            }
+                                        }}
+                                        className="w-full h-full object-cover touch-pan-y"
                                         alt={location.name}
                                     />
                                 </AnimatePresence>
@@ -282,14 +294,14 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                     <>
                                         <button
                                             onClick={prevImg}
-                                            className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/40 transition-all opacity-0 group-hover/carousel:opacity-100 z-10 border border-white/30"
+                                            className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/40 transition-all opacity-100 lg:opacity-0 lg:group-hover/carousel:opacity-100 z-10 border border-white/30"
                                             aria-label="Previous image"
                                         >
                                             <ChevronLeft size={20} />
                                         </button>
                                         <button
                                             onClick={nextImg}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/40 transition-all opacity-0 group-hover/carousel:opacity-100 z-10 border border-white/30"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/40 transition-all opacity-100 lg:opacity-0 lg:group-hover/carousel:opacity-100 z-10 border border-white/30"
                                             aria-label="Next image"
                                         >
                                             <ChevronRight size={20} />
@@ -431,6 +443,13 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                                     onClick={() => {
                                                         setActiveTab(tab.id);
                                                         setIsSinglePageMode(false);
+                                                        if (tab.id === 'all') {
+                                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                        } else {
+                                                            setTimeout(() => {
+                                                                document.getElementById(`section-${tab.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                            }, 10);
+                                                        }
                                                     }}
                                                     className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${isActive
                                                         ? 'bg-slate-900 text-white shadow-md'
@@ -592,7 +611,7 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                                 <div className="space-y-3">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-1 h-3 bg-green-500 rounded-full"></div>
-                                                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Activities</h4>
+                                                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t('tabs.sport')}</h4>
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
                                                         <div className="flex justify-center order-2 md:order-1">
@@ -667,42 +686,33 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                 </div>
                             )}
 
-                            {/* ACCOMMODATION TAB */}
-                            {(activeTab === 'accommodation' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('accommodation').length > 0) && (
-                                <div id="section-accommodation" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
+                            {/* SPORT TAB */}
+                            {(activeTab === 'sport' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('sport').length > 0) && (
+                                <div id="section-sport" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
                                     <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
-                                        <Home className="text-orange-500" size={28} /> {t('sections.accommodation')}
+                                        <Accessibility className="text-red-500" size={28} /> {t('sections.sport')}
                                     </h2>
-                                    {location.tags?.accommodation && (
+                                    {location.tags?.sport && (
                                         <div className="mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                                            {renderTagGroup('Caratteristiche Ospitalità', location.tags.accommodation, Home, 'text-orange-500', 'bg-orange-50 border-orange-100')}
+                                            {renderTagGroup('Caratteristiche Sport', location.tags.sport, Accessibility, 'text-red-500', 'bg-red-50 border-red-100')}
                                         </div>
                                     )}
-                                    <div className="grid md:grid-cols-1 gap-4">
-                                        {getFilteredServices('accommodation').length > 0 ? (
-                                            getFilteredServices('accommodation').map((service: any, idx: number) => (
-                                                <div key={idx} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 hover:border-orange-200 transition-all">
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <h4 className="font-bold text-slate-900 text-lg">{service.name}</h4>
-                                                    </div>
-                                                    <p className="text-slate-600 mb-4 leading-relaxed whitespace-pre-wrap">{service.description}</p>
-                                                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200/50 mt-auto">
-                                                        {service.seasonAvailability?.map((s: string) => (
-                                                            <span key={s} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-white border border-slate-100 px-2 py-1 rounded-md flex items-center gap-1">
-                                                                {s === 'winter' ? <Snowflake size={10} /> : s === 'summer' ? <Sun size={10} /> : <Calendar size={10} />} {tSeasons(s)}
-                                                            </span>
-                                                        ))}
-                                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {getFilteredServices('sport').map((service: any, idx: number) => (
+                                            <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 transition-all shadow-sm hover:shadow-md group">
+                                                <h3 className="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary transition-colors">{service.name}</h3>
+                                                {service.description && <p className="text-slate-600 text-sm leading-relaxed">{service.description}</p>}
+                                                <div className="flex gap-2 mt-3">
+                                                    {service.seasonAvailability?.includes('winter') && <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full font-bold">{tSeasons('winter')}</span>}
+                                                    {service.seasonAvailability?.includes('summer') && <span className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded-full font-bold">{tSeasons('summer')}</span>}
                                                 </div>
-                                            ))
-                                        ) : (
-                                            <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                                                <p className="text-slate-400 italic">{t('no_items')}</p>
                                             </div>
-                                        )}
+                                        ))}
                                     </div>
+                                    {(getFilteredServices('sport').length === 0) && <p className="text-slate-500 italic">{t('no_items')}</p>}
                                 </div>
                             )}
+
 
                             {/* INFRASTRUCTURE TAB */}
                             {(activeTab === 'infrastructure' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('infrastructure').length > 0) && (
@@ -735,32 +745,6 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                 </div>
                             )}
 
-                            {/* SPORT TAB */}
-                            {(activeTab === 'sport' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('sport').length > 0) && (
-                                <div id="section-sport" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
-                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
-                                        <Accessibility className="text-red-500" size={28} /> {t('sections.sport')}
-                                    </h2>
-                                    {location.tags?.sport && (
-                                        <div className="mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                                            {renderTagGroup('Caratteristiche Sport', location.tags.sport, Accessibility, 'text-red-500', 'bg-red-50 border-red-100')}
-                                        </div>
-                                    )}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {getFilteredServices('sport').map((service: any, idx: number) => (
-                                            <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 transition-all shadow-sm hover:shadow-md group">
-                                                <h3 className="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary transition-colors">{service.name}</h3>
-                                                {service.description && <p className="text-slate-600 text-sm leading-relaxed">{service.description}</p>}
-                                                <div className="flex gap-2 mt-3">
-                                                    {service.seasonAvailability?.includes('winter') && <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full font-bold">{tSeasons('winter')}</span>}
-                                                    {service.seasonAvailability?.includes('summer') && <span className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded-full font-bold">{tSeasons('summer')}</span>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {(getFilteredServices('sport').length === 0) && <p className="text-slate-500 italic">{t('no_items')}</p>}
-                                </div>
-                            )}
 
                             {/* INFO TAB */}
                             {(activeTab === 'info' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('info').length > 0) && (
@@ -808,6 +792,43 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                 </div>
                             )}
 
+                            {/* ACCOMMODATION TAB */}
+                            {(activeTab === 'accommodation' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('accommodation').length > 0) && (
+                                <div id="section-accommodation" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
+                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
+                                        <Home className="text-orange-500" size={28} /> {t('sections.accommodation')}
+                                    </h2>
+                                    {location.tags?.accommodation && (
+                                        <div className="mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                            {renderTagGroup('Caratteristiche Ospitalità', location.tags.accommodation, Home, 'text-orange-500', 'bg-orange-50 border-orange-100')}
+                                        </div>
+                                    )}
+                                    <div className="grid md:grid-cols-1 gap-4">
+                                        {getFilteredServices('accommodation').length > 0 ? (
+                                            getFilteredServices('accommodation').map((service: any, idx: number) => (
+                                                <div key={idx} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 hover:border-orange-200 transition-all">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <h4 className="font-bold text-slate-900 text-lg">{service.name}</h4>
+                                                    </div>
+                                                    <p className="text-slate-600 mb-4 leading-relaxed whitespace-pre-wrap">{service.description}</p>
+                                                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200/50 mt-auto">
+                                                        {service.seasonAvailability?.map((s: string) => (
+                                                            <span key={s} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-white border border-slate-100 px-2 py-1 rounded-md flex items-center gap-1">
+                                                                {s === 'winter' ? <Snowflake size={10} /> : s === 'summer' ? <Sun size={10} /> : <Calendar size={10} />} {tSeasons(s)}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                                <p className="text-slate-400 italic">{t('no_items')}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
                     </div>
                 </div>
@@ -821,7 +842,7 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                         <div className="px-4 py-6 border-b border-slate-100 animate-in slide-in-from-bottom-4 duration-300 max-h-[60vh] overflow-y-auto">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 px-1">{t('tabs.all')}</h3>
                             <div className="grid grid-cols-2 gap-2">
-                                {tabs.filter(t => t.id !== 'all').map((tab) => {
+                                {tabs.map((tab) => {
                                     const isActive = activeTab === tab.id;
                                     const Icon = tab.icon;
                                     return (
@@ -829,12 +850,16 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                             key={tab.id}
                                             onClick={() => {
                                                 setActiveTab(tab.id);
-                                                setIsSinglePageMode(true);
+                                                setIsSinglePageMode(false);
                                                 setIsMobileTagsOpen(false);
                                                 setIsMobileSearchOpen(false);
-                                                setTimeout(() => {
-                                                    document.getElementById(`section-${tab.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                                }, 10);
+                                                if (tab.id === 'all') {
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                } else {
+                                                    setTimeout(() => {
+                                                        document.getElementById(`section-${tab.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                    }, 10);
+                                                }
                                             }}
                                             className={`flex items-center gap-2.5 px-4 py-3.5 rounded-2xl text-[11px] font-bold uppercase tracking-wide transition-all ${isActive
                                                 ? 'bg-slate-900 text-white shadow-lg'
@@ -953,6 +978,61 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                 onClose={() => setLimitModalOpen(false)}
                 selectedLocations={selectedLocations}
                 onRemove={removeLocation}
+            />
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "Place",
+                        "name": location.name,
+                        "description": location.description?.[currentSeason] || location.description?.winter || "",
+                        "url": `https://www.alpematch.com/locations/${location.slug || params.id}`,
+                        "hasMap": location.coordinates ? `https://www.google.com/maps?api=1&query=${location.coordinates.lat},${location.coordinates.lng}` : undefined,
+                        "geo": location.coordinates ? {
+                            "@type": "GeoCoordinates",
+                            "latitude": location.coordinates.lat.toString(),
+                            "longitude": location.coordinates.lng.toString()
+                        } : undefined,
+                        "address": {
+                            "@type": "PostalAddress",
+                            "addressRegion": location.region,
+                            "addressCountry": location.country
+                        },
+                        "elevation": location.altitude ? `${location.altitude}m` : undefined,
+                        "image": [
+                            location.coverImage,
+                            location.seasonalImages?.winter,
+                            location.seasonalImages?.summer
+                        ].filter(Boolean),
+                        "mainEntityOfPage": {
+                            "@type": "WebPage",
+                            "@id": `https://www.alpematch.com/locations/${location.slug || params.id}`
+                        },
+                        "amenityFeature": [
+                            ...normalizeTags(location.tags?.highlights || []).map((tag: string) => ({
+                                "@type": "LocationFeatureSpecification",
+                                "name": tag,
+                                "value": true
+                            })),
+                            ...normalizeTags(location.tags?.tourism || []).map((tag: string) => ({
+                                "@type": "LocationFeatureSpecification",
+                                "name": tag,
+                                "value": true
+                            })),
+                            ...normalizeTags(location.tags?.sport || []).map((tag: string) => ({
+                                "@type": "LocationFeatureSpecification",
+                                "name": tag,
+                                "value": true
+                            })),
+                            ...normalizeTags(location.tags?.infrastructure || []).map((tag: string) => ({
+                                "@type": "LocationFeatureSpecification",
+                                "name": tag,
+                                "value": true
+                            }))
+                        ]
+                    })
+                }}
             />
         </div>
     );
