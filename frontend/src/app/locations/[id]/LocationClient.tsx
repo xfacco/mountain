@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
-import { MapPin, Calendar, Star, Info, ChevronLeft, ChevronRight, ArrowLeft, Sun, Snowflake, Cloud, Wind, Mountain, Home, Bus, Quote, AlertCircle, Check, X, Accessibility, HelpCircle, Layers, List, Search, ArrowRight, Sparkles, Link2 as LinkIcon } from 'lucide-react';
+import { MapPin, Calendar, Star, Heart, Info, ChevronLeft, ChevronRight, ArrowLeft, Sun, Snowflake, Cloud, Wind, Mountain, Home, Bus, Quote, AlertCircle, Check, X, Accessibility, HelpCircle, Layers, List, Search, ArrowRight, Sparkles, Link2 as LinkIcon } from 'lucide-react';
 import { locationNameToSlug } from '@/lib/url-utils';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
 import Link from 'next/link';
@@ -40,6 +40,10 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
     // Local Search State
     const [searchTerm, setSearchTerm] = useState('');
 
+    // Highlighted Sections State
+    const [highlightedSections, setHighlightedSections] = useState<string[]>([]);
+    const [showOnlyHighlighted, setShowOnlyHighlighted] = useState(false);
+
     // Fetch IP on mount
     useEffect(() => {
         fetch('https://api.ipify.org?format=json')
@@ -47,6 +51,61 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
             .then(data => setUserIp(data.ip))
             .catch(err => console.error("Error fetching IP", err));
     }, []);
+
+    // Load highlights for current location
+    useEffect(() => {
+        if (location?.id) {
+            const saved = localStorage.getItem(`alpematch_highlights_${location.id}`);
+            if (saved) {
+                try {
+                    setHighlightedSections(JSON.parse(saved));
+                } catch (e) {
+                    console.error("Error parsing highlights", e);
+                }
+            }
+        }
+    }, [location?.id]);
+
+
+
+    const toggleHighlight = (sectionId: string) => {
+        const isAdding = !highlightedSections.includes(sectionId);
+        const next = isAdding
+            ? [...highlightedSections, sectionId]
+            : highlightedSections.filter(id => id !== sectionId);
+
+        setHighlightedSections(next);
+        if (location?.id) {
+            localStorage.setItem(`alpematch_highlights_${location.id}`, JSON.stringify(next));
+
+            // Notify Navbar to update count
+            window.dispatchEvent(new Event('highlightsUpdated'));
+
+            // Save location name for global summary
+            const namesRepo = JSON.parse(localStorage.getItem('alpematch_location_names') || '{}');
+            namesRepo[location.id] = location.name;
+            localStorage.setItem('alpematch_location_names', JSON.stringify(namesRepo));
+
+            // Log highlight action to Firestore
+            const logHighlight = async () => {
+                try {
+                    const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase');
+                    await addDoc(collection(db, 'highlight_logs'), {
+                        ip: userIp,
+                        locationName: location?.name,
+                        locationId: location?.id,
+                        itemId: sectionId,
+                        action: isAdding ? 'add' : 'remove',
+                        timestamp: serverTimestamp()
+                    });
+                } catch (err) {
+                    console.error("Error logging highlight action:", err);
+                }
+            };
+            logHighlight();
+        }
+    };
 
     // Image Carousel Logic
     const availableImagesData = [
@@ -67,7 +126,8 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
         if (idx !== -1) {
             setCurrentImgIdx(idx);
         }
-    }, [currentSeason, location?.id]);
+    }, [currentSeason, location]);
+
 
     const nextImg = (e?: React.MouseEvent) => {
         e?.stopPropagation();
@@ -465,7 +525,33 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                     </div>
 
                                     {/* SEO Index Link */}
-                                    <div className="pt-6 border-t border-slate-100">
+                                    <div className="pt-6 border-t border-slate-100 space-y-3">
+                                        <button
+                                            onClick={() => {
+                                                const newShowOnlyHighlighted = !showOnlyHighlighted;
+                                                setShowOnlyHighlighted(newShowOnlyHighlighted);
+                                                if (newShowOnlyHighlighted) {
+                                                    const mainContent = document.getElementById('main-content');
+                                                    if (mainContent) {
+                                                        mainContent.scrollIntoView({ behavior: 'smooth' });
+                                                    }
+                                                }
+                                            }}
+                                            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${showOnlyHighlighted
+                                                ? 'bg-rose-500 text-white border-rose-600 shadow-md ring-2 ring-rose-400/20'
+                                                : 'bg-white text-slate-600 border-slate-200 hover:border-rose-400 hover:text-rose-600 shadow-sm'
+                                                }`}
+                                            title={t('highlight_element')}
+                                        >
+                                            <Heart size={14} className={showOnlyHighlighted ? "fill-current" : ""} />
+                                            {showOnlyHighlighted ? t('tabs.all') : t('show_only_highlighted')}
+                                            {highlightedSections.length > 0 && !showOnlyHighlighted && (
+                                                <span className="ml-1 bg-rose-200 text-rose-900 w-5 h-5 flex items-center justify-center rounded-full text-[10px]">
+                                                    {highlightedSections.length}
+                                                </span>
+                                            )}
+                                        </button>
+
                                         <Link
                                             href={`/directory?location=${locationNameToSlug(location.name)}`}
                                             className="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors py-2"
@@ -479,7 +565,7 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                     </div>
 
                     {/* RIGHT COLUMN (Main): Tabs & Content */}
-                    <div className="lg:col-span-2 space-y-8">
+                    <div id="main-content" className="lg:col-span-2 space-y-8 scroll-mt-10">
                         {/* Sticky Search Bar - Desktop Only */}
                         <div className="hidden lg:block sticky top-20 z-30 bg-slate-50/80 backdrop-blur-md pb-4 pt-1 -mx-4 px-4 rounded-b-2xl">
                             <div className="relative group">
@@ -505,10 +591,10 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
 
                         {/* Tab Headers */}
                         {/* General Characteristics (Top of Page) */}
-                        {location.tags && (
-                            <div id="highlights-section" className="mb-2 scroll-mt-32">
-                                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                                    {renderTagGroup('Highlights', location.tags.highlights, Star, 'text-yellow-500', 'bg-yellow-50 border-yellow-100')}
+                        {location.tags && !showOnlyHighlighted && (
+                            <div id="highlights-section" className="mb-2 scroll-mt-32 group/section">
+                                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm relative">
+                                    {renderTagGroup('Highlights', location.tags.highlights, Heart, 'text-rose-500', 'bg-rose-50 border-rose-100')}
                                 </div>
                             </div>
                         )}
@@ -517,13 +603,13 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 min-h-[500px]">
 
                             {/* OVERVIEW TAB */}
-                            {(activeTab === 'overview' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || location.description?.[currentSeason]?.toLowerCase().includes(searchTerm.toLowerCase())) && (
-                                <div id="section-overview" className="mobile-fade-in space-y-8 mb-12 scroll-mt-24 lg:scroll-mt-32">
+                            {(activeTab === 'overview' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || location.description?.[currentSeason]?.toLowerCase().includes(searchTerm.toLowerCase())) && !showOnlyHighlighted && (
+                                <div id="section-overview" className="mobile-fade-in space-y-8 mb-12 scroll-mt-24 lg:scroll-mt-32 relative group/section">
                                     <div className="flex items-center justify-between">
-                                        <h2 className="text-2xl font-bold text-slate-900">{t('seasonal_overview')}</h2>
+                                        <div className="flex items-center gap-3">
+                                            <h2 className="text-2xl font-bold text-slate-900">{t('seasonal_overview')}</h2>
+                                        </div>
                                     </div>
-
-                                    {/* Season Selector for Description */}
 
                                     <div className="prose prose-lg text-slate-600 leading-relaxed">
                                         {location.description?.[currentSeason] || <span className="text-slate-400 italic">{t('no_description')}</span>}
@@ -647,11 +733,12 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                             )}
 
                             {/* TOURISM TAB */}
-                            {(activeTab === 'overview' || activeTab === 'all') ? null : null}
-                            {(activeTab === 'tourism' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('tourism').length > 0) && (
-                                <div id="section-tourism" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
-                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
-                                        <Mountain className="text-green-600" size={28} /> {t('sections.tourism')}
+                            {(activeTab === 'tourism' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('tourism').length > 0) && (!showOnlyHighlighted || getFilteredServices('tourism').some((s: any) => highlightedSections.includes(`${s.name}-tourism`))) && (
+                                <div id="section-tourism" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32 group/section">
+                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Mountain className="text-green-600" size={28} /> {t('sections.tourism')}
+                                        </div>
                                     </h2>
                                     {location.tags?.tourism && (
                                         <div className="mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
@@ -659,22 +746,42 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                         </div>
                                     )}
                                     <div className="grid md:grid-cols-1 gap-4">
-                                        {getFilteredServices('tourism').length > 0 ? (
-                                            getFilteredServices('tourism').map((service: any, idx: number) => (
-                                                <div key={idx} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 hover:border-green-200 transition-all">
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <h4 className="font-bold text-slate-900 text-lg">{service.name}</h4>
-                                                    </div>
-                                                    <p className="text-slate-600 mb-4 leading-relaxed whitespace-pre-wrap">{service.description}</p>
-                                                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200/50 mt-auto">
-                                                        {service.seasonAvailability?.map((s: string) => (
-                                                            <span key={s} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-white border border-slate-100 px-2 py-1 rounded-md flex items-center gap-1">
-                                                                {s === 'winter' ? <Snowflake size={10} /> : s === 'summer' ? <Sun size={10} /> : <Calendar size={10} />} {tSeasons(s)}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))
+                                        {getFilteredServices('tourism')
+                                            .filter((service: any) => !showOnlyHighlighted || highlightedSections.includes(`${service.name}-tourism`))
+                                            .length > 0 ? (
+                                            getFilteredServices('tourism')
+                                                .filter((service: any) => !showOnlyHighlighted || highlightedSections.includes(`${service.name}-tourism`))
+                                                .map((service: any, idx: number) => {
+                                                    const isHighlighted = highlightedSections.includes(`${service.name}-tourism`);
+                                                    return (
+                                                        <div key={idx} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 hover:border-green-200 transition-all relative group/item flex flex-col">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <h4 className="font-bold text-slate-900 text-lg pr-8">{service.name}</h4>
+                                                            </div>
+                                                            <p className="text-slate-600 mb-4 leading-relaxed whitespace-pre-wrap">{service.description}</p>
+                                                            <div className="flex items-center justify-between pt-2 border-t border-slate-200/50 mt-auto gap-4">
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {service.seasonAvailability?.map((s: string) => (
+                                                                        <span key={s} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-white border border-slate-100 px-2 py-1 rounded-md flex items-center gap-1">
+                                                                            {s === 'winter' ? <Snowflake size={10} /> : s === 'summer' ? <Sun size={10} /> : <Calendar size={10} />} {tSeasons(s)}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => toggleHighlight(`${service.name}-tourism`)}
+                                                                    className={`p-1.5 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${isHighlighted
+                                                                        ? 'bg-rose-500 text-white'
+                                                                        : 'bg-white text-slate-300 hover:text-rose-500 border border-slate-100 shadow-sm'
+                                                                        }`}
+                                                                    title={t('highlight_element')}
+                                                                >
+                                                                    <Heart size={14} className={isHighlighted ? "fill-current" : ""} />
+                                                                    <span className="hidden md:inline text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
                                         ) : (
                                             <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                                                 <p className="text-slate-400 italic">{t('no_items')}</p>
@@ -685,10 +792,12 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                             )}
 
                             {/* SPORT TAB */}
-                            {(activeTab === 'sport' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('sport').length > 0) && (
-                                <div id="section-sport" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
-                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
-                                        <Accessibility className="text-red-500" size={28} /> {t('sections.sport')}
+                            {(activeTab === 'sport' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('sport').length > 0) && (!showOnlyHighlighted || getFilteredServices('sport').some((s: any) => highlightedSections.includes(`${s.name}-sport`))) && (
+                                <div id="section-sport" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32 group/section">
+                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Accessibility className="text-red-500" size={28} /> {t('sections.sport')}
+                                        </div>
                                     </h2>
                                     {location.tags?.sport && (
                                         <div className="mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
@@ -696,27 +805,47 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                         </div>
                                     )}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {getFilteredServices('sport').map((service: any, idx: number) => (
-                                            <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 transition-all shadow-sm hover:shadow-md group">
-                                                <h3 className="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary transition-colors">{service.name}</h3>
-                                                {service.description && <p className="text-slate-600 text-sm leading-relaxed">{service.description}</p>}
-                                                <div className="flex gap-2 mt-3">
-                                                    {service.seasonAvailability?.includes('winter') && <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full font-bold">{tSeasons('winter')}</span>}
-                                                    {service.seasonAvailability?.includes('summer') && <span className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded-full font-bold">{tSeasons('summer')}</span>}
-                                                </div>
-                                            </div>
-                                        ))}
+                                        {getFilteredServices('sport')
+                                            .filter((service: any) => !showOnlyHighlighted || highlightedSections.includes(`${service.name}-sport`))
+                                            .map((service: any, idx: number) => {
+                                                const isHighlighted = highlightedSections.includes(`${service.name}-sport`);
+                                                return (
+                                                    <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 transition-all shadow-sm hover:shadow-md group relative flex flex-col">
+                                                        <h3 className="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary transition-colors pr-8">{service.name}</h3>
+                                                        {service.description && <p className="text-slate-600 text-sm leading-relaxed mb-4">{service.description}</p>}
+                                                        <div className="flex items-center justify-between mt-auto gap-4 pt-3 border-t border-slate-50">
+                                                            <div className="flex gap-2">
+                                                                {service.seasonAvailability?.includes('winter') && <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full font-bold">{tSeasons('winter')}</span>}
+                                                                {service.seasonAvailability?.includes('summer') && <span className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded-full font-bold">{tSeasons('summer')}</span>}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => toggleHighlight(`${service.name}-sport`)}
+                                                                className={`p-1.5 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${isHighlighted
+                                                                    ? 'bg-rose-500 text-white'
+                                                                    : 'bg-slate-50 text-slate-300 hover:text-rose-500 border border-slate-100 shadow-sm'
+                                                                    }`}
+                                                                title={t('highlight_element')}
+                                                            >
+                                                                <Heart size={14} className={isHighlighted ? "fill-current" : ""} />
+                                                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                     </div>
-                                    {(getFilteredServices('sport').length === 0) && <p className="text-slate-500 italic">{t('no_items')}</p>}
+                                    {(getFilteredServices('sport').filter((service: any) => !showOnlyHighlighted || highlightedSections.includes(`${service.name}-sport`)).length === 0) && <p className="text-slate-500 italic">{t('no_items')}</p>}
                                 </div>
                             )}
 
 
                             {/* INFRASTRUCTURE TAB */}
-                            {(activeTab === 'infrastructure' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('infrastructure').length > 0) && (
-                                <div id="section-infrastructure" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
-                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
-                                        <Bus className="text-slate-600" size={28} /> {t('sections.infrastructure')}
+                            {(activeTab === 'infrastructure' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('infrastructure').length > 0) && (!showOnlyHighlighted || getFilteredServices('infrastructure').some((s: any) => highlightedSections.includes(`${s.name}-infrastructure`))) && (
+                                <div id="section-infrastructure" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32 group/section">
+                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Bus className="text-slate-600" size={28} /> {t('sections.infrastructure')}
+                                        </div>
                                     </h2>
                                     {location.tags?.infrastructure && (
                                         <div className="mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
@@ -724,20 +853,38 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                         </div>
                                     )}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {getFilteredServices('infrastructure').map((service: any, idx: number) => (
-                                            <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 transition-all shadow-sm hover:shadow-md group">
-                                                <h3 className="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary transition-colors">{service.name}</h3>
-                                                {service.description && (
-                                                    <p className="text-slate-600 text-sm leading-relaxed">{service.description}</p>
-                                                )}
-                                                <div className="flex gap-2 mt-3">
-                                                    {service.seasonAvailability?.includes('winter') && <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full font-bold">{tSeasons('winter')}</span>}
-                                                    {service.seasonAvailability?.includes('summer') && <span className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded-full font-bold">{tSeasons('summer')}</span>}
-                                                </div>
-                                            </div>
-                                        ))}
+                                        {getFilteredServices('infrastructure')
+                                            .filter((service: any) => !showOnlyHighlighted || highlightedSections.includes(`${service.name}-infrastructure`))
+                                            .map((service: any, idx: number) => {
+                                                const isHighlighted = highlightedSections.includes(`${service.name}-infrastructure`);
+                                                return (
+                                                    <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 transition-all shadow-sm hover:shadow-md group relative flex flex-col">
+                                                        <h3 className="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary transition-colors pr-8">{service.name}</h3>
+                                                        {service.description && (
+                                                            <p className="text-slate-600 text-sm leading-relaxed mb-4">{service.description}</p>
+                                                        )}
+                                                        <div className="flex items-center justify-between mt-auto gap-4 pt-3 border-t border-slate-50">
+                                                            <div className="flex gap-2">
+                                                                {service.seasonAvailability?.includes('winter') && <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full font-bold">{tSeasons('winter')}</span>}
+                                                                {service.seasonAvailability?.includes('summer') && <span className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded-full font-bold">{tSeasons('summer')}</span>}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => toggleHighlight(`${service.name}-infrastructure`)}
+                                                                className={`p-1.5 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${isHighlighted
+                                                                    ? 'bg-rose-500 text-white'
+                                                                    : 'bg-slate-50 text-slate-300 hover:text-rose-500 border border-slate-100 shadow-sm'
+                                                                    }`}
+                                                                title={t('highlight_element')}
+                                                            >
+                                                                <Heart size={14} className={isHighlighted ? "fill-current" : ""} />
+                                                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                     </div>
-                                    {(getFilteredServices('infrastructure').length === 0) &&
+                                    {(getFilteredServices('infrastructure').filter((service: any) => !showOnlyHighlighted || highlightedSections.includes(`${service.name}-infrastructure`)).length === 0) &&
                                         <p className="text-slate-500 italic">{t('no_items')}</p>
                                     }
                                 </div>
@@ -745,10 +892,12 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
 
 
                             {/* INFO TAB */}
-                            {(activeTab === 'info' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('info').length > 0) && (
-                                <div id="section-info" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
-                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
-                                        <HelpCircle className="text-indigo-500" size={28} /> {t('sections.info')}
+                            {(activeTab === 'info' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('info').length > 0) && (!showOnlyHighlighted || getFilteredServices('info').some((s: any) => highlightedSections.includes(`${s.name}-info`))) && (
+                                <div id="section-info" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32 group/section">
+                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <HelpCircle className="text-indigo-500" size={28} /> {t('sections.info')}
+                                        </div>
                                     </h2>
                                     {location.tags?.info && (
                                         <div className="mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
@@ -756,22 +905,43 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                         </div>
                                     )}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {getFilteredServices('info').map((service: any, idx: number) => (
-                                            <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 transition-all shadow-sm hover:shadow-md group">
-                                                <h3 className="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary transition-colors">{service.name}</h3>
-                                                {service.description && <p className="text-slate-600 text-sm leading-relaxed">{service.description}</p>}
-                                            </div>
-                                        ))}
+                                        {getFilteredServices('info')
+                                            .filter((service: any) => !showOnlyHighlighted || highlightedSections.includes(`${service.name}-info`))
+                                            .map((service: any, idx: number) => {
+                                                const isHighlighted = highlightedSections.includes(`${service.name}-info`);
+                                                return (
+                                                    <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 transition-all shadow-sm hover:shadow-md group relative flex flex-col">
+                                                        <h3 className="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary transition-colors pr-8">{service.name}</h3>
+                                                        {service.description && <p className="text-slate-600 text-sm leading-relaxed mb-4">{service.description}</p>}
+                                                        <div className="flex items-center justify-end mt-auto gap-4 pt-3 border-t border-slate-50">
+                                                            <button
+                                                                onClick={() => toggleHighlight(`${service.name}-info`)}
+                                                                className={`p-1.5 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${isHighlighted
+                                                                    ? 'bg-rose-500 text-white'
+                                                                    : 'bg-slate-50 text-slate-300 hover:text-rose-500 border border-slate-100 shadow-sm'
+                                                                    }`}
+                                                                title={t('highlight_element')}
+                                                            >
+                                                                <Heart size={14} className={isHighlighted ? "fill-current" : ""} />
+                                                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                     </div>
-                                    {(getFilteredServices('info').length === 0) && <p className="text-slate-500 italic">{t('no_items')}</p>}
+                                    {(getFilteredServices('info').filter((service: any) => !showOnlyHighlighted || highlightedSections.includes(`${service.name}-info`)).length === 0) && <p className="text-slate-500 italic">{t('no_items')}</p>}
                                 </div>
                             )}
 
                             {/* GENERAL TAB */}
-                            {(activeTab === 'general' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('general').length > 0) && (
-                                <div id="section-general" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
-                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
-                                        <Layers className="text-slate-500" size={28} /> {t('sections.general')}
+                            {/* GENERAL TAB */}
+                            {(activeTab === 'general' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('general').length > 0) && (!showOnlyHighlighted || getFilteredServices('general').some((s: any) => highlightedSections.includes(`${s.name}-general`))) && (
+                                <div id="section-general" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32 group/section">
+                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Layers className="text-slate-500" size={28} /> {t('sections.general')}
+                                        </div>
                                     </h2>
                                     {location.tags?.general && (
                                         <div className="mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
@@ -779,22 +949,43 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                         </div>
                                     )}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {getFilteredServices('general').map((service: any, idx: number) => (
-                                            <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 transition-all shadow-sm hover:shadow-md group">
-                                                <h3 className="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary transition-colors">{service.name}</h3>
-                                                {service.description && <p className="text-slate-600 text-sm leading-relaxed">{service.description}</p>}
-                                            </div>
-                                        ))}
+                                        {getFilteredServices('general')
+                                            .filter((service: any) => !showOnlyHighlighted || highlightedSections.includes(`${service.name}-general`))
+                                            .map((service: any, idx: number) => {
+                                                const isHighlighted = highlightedSections.includes(`${service.name}-general`);
+                                                return (
+                                                    <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 transition-all shadow-sm hover:shadow-md group relative flex flex-col">
+                                                        <h3 className="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary transition-colors pr-8">{service.name}</h3>
+                                                        {service.description && <p className="text-slate-600 text-sm leading-relaxed mb-4">{service.description}</p>}
+                                                        <div className="flex items-center justify-end mt-auto gap-4 pt-3 border-t border-slate-50">
+                                                            <button
+                                                                onClick={() => toggleHighlight(`${service.name}-general`)}
+                                                                className={`p-1.5 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${isHighlighted
+                                                                    ? 'bg-rose-500 text-white'
+                                                                    : 'bg-slate-50 text-slate-300 hover:text-rose-500 border border-slate-100 shadow-sm'
+                                                                    }`}
+                                                                title={t('highlight_element')}
+                                                            >
+                                                                <Heart size={14} className={isHighlighted ? "fill-current" : ""} />
+                                                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                     </div>
-                                    {(getFilteredServices('general').length === 0) && <p className="text-slate-500 italic">{t('no_items')}</p>}
+                                    {(getFilteredServices('general').filter((service: any) => !showOnlyHighlighted || highlightedSections.includes(`${service.name}-general`)).length === 0) && <p className="text-slate-500 italic">{t('no_items')}</p>}
                                 </div>
                             )}
 
                             {/* ACCOMMODATION TAB */}
-                            {(activeTab === 'accommodation' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('accommodation').length > 0) && (
-                                <div id="section-accommodation" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32">
-                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-6">
-                                        <Home className="text-orange-500" size={28} /> {t('sections.accommodation')}
+                            {/* ACCOMMODATION TAB */}
+                            {(activeTab === 'accommodation' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || getFilteredServices('accommodation').length > 0) && (!showOnlyHighlighted || getFilteredServices('accommodation').some((s: any) => highlightedSections.includes(`${s.name}-accommodation`))) && (
+                                <div id="section-accommodation" className="mobile-fade-in space-y-6 mb-12 scroll-mt-24 lg:scroll-mt-32 group/section">
+                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Home className="text-orange-500" size={28} /> {t('sections.accommodation')}
+                                        </div>
                                     </h2>
                                     {location.tags?.accommodation && (
                                         <div className="mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
@@ -802,28 +993,67 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                         </div>
                                     )}
                                     <div className="grid md:grid-cols-1 gap-4">
-                                        {getFilteredServices('accommodation').length > 0 ? (
-                                            getFilteredServices('accommodation').map((service: any, idx: number) => (
-                                                <div key={idx} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 hover:border-orange-200 transition-all">
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <h4 className="font-bold text-slate-900 text-lg">{service.name}</h4>
-                                                    </div>
-                                                    <p className="text-slate-600 mb-4 leading-relaxed whitespace-pre-wrap">{service.description}</p>
-                                                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200/50 mt-auto">
-                                                        {service.seasonAvailability?.map((s: string) => (
-                                                            <span key={s} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-white border border-slate-100 px-2 py-1 rounded-md flex items-center gap-1">
-                                                                {s === 'winter' ? <Snowflake size={10} /> : s === 'summer' ? <Sun size={10} /> : <Calendar size={10} />} {tSeasons(s)}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))
+                                        {getFilteredServices('accommodation')
+                                            .filter((service: any) => !showOnlyHighlighted || highlightedSections.includes(`${service.name}-accommodation`))
+                                            .length > 0 ? (
+                                            getFilteredServices('accommodation')
+                                                .filter((service: any) => !showOnlyHighlighted || highlightedSections.includes(`${service.name}-accommodation`))
+                                                .map((service: any, idx: number) => {
+                                                    const isHighlighted = highlightedSections.includes(`${service.name}-accommodation`);
+                                                    return (
+                                                        <div key={idx} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 hover:border-rose-200 transition-all relative group/item shadow-sm flex flex-col">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <h4 className="font-bold text-lg text-slate-900 pr-8">{service.name}</h4>
+                                                            </div>
+                                                            <p className="text-slate-600 mb-4 leading-relaxed whitespace-pre-wrap">{service.description}</p>
+                                                            <div className="flex items-center justify-between pt-2 border-t border-slate-200/50 mt-auto gap-4">
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {service.seasonAvailability?.map((s: string) => (
+                                                                        <span key={s} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-white border border-slate-100 px-2 py-1 rounded-md flex items-center gap-1">
+                                                                            {s === 'winter' ? <Snowflake size={10} /> : s === 'summer' ? <Sun size={10} /> : <Calendar size={10} />} {tSeasons(s)}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => toggleHighlight(`${service.name}-accommodation`)}
+                                                                    className={`p-1.5 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${isHighlighted
+                                                                        ? 'bg-rose-500 text-white'
+                                                                        : 'bg-white text-slate-300 hover:text-rose-500 border border-slate-100 shadow-sm'
+                                                                        }`}
+                                                                    title={t('highlight_element')}
+                                                                >
+                                                                    <Heart size={14} className={isHighlighted ? "fill-current" : ""} />
+                                                                    <span className="hidden md:inline text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
                                         ) : (
                                             <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                                                 <p className="text-slate-400 italic">{t('no_items')}</p>
                                             </div>
                                         )}
                                     </div>
+                                </div>
+                            )}
+
+                            {/* Empty State for Highlights */}
+                            {showOnlyHighlighted && highlightedSections.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in duration-500">
+                                    <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mb-6">
+                                        <Heart size={40} className="text-rose-400" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 mb-2">No highlighted sections</h3>
+                                    <p className="text-slate-500 max-w-xs mx-auto">
+                                        Click the heart of the sections you want to add to your location favorites.
+                                    </p>
+                                    <button
+                                        onClick={() => setShowOnlyHighlighted(false)}
+                                        className="mt-8 text-sm font-bold text-slate-900 hover:underline"
+                                    >
+                                        Show all sections
+                                    </button>
                                 </div>
                             )}
 
@@ -904,6 +1134,28 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
 
                     {/* Main Agile Bar (Single Line) */}
                     <div className="flex items-center justify-between px-3 py-3 gap-2">
+                        {/* Highlight Toggle */}
+                        <button
+                            onClick={() => {
+                                const newShowOnlyHighlighted = !showOnlyHighlighted;
+                                setShowOnlyHighlighted(newShowOnlyHighlighted);
+                                setIsMobileTagsOpen(false);
+                                setIsMobileSearchOpen(false);
+
+                                // Scroll to main content if enabling highlights mode
+                                if (newShowOnlyHighlighted) {
+                                    const mainContent = document.getElementById('main-content');
+                                    if (mainContent) {
+                                        mainContent.scrollIntoView({ behavior: 'smooth' });
+                                    }
+                                }
+                            }}
+                            className={`p-3 rounded-2xl transition-all ${showOnlyHighlighted ? 'bg-rose-500 text-white shadow-lg' : 'text-slate-500 bg-slate-100'}`}
+                            title={t('highlight_element')}
+                        >
+                            <Heart size={22} className={showOnlyHighlighted ? "fill-current" : ""} />
+                        </button>
+
                         {/* Search Trigger */}
                         <button
                             onClick={() => {

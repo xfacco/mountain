@@ -415,11 +415,11 @@ function MatchWizardContent() {
                         results: results.map(m => ({ name: m.name, score: m.matchScore })),
                         preferences
                     };
-                    setHistory(prev => {
-                        const newHistory = [historyItem, ...prev].slice(0, 10);
-                        localStorage.setItem('match_history', JSON.stringify(newHistory));
-                        return newHistory;
-                    });
+                    const newHistory = [historyItem, ...history].slice(0, 10);
+                    setHistory(newHistory);
+                    localStorage.setItem('match_history', JSON.stringify(newHistory));
+                    // Notify Navbar
+                    window.dispatchEvent(new Event('matchesUpdated'));
                 }
             } catch (err) {
                 console.error("Error logging", err);
@@ -462,6 +462,8 @@ function MatchWizardContent() {
         const newHistory = history.filter(item => item.timestamp !== timestamp);
         setHistory(newHistory);
         localStorage.setItem('match_history', JSON.stringify(newHistory));
+        // Notify Navbar
+        window.dispatchEvent(new Event('matchesUpdated'));
         if (newHistory.length === 0) {
             setShowHistory(false);
         }

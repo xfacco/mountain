@@ -128,7 +128,8 @@
             "sport": "Sport & Wellness",
             "info": "Useful Info",
             "general": "General",
-            "all": "All"
+            "all": "All",
+            "highlights": "Highlights"
         },
         "seasonal_overview": "Seasonal Overview",
         "no_description": "No description available for this season.",
@@ -138,13 +139,21 @@
             "infrastructure": "Lifts & Infrastructure",
             "sport": "Sport & Wellness",
             "info": "Useful Information",
-            "general": "General Services"
+            "general": "General Services",
+            "highlights": "Highlights"
         },
         "no_items": "No items listed.",
         "winter": "Winter",
         "summer": "Summer",
         "altitude": "Altitude",
-        "services": "Services"
+        "services": "Services",
+        "show_only_highlighted": "Show Highlights Only",
+        "your_favorites_summary": "Your Favorites Summary",
+        "locations": "Locations",
+        "view_location": "View Location",
+        "highlight_section": "Bookmark section",
+        "unhighlight_section": "Remove bookmark",
+        "highlight_element": "Highlight this item"
     },
     "Compare": {
         "title": "Compare Locations",

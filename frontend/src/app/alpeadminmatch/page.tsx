@@ -27,7 +27,8 @@ import {
     Tags,
     AlertTriangle,
     HelpCircle,
-    Info
+    Info,
+    Heart
 } from 'lucide-react';
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -555,6 +556,15 @@ function AdminDashboard() {
                         <ShareIcon size={18} />
                         Log Cond. location
                     </button>
+
+                    <button
+                        onClick={() => { setActiveTab('highlight-logs'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'highlight-logs' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <Heart size={18} />
+                        Log Highlight Luoghi
+                    </button>
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
@@ -595,7 +605,7 @@ function AdminDashboard() {
                                                         : activeTab === 'search-logs' ? 'Log Ricerche Sito'
                                                             : activeTab === 'search-data' ? 'Dati per Motori di Ricerca'
                                                                 : activeTab === 'share-logs' ? 'Log Condivisioni Link location'
-                                                                    : activeTab === 'share-logs' ? 'Log Condivisioni Link location'
+                                                                    : activeTab === 'highlight-logs' ? 'Log Highlight Elementi'
                                                                         : activeTab === 'tags' ? 'Gestione Tag Sistema'
                                                                             : activeTab === 'seo-tags' ? 'Highlights & SEO Refactoring'
                                                                                 : activeTab === 'duplicate-tags' ? 'Controllo Duplicati Tag'
@@ -611,7 +621,8 @@ function AdminDashboard() {
                                                             : activeTab === 'search-data' ? 'Elenco località e nazioni (Copia & Incolla).'
                                                                 : activeTab === 'ai-tasks' ? 'Estrai nuovi dati dal web tramite Gemini.'
                                                                     : activeTab === 'share-logs' ? 'Vedi quali link e pagine vengono condivisi dagli utenti.'
-                                                                        : 'Modifica i contenuti della Home Page.'}
+                                                                        : activeTab === 'highlight-logs' ? 'Vedi quali elementi delle località vengono messi nei preferiti.'
+                                                                            : 'Modifica i contenuti della Home Page.'}
                                 </p>
                             </div>
                             <div className="flex gap-3">
@@ -885,6 +896,7 @@ function AdminDashboard() {
                         {activeTab === 'search-data' && <SearchDataView locations={locations} />}
                         {activeTab === 'ai-tasks' && <AITaskRunner />}
                         {activeTab === 'share-logs' && <ShareLogsView />}
+                        {activeTab === 'highlight-logs' && <HighlightLogsView />}
                         {activeTab === 'home-config' && <HomeConfigView />}
                     </>
                 )}
@@ -4105,3 +4117,253 @@ function ShareLogsView() {
     );
 }
 
+
+function HighlightLogsView() {
+    const [logs, setLogs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [hasMore, setHasMore] = useState(true);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [ipMap, setIpMap] = useState<Record<string, string>>({});
+
+    const PAGE_SIZE = 15;
+
+    const fetchLogs = async (isMore = false) => {
+        if (isMore) setLoadingMore(true);
+        else setLoading(true);
+
+        try {
+            const { collection, getDocs, orderBy, query, limit, startAfter } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            let q = query(
+                collection(db, 'highlight_logs'),
+                orderBy('timestamp', 'desc'),
+                limit(PAGE_SIZE)
+            );
+
+            if (isMore && lastDoc) {
+                q = query(
+                    collection(db, 'highlight_logs'),
+                    orderBy('timestamp', 'desc'),
+                    startAfter(lastDoc),
+                    limit(PAGE_SIZE)
+                );
+            }
+
+            const snap = await getDocs(q);
+            const newLogs = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+
+            if (isMore) setLogs(prev => [...prev, ...newLogs]);
+            else setLogs(newLogs);
+
+            setLastDoc(snap.docs[snap.docs.length - 1]);
+            setHasMore(snap.docs.length === PAGE_SIZE);
+
+            // Fetch IPs
+            newLogs.forEach(log => {
+                if (log.ip && log.ip !== '0.0.0.0' && !log.country && !ipMap[log.ip]) {
+                    resolveIP(log.ip, log.id);
+                }
+            });
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    };
+
+    const resolveIP = async (ip: string, docId: string) => {
+        if (!ip || ip === '0.0.0.0' || ip === '127.0.0.1' || ip === '::1' || ipMap[ip]) return;
+
+        try {
+            setIpMap(prev => ({ ...prev, [ip]: '...' }));
+            const res = await fetch(`https://ipinfo.io/${ip}/json`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.country) {
+                    const regionNames = new Intl.DisplayNames(['it'], { type: 'region' });
+                    const countryName = regionNames.of(data.country) || data.country;
+                    setIpMap(prev => ({ ...prev, [ip]: countryName }));
+                    const { doc, updateDoc } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase');
+                    await updateDoc(doc(db, 'highlight_logs', docId), { country: countryName });
+                    return;
+                }
+            }
+            setIpMap(prev => ({ ...prev, [ip]: 'N/D' }));
+        } catch (e) {
+            setIpMap(prev => ({ ...prev, [ip]: 'N/D' }));
+        }
+    };
+
+    const handleDeleteLog = async (id: string) => {
+        if (!confirm('Sei sicuro di voler eliminare questo log?')) return;
+        try {
+            const { doc, deleteDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await deleteDoc(doc(db, 'highlight_logs', id));
+            setLogs(prev => prev.filter(log => log.id !== id));
+            setSelectedIds(prev => prev.filter(i => i !== id));
+        } catch (e) {
+            console.error(e);
+            alert('Errore durante l\'eliminazione del log.');
+        }
+    };
+
+    const handleDeleteSelected = async () => {
+        if (!selectedIds.length) return;
+        if (!confirm(`Sei sicuro di voler eliminare ${selectedIds.length} log selezionati?`)) return;
+
+        try {
+            const { doc, writeBatch } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            const batch = writeBatch(db);
+
+            selectedIds.forEach(id => {
+                batch.delete(doc(db, 'highlight_logs', id));
+            });
+
+            await batch.commit();
+            setLogs(prev => prev.filter(log => !selectedIds.includes(log.id)));
+            setSelectedIds([]);
+        } catch (e) {
+            console.error(e);
+            alert('Errore durante l\'eliminazione massiva dei log.');
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === logs.length) setSelectedIds([]);
+        else setSelectedIds(logs.map(l => l.id));
+    };
+
+    const toggleSelectOne = (id: string) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    useEffect(() => {
+        fetchLogs();
+    }, []);
+
+    if (loading) return <div className="p-8 text-center text-slate-500">Caricamento log highlight...</div>;
+
+    return (
+        <div className="space-y-4">
+            {selectedIds.length > 0 && (
+                <div className="flex justify-between items-center bg-red-50 border border-red-100 p-4 rounded-xl animate-in fade-in slide-in-from-top-2">
+                    <div className="text-red-700 text-sm font-medium">
+                        Hai selezionato <span className="font-black">{selectedIds.length}</span> log
+                    </div>
+                    <button
+                        onClick={handleDeleteSelected}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg shadow-sm hover:bg-red-700 font-bold text-xs transition-all"
+                    >
+                        <Trash2 size={14} /> Elimina Selezionati
+                    </button>
+                </div>
+            )}
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="font-bold text-slate-700 text-sm flex items-center gap-2">
+                        <Heart size={16} className="text-rose-500" /> Cronologia Highlight Elementi
+                    </h3>
+                </div>
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                        <tr>
+                            <th className="px-6 py-4 w-10">
+                                <input
+                                    type="checkbox"
+                                    checked={logs.length > 0 && selectedIds.length === logs.length}
+                                    onChange={toggleSelectAll}
+                                    className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                                />
+                            </th>
+                            <th className="px-6 py-4">Data / IP</th>
+                            <th className="px-6 py-4">Località</th>
+                            <th className="px-6 py-4">Elemento / Azione</th>
+                            <th className="px-6 py-4 text-right">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {logs.map((log: any) => (
+                            <tr key={log.id} className={`hover:bg-slate-50 transition-colors ${selectedIds.includes(log.id) ? 'bg-indigo-50/30' : ''}`}>
+                                <td className="px-6 py-4">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.includes(log.id)}
+                                        onChange={() => toggleSelectOne(log.id)}
+                                        className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                                    />
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-slate-500 text-xs font-medium">
+                                        {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleString('it-IT') : 'N/A'}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-1 text-[10px] font-mono">
+                                        <span className="text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                            {log.ip || '0.0.0.0'}
+                                        </span>
+                                        {(log.country || ipMap[log.ip]) && (
+                                            <span className="text-indigo-500 font-black uppercase text-[9px]">
+                                                {log.country || ipMap[log.ip]}
+                                            </span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="font-bold text-slate-900">{log.locationName || 'N/D'}</div>
+                                    <div className="text-[10px] text-slate-400 font-mono">ID: {log.locationId}</div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-slate-700 truncate max-w-[200px]" title={log.itemId}>{log.itemId}</span>
+                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${log.action === 'add' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500'}`}>
+                                            {log.action === 'add' ? 'Aggiunto' : 'Rimosso'}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <button
+                                        onClick={() => handleDeleteLog(log.id)}
+                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Elimina Log"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+
+                {hasMore && (
+                    <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex justify-center">
+                        <button
+                            onClick={() => fetchLogs(true)}
+                            disabled={loadingMore}
+                            className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:border-primary/30 hover:text-primary transition-all shadow-sm flex items-center gap-2"
+                        >
+                            {loadingMore ? (
+                                <>
+                                    <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                                    Caricamento...
+                                </>
+                            ) : (
+                                <>
+                                    <Plus size={14} /> Carica altri log
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

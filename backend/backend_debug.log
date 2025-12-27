@@ -852,3 +852,30 @@ Traceback: Traceback (most recent call last):
     obj, end = self.scan_once(s, idx)
 json.decoder.JSONDecodeError: Expecting ',' delimiter: line 166 column 2 (char 23446)
 
+
+
+--- ERROR KEY_PRESENT ---
+Error: 403 Your API key was reported as leaked. Please use another API key.
+Traceback: Traceback (most recent call last):
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/main.py", line 124, in research_location
+    response = model.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/generativeai/generative_models.py", line 331, in generate_content
+    response = self._client.generate_content(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/ai/generativelanguage_v1beta/services/generative_service/client.py", line 835, in generate_content
+    response = rpc(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/gapic_v1/method.py", line 131, in __call__
+    return wrapped_func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 294, in retry_wrapped_func
+    return retry_target(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 156, in retry_target
+    next_sleep = _retry_error_helper(
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_base.py", line 214, in _retry_error_helper
+    raise final_exc from source_exc
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/retry/retry_unary.py", line 147, in retry_target
+    result = target()
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/timeout.py", line 130, in func_with_timeout
+    return func(*args, **kwargs)
+  File "/Users/corrado/Downloads/Corrado/mountain/backend/venv/lib/python3.9/site-packages/google/api_core/grpc_helpers.py", line 77, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc
+google.api_core.exceptions.PermissionDenied: 403 Your API key was reported as leaked. Please use another API key.
+
