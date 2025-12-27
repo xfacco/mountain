@@ -245,7 +245,7 @@ function AdminDashboard() {
                 'advancedSkiing', 'outdoorNonSki', 'family', 'rentals',
                 'eventsAndSeasonality', 'gastronomy', 'digital', 'practicalTips',
                 'openingHours', 'safety', 'sustainability',
-                'aiGenerationMetadata', 'profile'
+                'aiGenerationMetadata', 'profile', 'tagWeights'
             ];
 
             const lightData: any = { updatedAt: serverTimestamp() };
@@ -274,6 +274,11 @@ function AdminDashboard() {
                     lightData[key] = value;
                 }
             });
+
+            // Double persistence for tagWeights (needed in both for matching and detailed view)
+            if (updatedData.tagWeights) {
+                lightData.tagWeights = updatedData.tagWeights;
+            }
 
             // Denormalize counts/flags for list view
             lightData.servicesCount = updatedData.services?.length || 0;
@@ -1402,7 +1407,7 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
     const [tagWeights, setTagWeights] = useState<any>(location.tagWeights || null);
 
     // UI State for Active Tab inside Editor
-    const [editTab, setEditTab] = useState<'general' | 'services'>('general');
+    const [editTab, setEditTab] = useState<'general' | 'services' | 'export'>('general');
     const [showExplanation, setShowExplanation] = useState<null | 'wizard' | 'seo'>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -1436,6 +1441,27 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                 [category]: newTags
             }
         });
+    };
+
+    const handleWeightChange = (category: string, tagId: string, value: number) => {
+        const val = isNaN(value) ? 0 : Math.min(100, Math.max(0, value));
+        setTagWeights((prev: any) => ({
+            ...prev,
+            [category]: {
+                ...(prev?.[category] || {}),
+                [tagId]: val
+            }
+        }));
+        setFormData((prev: any) => ({
+            ...prev,
+            tagWeights: {
+                ...(prev.tagWeights || {}),
+                [category]: {
+                    ...(prev.tagWeights?.[category] || {}),
+                    [tagId]: val
+                }
+            }
+        }));
     };
 
     // Service Management
@@ -1725,8 +1751,9 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                         {translating ? <span className="animate-spin">⏳</span> : <Sparkles size={16} />}
                         {translating ? 'Traduzione...' : 'Duplica (IT)'}
                     </button>
-                    <button onClick={() => setEditTab('general')} className={`px-4 py-2 rounded-lg font-medium text-sm border ${editTab === 'general' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>Generale</button>
-                    <button onClick={() => setEditTab('services')} className={`px-4 py-2 rounded-lg font-medium text-sm border ${editTab === 'services' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>Servizi ({formData.services.length})</button>
+                    <button onClick={() => setEditTab('general')} className={`px-4 py-2 rounded-lg font-medium text-sm border ${editTab === 'general' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 shadow-sm'}`}>Generale</button>
+                    <button onClick={() => setEditTab('services')} className={`px-4 py-2 rounded-lg font-medium text-sm border ${editTab === 'services' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 shadow-sm'}`}>Servizi ({formData.services.length})</button>
+                    <button onClick={() => setEditTab('export')} className={`px-4 py-2 rounded-lg font-medium text-sm border ${editTab === 'export' ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-200' : 'bg-white text-indigo-600 border-indigo-200 shadow-sm hover:bg-indigo-50'}`}>Esporta AI ✨</button>
                 </div>
             </div>
 
@@ -2040,7 +2067,13 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                                                 >
                                                     {tag.label}
                                                     {tagWeights?.vibe?.[tag.id] !== undefined && (
-                                                        <span className={`text-[9px] px-1 rounded-sm ${formData.tags?.vibe?.includes(tag.id) ? 'bg-white/20' : 'bg-slate-100 text-slate-400'}`}>{tagWeights.vibe[tag.id]}%</span>
+                                                        <input
+                                                            type="number"
+                                                            value={tagWeights.vibe[tag.id]}
+                                                            onChange={(e) => handleWeightChange('vibe', tag.id, parseInt(e.target.value))}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className={`w-10 text-[9px] px-1 py-0.5 rounded-sm border-0 text-center focus:ring-1 focus:ring-white/50 outline-none ${formData.tags?.vibe?.includes(tag.id) ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'}`}
+                                                        />
                                                     )}
                                                 </button>
                                             ))}
@@ -2060,7 +2093,13 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                                                 >
                                                     {tag.label}
                                                     {tagWeights?.target?.[tag.id] !== undefined && (
-                                                        <span className={`text-[9px] px-1 rounded-sm ${formData.tags?.target?.includes(tag.id) ? 'bg-white/20' : 'bg-slate-100 text-slate-400'}`}>{tagWeights.target[tag.id]}%</span>
+                                                        <input
+                                                            type="number"
+                                                            value={tagWeights.target[tag.id]}
+                                                            onChange={(e) => handleWeightChange('target', tag.id, parseInt(e.target.value))}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className={`w-10 text-[9px] px-1 py-0.5 rounded-sm border-0 text-center focus:ring-1 focus:ring-white/50 outline-none ${formData.tags?.target?.includes(tag.id) ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'}`}
+                                                        />
                                                     )}
                                                 </button>
                                             ))}
@@ -2080,7 +2119,13 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                                                 >
                                                     {tag.label}
                                                     {tagWeights?.activities?.[tag.id] !== undefined && (
-                                                        <span className={`text-[9px] px-1 rounded-sm ${formData.tags?.activities?.includes(tag.id) ? 'bg-white/20' : 'bg-slate-100 text-slate-400'}`}>{tagWeights.activities[tag.id]}%</span>
+                                                        <input
+                                                            type="number"
+                                                            value={tagWeights.activities[tag.id]}
+                                                            onChange={(e) => handleWeightChange('activities', tag.id, parseInt(e.target.value))}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className={`w-10 text-[9px] px-1 py-0.5 rounded-sm border-0 text-center focus:ring-1 focus:ring-white/50 outline-none ${formData.tags?.activities?.includes(tag.id) ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'}`}
+                                                        />
                                                     )}
                                                 </button>
                                             ))}
@@ -2114,11 +2159,12 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                                     {['highlights', 'tourism', 'accommodation', 'infrastructure', 'sport', 'info', 'general'].map((key) => (
                                         <div key={key}>
                                             <label className="block text-[10px] font-black uppercase text-slate-500 mb-2">{key}</label>
-                                            <input
+                                            <textarea
                                                 value={formData.tags?.[key]?.join(', ') || ''}
                                                 onChange={(e) => setFormData({ ...formData, tags: { ...formData.tags, [key]: e.target.value.split(',').map(s => s.trim()) } })}
-                                                className="w-full px-3 py-2 border rounded-lg text-xs font-medium focus:border-primary outline-none"
+                                                className="w-full px-3 py-2 border rounded-lg text-xs font-medium focus:border-primary outline-none min-h-[80px] resize-y"
                                                 placeholder="Virgola per separare..."
+                                                rows={3}
                                             />
                                         </div>
                                     ))}
@@ -2201,6 +2247,79 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* AI EXPORT TAB */}
+                {editTab === 'export' && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 className="text-lg font-bold text-indigo-900">Payload di validazione AI</h3>
+                                    <p className="text-sm text-indigo-600">Copia questi dati e incollali nel tuo prompt AI per verificare la correttezza dei tag e dei servizi.</p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        const text = document.getElementById('ai-payload-text')?.innerText || '';
+                                        navigator.clipboard.writeText(text);
+                                        alert('Payload copiato negli appunti!');
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-md hover:bg-indigo-700 transition-all active:scale-95"
+                                >
+                                    <Layers size={18} /> Copia Tutto
+                                </button>
+                            </div>
+
+                            <div
+                                id="ai-payload-text"
+                                className="bg-white border border-indigo-200 rounded-xl p-6 font-mono text-xs text-slate-700 whitespace-pre-wrap leading-relaxed max-h-[600px] overflow-y-auto"
+                            >
+
+                                <div className="mb-4 pb-4 border-b border-slate-100">
+                                    <span className="text-indigo-600 font-bold uppercase tracking-widest text-[10px]">INFO LOCALITÀ</span>{'\n'}
+                                    Nome: {formData.name}{'\n'}
+                                    Regione: {formData.region}{'\n'}
+                                    Paese: {formData.country}{'\n'}
+                                    Altitudine: {formData.altitude}m{'\n'}
+                                    Slug SEO: {formData.slug}{'\n'}
+                                </div>
+
+                                <div className="mb-4 pb-4 border-b border-slate-100">
+                                    <span className="text-indigo-600 font-bold uppercase tracking-widest text-[10px]">SERVIZI & ITEMS ({formData.services.length})</span>{'\n'}
+                                    {formData.services.map((s: any, i: number) => (
+                                        `${i + 1}. ${s.name} [${s.seasonAvailability?.join(', ')}]${s.highlight ? ' *HIGHLIGHT*' : ''}\n`
+                                    ))}
+                                </div>
+
+                                <div>
+                                    <span className="text-indigo-600 font-bold uppercase tracking-widest text-[10px]">TAGS ATTUALI</span>{'\n'}
+                                    {Object.entries(formData.tags).map(([category, tags]: [string, any]) => (
+                                        tags && tags.length > 0 ? `${category.toUpperCase()}: ${tags.join(', ')}\n` : null
+                                    ))}
+                                </div>
+
+                                <div className="mt-4 pt-4 border-t border-slate-100">
+                                    <span className="text-indigo-600 font-bold uppercase tracking-widest text-[10px]">CONFIGURAZIONE MATCH WIZARD (PESI)</span>{'\n'}
+                                    {Object.entries(tagWeights || {}).map(([category, weights]: [string, any]) => (
+                                        weights && typeof weights === 'object' && Object.keys(weights).length > 0 ? (
+                                            `${category.toUpperCase()}:\n` +
+                                            Object.entries(weights).map(([tagId, weight]) => {
+                                                const tagLabel = (systemTags?.[category]?.find((t: any) => t.id === tagId)?.label) || tagId;
+                                                return `- ${tagLabel}: ${weight}%\n`;
+                                            }).join('')
+                                        ) : null
+                                    ))}
+                                </div>
+
+                                <div className="mt-4 pt-4 border-t border-slate-100 italic text-slate-400">
+                                    Istruzioni: "Analizza i servizi e i tag sopra elencati per la località {formData.name}.
+                                    Verifica se i tag (vibe, target, activities) della sezione MATCH WIZARD sono coerenti con i servizi offerti e suggerisci eventuali correzioni o integrazioni dandomi anche le percentuali (fai una tabella di riferimento con tutti i valori e descrivi il perchè).
+                                    Verifica che tutte le informazioni ed i servizi siano riferiti alla località.
+                                    "
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
