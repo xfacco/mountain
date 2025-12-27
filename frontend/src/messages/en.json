@@ -153,7 +153,10 @@
         "view_location": "View Location",
         "highlight_section": "Bookmark section",
         "unhighlight_section": "Remove bookmark",
-        "highlight_element": "Highlight this item"
+        "highlight_element": "Highlight this item",
+        "favorite_location": "Add destination to favorites",
+        "unfavorite_location": "Remove destination from favorites",
+        "full_destination": "Full Destination"
     },
     "Compare": {
         "title": "Compare Locations",

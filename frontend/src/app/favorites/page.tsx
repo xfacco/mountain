@@ -202,7 +202,7 @@ export default function FavoritesPage() {
                                                 <div className="flex flex-wrap gap-2">
                                                     {fav.items.map(item => (
                                                         <span key={item} className="px-3 py-1.5 bg-slate-50 text-slate-600 text-[11px] font-bold rounded-xl border border-slate-100 hover:border-rose-200 hover:bg-rose-50/30 transition-colors">
-                                                            {item}
+                                                            {item === 'location_main' ? t('full_destination') : item}
                                                         </span>
                                                     ))}
                                                 </div>

@@ -1703,6 +1703,9 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
     const seasonalImagesSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(
         (formData.name || '') + ' ' + (formData.region || '') + ' mountain panorama wallpaper images from Unsplash, Pexels, Pixabay, StockSnap.io, Picjumbo, Freepik, Burst (by Shopify), Kaboompics, Reshot, Gratisography, Rawpixel, ISO Republic, Morguefile, Wikimedia Commons'
     )}&tbm=isch`;
+    const ufficioSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(
+        (formData.name || '') + ' ' + (formData.region || '') + ' sito ufficiale'
+    )}&tbm=`;
 
     return (
         <div className="max-w-5xl mx-auto">
@@ -1916,6 +1919,15 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="font-bold text-slate-900 border-l-4 border-indigo-500 pl-3">Immagini Stagionali</h3>
                                 <div className="flex gap-3">
+                                    <a
+                                        href={ufficioSearchUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded text-slate-500 hover:text-primary transition-colors flex items-center gap-1 font-bold"
+                                    >
+                                        Sito ufficiale<Search size={10} />
+                                    </a>
+
                                     <a
                                         href={seasonalImagesSearchUrl}
                                         target="_blank"
