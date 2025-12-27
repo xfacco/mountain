@@ -367,30 +367,7 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                     </div>
                                 </div>
 
-                                {/* Quick Search (Local Content) - Desktop Only */}
-                                <div className="hidden lg:block mb-6 relative z-10">
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                        <input
-                                            type="text"
-                                            placeholder={t('search_local_placeholder')}
-                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all font-medium"
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                        />
-                                        {searchTerm && (
-                                            <button
-                                                onClick={() => setSearchTerm('')}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        )}
-                                    </div>
-                                    <p className="text-[10px] text-slate-400 mt-2 px-1">
-                                        {t('search_hint')}
-                                    </p>
-                                </div>
+
 
                                 {/* Desktop Only Controls */}
                                 <div className="hidden lg:block space-y-6">
@@ -503,12 +480,33 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
 
                     {/* RIGHT COLUMN (Main): Tabs & Content */}
                     <div className="lg:col-span-2 space-y-8">
+                        {/* Sticky Search Bar - Desktop Only */}
+                        <div className="hidden lg:block sticky top-20 z-30 bg-slate-50/80 backdrop-blur-md pb-4 pt-1 -mx-4 px-4 rounded-b-2xl">
+                            <div className="relative group">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder={t('search_local_placeholder')}
+                                    className="w-full pl-12 pr-12 py-4 bg-white border border-slate-200 rounded-2xl text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all font-medium placeholder:text-slate-400"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                                {searchTerm && (
+                                    <button
+                                        onClick={() => setSearchTerm('')}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 bg-slate-100 rounded-full transition-all"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
 
 
                         {/* Tab Headers */}
                         {/* General Characteristics (Top of Page) */}
                         {location.tags && (
-                            <div className="mb-2">
+                            <div id="highlights-section" className="mb-2 scroll-mt-32">
                                 <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                     {renderTagGroup('Highlights', location.tags.highlights, Star, 'text-yellow-500', 'bg-yellow-50 border-yellow-100')}
                                 </div>
@@ -835,7 +833,7 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
             </div>
 
             {/* Mobile Sticky Footer */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-md border-t border-slate-200 pb-4">
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-md border-y-[3px] border-slate-200 pb-4">
                 <div className="flex flex-col">
                     {/* Expandable Tags Area (Expanding Upwards) */}
                     {isMobileTagsOpen && (
@@ -885,7 +883,13 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                     placeholder={t('search_local_placeholder')}
                                     className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium"
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSearchTerm(val);
+                                        if (val.length > 0) {
+                                            document.getElementById('highlights-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }
+                                    }}
                                     autoFocus
                                 />
                                 <button
