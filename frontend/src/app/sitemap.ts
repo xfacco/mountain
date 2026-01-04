@@ -12,6 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         '/locations',
         '/search',
         '/compare',
+        '/comparisons',
         '/match',
         '/map',
         '/about',
@@ -77,6 +78,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 }
             }
         });
+
+        // Add Comparison Detail Pages (/compare?id=...)
+        const compareLogsRef = collection(db, 'compare_logs');
+        const compareSnapshot = await getDocs(compareLogsRef);
+
+        compareSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            // Only index comparisons with multiple locations (consistent with ComparisonsPage)
+            if (data.locations && Array.isArray(data.locations) && data.locations.length > 1) {
+                dynamicPages.push({
+                    url: `${baseUrl}/compare?id=${doc.id}`,
+                    lastModified: new Date(),
+                    changeFrequency: 'weekly' as const,
+                    priority: 0.7,
+                });
+            }
+        });
+
     } catch (error) {
         console.error("Error generating sitemap:", error);
     }

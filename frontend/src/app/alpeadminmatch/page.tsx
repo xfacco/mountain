@@ -28,7 +28,10 @@ import {
     AlertTriangle,
     HelpCircle,
     Info,
-    Heart
+    Heart,
+    Download,
+    Mountain,
+    Timer
 } from 'lucide-react';
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -234,7 +237,7 @@ function AdminDashboard() {
         }
     };
 
-    const handleSaveEdit = async (updatedData: any) => {
+    const handleSaveEdit = async (updatedData: any, goNext: boolean = false) => {
         try {
             const { doc, updateDoc, setDoc, serverTimestamp } = await import('firebase/firestore');
             const { db } = await import('@/lib/firebase');
@@ -245,7 +248,7 @@ function AdminDashboard() {
                 'advancedSkiing', 'outdoorNonSki', 'family', 'rentals',
                 'eventsAndSeasonality', 'gastronomy', 'digital', 'practicalTips',
                 'openingHours', 'safety', 'sustainability',
-                'aiGenerationMetadata', 'profile', 'tagWeights'
+                'aiGenerationMetadata', 'profile', 'tagWeights', 'cityDimensions'
             ];
 
             const lightData: any = { updatedAt: serverTimestamp() };
@@ -279,6 +282,9 @@ function AdminDashboard() {
             if (updatedData.tagWeights) {
                 lightData.tagWeights = updatedData.tagWeights;
             }
+            if (updatedData.cityDimensions) {
+                lightData.cityDimensions = updatedData.cityDimensions;
+            }
 
             // Denormalize counts/flags for list view
             lightData.servicesCount = updatedData.services?.length || 0;
@@ -294,9 +300,27 @@ function AdminDashboard() {
             // Small delay to allow Firestore to propagate serverTimestamp
             await new Promise(resolve => setTimeout(resolve, 500));
 
-            setEditingLocation(null);
-            setActiveTab('locations');
-            alert('Modifiche salvate con successo (Struttura Thin/Full)!');
+            if (goNext) {
+                console.log("Save & Next triggered");
+                const currentIndex = sortedAndFilteredLocations.findIndex((l: any) => l.id === updatedData.id);
+                console.log("Current Index:", currentIndex, "Total:", sortedAndFilteredLocations.length);
+
+                if (currentIndex !== -1 && currentIndex < sortedAndFilteredLocations.length - 1) {
+                    const nextLoc = sortedAndFilteredLocations[currentIndex + 1];
+                    console.log("Next Location:", nextLoc?.name);
+                    alert(`Salvataggio completato! Passaggio a: ${nextLoc.name}`);
+                    handleStartEdit(nextLoc); // Auto-load next
+                } else {
+                    console.log("No next location found or end of list");
+                    alert('Salvataggio completato! Questa era l\'ultima località della lista.');
+                    setEditingLocation(null);
+                    setActiveTab('locations');
+                }
+            } else {
+                setEditingLocation(null);
+                setActiveTab('locations');
+                alert('Modifiche salvate con successo (Struttura Thin/Full)!');
+            }
         } catch (e) {
             console.error("Update Error:", e);
             alert("Errore durante il salvataggio delle modifiche.");
@@ -585,6 +609,7 @@ function AdminDashboard() {
                 {/* Editor View */}
                 {editingLocation ? (
                     <EditLocationView
+                        key={editingLocation.id}
                         location={editingLocation}
                         onSave={handleSaveEdit}
                         onCancel={() => setEditingLocation(null)}
@@ -1385,7 +1410,7 @@ function MergeTool({ selectedLocations: initialSelected, onCancel, onComplete }:
 
 // --- Sub-Components ---
 
-function EditLocationView({ location, onSave, onCancel, systemTags, allLocations }: { location: any, onSave: (data: any) => void, onCancel: () => void, systemTags: any, allLocations?: any[] }) {
+function EditLocationView({ location, onSave, onCancel, systemTags, allLocations }: { location: any, onSave: (data: any, goNext?: boolean) => void, onCancel: () => void, systemTags: any, allLocations?: any[] }) {
     const [formData, setFormData] = useState({
         ...location,
         description: location.description || { winter: '', summer: '' },
@@ -1400,6 +1425,46 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
             summer: location.coverImage || '',
             spring: location.coverImage || '',
             autumn: location.coverImage || ''
+        },
+        cityDimensions: location.cityDimensions || {
+            population: 0,
+            accommodationCapacity: 0,
+            maxAltitude: 0,
+            cityType: '',
+            aspect: [],
+            trafficFreeCenter: '',
+            hasShuttle: '',
+            strengths: '',
+            // Ski resort details
+            skiAreaTotalKm: 0,
+            skiAreaBlueKm: 0,
+            skiAreaRedKm: 0,
+            skiAreaBlackKm: 0,
+            skiAreaLifts: 0,
+            // Alternative winter activities
+            crossCountry: '',
+            snowshoeing: '',
+            sledding: '',
+            snowpark: '',
+            // Summer activities
+            hikingKm: 0,
+            mtbTrails: '',
+            adventureParks: '',
+            viaFerrata: '',
+            // Climbing
+            climbing: '',
+            // Water activities
+            waterRafting: '',
+            waterKayakCanyoning: '',
+            waterPool: '',
+            // Nightlife
+            nightlifeAperitifs: '',
+            nightlifeEvents: '',
+            // Shopping
+            shoppingType: '',
+            // Relax
+            relaxSpa: '',
+            relaxWellness: ''
         }
     });
 
@@ -1408,7 +1473,96 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
 
     // UI State for Active Tab inside Editor
     const [editTab, setEditTab] = useState<'general' | 'services' | 'export'>('general');
+
     const [showExplanation, setShowExplanation] = useState<null | 'wizard' | 'seo'>(null);
+    const [showJsonImport, setShowJsonImport] = useState(false);
+    const [jsonImportContent, setJsonImportContent] = useState('');
+
+    const handleJsonImport = () => {
+        try {
+            const parsed = JSON.parse(jsonImportContent);
+            if (typeof parsed !== 'object') throw new Error('Il JSON deve essere un oggetto');
+
+            // Sanitize and validate
+            const newDimensions = {
+                ...formData.cityDimensions, // Keep existing if not in JSON
+                population: typeof parsed.population === 'number' ? parsed.population : formData.cityDimensions.population,
+                accommodationCapacity: typeof parsed.accommodationCapacity === 'number' ? parsed.accommodationCapacity : formData.cityDimensions.accommodationCapacity,
+                maxAltitude: typeof parsed.maxAltitude === 'number' ? parsed.maxAltitude : formData.cityDimensions.maxAltitude,
+                cityType: typeof parsed.cityType === 'string' ? parsed.cityType : formData.cityDimensions.cityType,
+                aspect: Array.isArray(parsed.aspect) ? parsed.aspect : formData.cityDimensions.aspect,
+                trafficFreeCenter: typeof parsed.trafficFreeCenter === 'string' ? parsed.trafficFreeCenter : formData.cityDimensions.trafficFreeCenter,
+                hasShuttle: typeof parsed.hasShuttle === 'string' ? parsed.hasShuttle : formData.cityDimensions.hasShuttle,
+                strengths: typeof parsed.strengths === 'string' ? parsed.strengths : formData.cityDimensions.strengths,
+                // New Fields
+                skiAreaTotalKm: typeof parsed.skiAreaTotalKm === 'number' ? parsed.skiAreaTotalKm : formData.cityDimensions.skiAreaTotalKm,
+                skiAreaBlueKm: typeof parsed.skiAreaBlueKm === 'number' ? parsed.skiAreaBlueKm : formData.cityDimensions.skiAreaBlueKm,
+                skiAreaRedKm: typeof parsed.skiAreaRedKm === 'number' ? parsed.skiAreaRedKm : formData.cityDimensions.skiAreaRedKm,
+                skiAreaBlackKm: typeof parsed.skiAreaBlackKm === 'number' ? parsed.skiAreaBlackKm : formData.cityDimensions.skiAreaBlackKm,
+                skiAreaLifts: typeof parsed.skiAreaLifts === 'number' ? parsed.skiAreaLifts : formData.cityDimensions.skiAreaLifts,
+                crossCountry: typeof parsed.crossCountry === 'string' ? parsed.crossCountry : formData.cityDimensions.crossCountry,
+                snowshoeing: typeof parsed.snowshoeing === 'string' ? parsed.snowshoeing : formData.cityDimensions.snowshoeing,
+                sledding: typeof parsed.sledding === 'string' ? parsed.sledding : formData.cityDimensions.sledding,
+                snowpark: typeof parsed.snowpark === 'string' ? parsed.snowpark : formData.cityDimensions.snowpark,
+                hikingKm: typeof parsed.hikingKm === 'number' ? parsed.hikingKm : formData.cityDimensions.hikingKm,
+                mtbTrails: typeof parsed.mtbTrails === 'string' ? parsed.mtbTrails : formData.cityDimensions.mtbTrails,
+                adventureParks: typeof parsed.adventureParks === 'string' ? parsed.adventureParks : formData.cityDimensions.adventureParks,
+                viaFerrata: typeof parsed.viaFerrata === 'string' ? parsed.viaFerrata : formData.cityDimensions.viaFerrata,
+                climbing: typeof parsed.climbing === 'string' ? parsed.climbing : formData.cityDimensions.climbing,
+                waterRafting: typeof parsed.waterRafting === 'string' ? parsed.waterRafting : formData.cityDimensions.waterRafting,
+                waterKayakCanyoning: typeof parsed.waterKayakCanyoning === 'string' ? parsed.waterKayakCanyoning : formData.cityDimensions.waterKayakCanyoning,
+                waterPool: typeof parsed.waterPool === 'string' ? parsed.waterPool : formData.cityDimensions.waterPool,
+                nightlifeAperitifs: typeof parsed.nightlifeAperitifs === 'string' ? parsed.nightlifeAperitifs : formData.cityDimensions.nightlifeAperitifs,
+                nightlifeEvents: typeof parsed.nightlifeEvents === 'string' ? parsed.nightlifeEvents : formData.cityDimensions.nightlifeEvents,
+                shoppingType: typeof parsed.shoppingType === 'string' ? parsed.shoppingType : formData.cityDimensions.shoppingType,
+                relaxSpa: typeof parsed.relaxSpa === 'string' ? parsed.relaxSpa : formData.cityDimensions.relaxSpa,
+                relaxWellness: typeof parsed.relaxWellness === 'string' ? parsed.relaxWellness : formData.cityDimensions.relaxWellness,
+            };
+
+            setFormData({ ...formData, cityDimensions: newDimensions });
+            setShowJsonImport(false);
+            setJsonImportContent('');
+            alert('Dati importati con successo!');
+        } catch (e) {
+            alert('Errore parsing JSON: \nAssicurati che sia un formato valido.');
+        }
+    };
+
+    const loadJsonExample = () => {
+        const example = {
+            population: 5000,
+            accommodationCapacity: 2500,
+            maxAltitude: 3000,
+            cityType: 'village',
+            aspect: ['traditional_village', 'mountain_city'],
+            trafficFreeCenter: 'yes',
+            hasShuttle: 'seasonal',
+            strengths: 'Un bellissimo villaggio alpino...',
+            skiAreaTotalKm: 120,
+            skiAreaBlueKm: 40,
+            skiAreaRedKm: 60,
+            skiAreaBlackKm: 20,
+            skiAreaLifts: 30,
+            crossCountry: '50km di piste',
+            snowshoeing: 'numerosi sentieri segnalati',
+            sledding: '2 piste dedicate',
+            snowpark: '1 snowpark pro',
+            hikingKm: 200,
+            mtbTrails: '15 percorsi MTB ed E-Bike',
+            adventureParks: 'presente in centro',
+            viaFerrata: '3 vie ferrate disponibili',
+            climbing: 'falesie naturali e palestra indoor',
+            waterRafting: 'disponibile sul fiume Avisio',
+            waterKayakCanyoning: 'canyoning nei torrenti vicini',
+            waterPool: 'piscina comunale olimpionica',
+            nightlifeAperitifs: 'vibrante dopo-sci in centro',
+            nightlifeEvents: 'concerti e festival estivi',
+            shoppingType: 'boutique di lusso e artigianato locale',
+            relaxSpa: 'SPA negli hotel 4 e 5 stelle',
+            relaxWellness: 'nuovo centro termale in arrivo'
+        };
+        setJsonImportContent(JSON.stringify(example, null, 2));
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -1992,6 +2146,393 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                             </div>
                         </div>
 
+                        {/* City Dimensions Section */}
+                        <div className="border border-slate-100 rounded-2xl p-6 bg-gradient-to-br from-slate-50 to-white">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h3 className="font-bold text-slate-900 border-l-4 border-green-500 pl-3">Dimensione & Caratteristiche Città</h3>
+                                    <p className="text-xs text-slate-500 ml-4 mt-1">Informazioni sulla dimensione e le caratteristiche urbane della località</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowJsonImport(!showJsonImport)}
+                                        className="text-[10px] text-indigo-600 hover:text-indigo-800 flex items-center gap-1 font-bold px-3 py-2 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                                    >
+                                        <Download size={12} /> Importa JSON
+                                    </button>
+                                    <a
+                                        href={`https://www.google.com/search?udm=18&q=${encodeURIComponent(`Search data for ${formData.name}, ${formData.region || ''}.
+I need a complete analysis of this mountain destination. 
+Return ONLY a valid JSON object with the following structure. ALL string values must be in English.
+If a numeric value is unknown, use 0. If a string is unknown, use "".
+
+{
+  "population": number (resident population),
+  "accommodationCapacity": number (total beds/capacity),
+  "maxAltitude": number (highest point in meters),
+  "cityType": "city" | "tourist center" | "village",
+  "aspect": ["traditional_village", "mountain_city", "resort_integrated", "sunny_plateau", "remote_outpost", "alpine_lake", "thermal_hub", "protected_park"],
+  "trafficFreeCenter": "yes" | "no" | "partial",
+  "hasShuttle": "yes" | "no" | "seasonal",
+  "strengths": "Short summary of main strengths in English",
+  "skiAreaTotalKm": number (total ski slopes km),
+  "skiAreaBlueKm": number,
+  "skiAreaRedKm": number,
+  "skiAreaBlackKm": number,
+  "skiAreaLifts": number (total number of lifts),
+  "crossCountry": "string (info about cross country skiing, in English)",
+  "snowshoeing": "string (info about snowshoe trails, in English)",
+  "sledding": "string (info about sledding/toboggan runs, in English)",
+  "snowpark": "string (is there a snowpark?, in English)",
+  "hikingKm": number (total km of hiking trails),
+  "mtbTrails": "string (mtb and e-bike routes, in English)",
+  "adventureParks": "string (presence of adventure parks, in English)",
+  "viaFerrata": "string (presence of via ferrata, in English)",
+  "climbing": "string (climbing spots/gyms, in English)",
+  "waterRafting": "string (rafting/canyoning, in English)",
+  "waterKayakCanyoning": "string (in English)",
+  "waterPool": "string (swimming pools, in English)",
+  "nightlifeAperitifs": "string (nightlife/after-ski, in English)",
+  "nightlifeEvents": "string (main events, in English)",
+  "shoppingType": "string (shopping/shops, in English)",
+  "relaxSpa": "string (spa/wellness centers, in English)",
+  "relaxWellness": "string (in English)"
+}
+
+Fill the information accurately based on official data for ${formData.name}.`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold px-3 py-2 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                                    >
+                                        <Search size={12} /> Cerca con AI
+                                    </a>
+                                </div>
+                            </div>
+
+                            {showJsonImport && (
+                                <div className="mb-6 p-4 bg-indigo-50 rounded-xl border border-indigo-100 animate-in fade-in slide-in-from-top-2">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="text-xs font-bold text-indigo-900 uppercase">Incolla JSON qui:</label>
+                                        <button onClick={loadJsonExample} className="text-xs text-indigo-600 underline font-medium hover:text-indigo-800">
+                                            Carica Esempio
+                                        </button>
+                                    </div>
+                                    <textarea
+                                        value={jsonImportContent}
+                                        onChange={(e) => setJsonImportContent(e.target.value)}
+                                        className="w-full h-32 p-3 text-xs font-mono border rounded-lg focus:border-indigo-500 outline-none mb-3"
+                                        placeholder="{ ... }"
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            onClick={() => setShowJsonImport(false)}
+                                            className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-200 rounded-lg transition-colors"
+                                        >
+                                            Annulla
+                                        </button>
+                                        <button
+                                            onClick={handleJsonImport}
+                                            className="px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm"
+                                        >
+                                            Applica Importazione
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Population */}
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Numero di Abitanti</label>
+                                    <input
+                                        type="number"
+                                        value={formData.cityDimensions?.population || ''}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            cityDimensions: { ...formData.cityDimensions, population: parseInt(e.target.value) || 0 }
+                                        })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. 5000"
+                                    />
+                                </div>
+
+                                {/* Accommodation Capacity */}
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Posti Ricettività</label>
+                                    <input
+                                        type="number"
+                                        value={formData.cityDimensions?.accommodationCapacity || ''}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            cityDimensions: { ...formData.cityDimensions, accommodationCapacity: parseInt(e.target.value) || 0 }
+                                        })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. 2000"
+                                    />
+                                </div>
+
+                                {/* Max Altitude */}
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Altezza Massima</label>
+                                    <input
+                                        type="number"
+                                        value={formData.cityDimensions?.maxAltitude || ''}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            cityDimensions: { ...formData.cityDimensions, maxAltitude: parseInt(e.target.value) || 0 }
+                                        })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                        placeholder="Es. 3000"
+                                    />
+                                </div>
+
+                                {/* City Type */}
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Tipo di Località</label>
+                                    <select
+                                        value={formData.cityDimensions?.cityType || ''}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            cityDimensions: { ...formData.cityDimensions, cityType: e.target.value }
+                                        })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                    >
+                                        <option value="">Seleziona...</option>
+                                        <option value="city">Città</option>
+                                        <option value="tourist center">Centro turistico</option>
+                                        <option value="village">Villaggio</option>
+                                    </select>
+                                </div>
+
+                                {/* Aspect - Multi Select */}
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Aspetto (Selezione Multipla)</label>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {[
+                                            { id: 'traditional_village', label: 'Villaggio Tradizionale' },
+                                            { id: 'mountain_city', label: 'Città di Montagna' },
+                                            { id: 'resort_integrated', label: 'Resort Integrato' },
+                                            { id: 'sunny_plateau', label: 'Altopiano Soleggiato' },
+                                            { id: 'remote_outpost', label: 'Avamposto Remoto' },
+                                            { id: 'alpine_lake', label: 'Lago Alpino' },
+                                            { id: 'thermal_hub', label: 'Centro Termale' },
+                                            { id: 'protected_park', label: 'Parco Protetto' }
+                                        ].map(aspect => {
+                                            const isSelected = (formData.cityDimensions?.aspect || []).includes(aspect.id);
+                                            return (
+                                                <button
+                                                    key={aspect.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const currentAspects = formData.cityDimensions?.aspect || [];
+                                                        const newAspects = isSelected
+                                                            ? currentAspects.filter((a: string) => a !== aspect.id)
+                                                            : [...currentAspects, aspect.id];
+                                                        setFormData({
+                                                            ...formData,
+                                                            cityDimensions: { ...formData.cityDimensions, aspect: newAspects }
+                                                        });
+                                                    }}
+                                                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-all border ${isSelected
+                                                        ? 'bg-green-500 text-white border-green-500 shadow-sm'
+                                                        : 'bg-white text-slate-600 border-slate-200 hover:border-green-300'
+                                                        }`}
+                                                >
+                                                    {aspect.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Traffic Free Center */}
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Centro Chiuso al Traffico</label>
+                                    <select
+                                        value={formData.cityDimensions?.trafficFreeCenter || ''}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            cityDimensions: { ...formData.cityDimensions, trafficFreeCenter: e.target.value }
+                                        })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                    >
+                                        <option value="">Seleziona...</option>
+                                        <option value="yes">Sì</option>
+                                        <option value="no">No</option>
+                                        <option value="partial">Parzialmente</option>
+                                    </select>
+                                </div>
+
+                                {/* Has Shuttle */}
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Navetta Spostamenti Interni</label>
+                                    <select
+                                        value={formData.cityDimensions?.hasShuttle || ''}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            cityDimensions: { ...formData.cityDimensions, hasShuttle: e.target.value }
+                                        })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:border-primary outline-none"
+                                    >
+                                        <option value="">Seleziona...</option>
+                                        <option value="yes">Sì</option>
+                                        <option value="no">No</option>
+                                        <option value="seasonal">Solo stagionale</option>
+                                    </select>
+                                </div>
+
+                                {/* Strengths - Full Width */}
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Punti di Forza della Località</label>
+                                    <textarea
+                                        value={formData.cityDimensions?.strengths || ''}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            cityDimensions: { ...formData.cityDimensions, strengths: e.target.value }
+                                        })}
+                                        className="w-full px-4 py-3 border rounded-xl focus:border-primary outline-none h-32 resize-y text-sm leading-relaxed"
+                                        placeholder="Descrivi i principali punti di forza della località (es. panorama mozzafiato, vicinanza a attrazioni, atmosfera autentica...)"
+                                    />
+
+                                    <a
+                                        href={`https://www.google.com/search?udm=18&q=${encodeURIComponent(`${formData.name} ${formData.region || ''} - Describe in 40 words the main strengths of the location. Provide the description in English only.`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold px-3 py-2 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                                    >
+                                        <Search size={12} /> Cerca con AI
+                                    </a>
+                                </div>
+
+                                {/* NEW SECTIONS */}
+                                <div className="md:col-span-2 border-t border-slate-100 pt-6 mt-4">
+                                    <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                        <Mountain size={16} className="text-blue-500" /> Dettagli Comprensorio Sciistico
+                                    </h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Km Totali</label>
+                                            <input type="number" value={formData.cityDimensions?.skiAreaTotalKm || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, skiAreaTotalKm: parseInt(e.target.value) || 0 } })} className="w-full px-3 py-2 border rounded text-sm outline-none focus:border-blue-400" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Km Blu</label>
+                                            <input type="number" value={formData.cityDimensions?.skiAreaBlueKm || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, skiAreaBlueKm: parseInt(e.target.value) || 0 } })} className="w-full px-3 py-2 border rounded text-sm outline-none focus:border-blue-400" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Km Rosse</label>
+                                            <input type="number" value={formData.cityDimensions?.skiAreaRedKm || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, skiAreaRedKm: parseInt(e.target.value) || 0 } })} className="w-full px-3 py-2 border rounded text-sm outline-none focus:border-blue-400" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Km Nere</label>
+                                            <input type="number" value={formData.cityDimensions?.skiAreaBlackKm || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, skiAreaBlackKm: parseInt(e.target.value) || 0 } })} className="w-full px-3 py-2 border rounded text-sm outline-none focus:border-blue-400" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Impianti</label>
+                                            <input type="number" value={formData.cityDimensions?.skiAreaLifts || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, skiAreaLifts: parseInt(e.target.value) || 0 } })} className="w-full px-3 py-2 border rounded text-sm outline-none focus:border-blue-400" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-2 border-t border-slate-100 pt-6 mt-4">
+                                    <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                        <Timer size={16} className="text-emerald-500" /> Attività Alternative (Inverno)
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Sci di Fondo</label>
+                                            <textarea value={formData.cityDimensions?.crossCountry || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, crossCountry: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. 50km di piste" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Ciaspole (Snowshoeing)</label>
+                                            <textarea value={formData.cityDimensions?.snowshoeing || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, snowshoeing: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. Sentieri in quota" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Piste da Slittino</label>
+                                            <textarea value={formData.cityDimensions?.sledding || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, sledding: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. 2 piste da 3km" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Snowpark</label>
+                                            <textarea value={formData.cityDimensions?.snowpark || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, snowpark: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. XL park con halfpipe" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-2 border-t border-slate-100 pt-6 mt-4">
+                                    <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                        <Layers size={16} className="text-orange-500" /> Attività Estive
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Km Sentieri (Hiking)</label>
+                                            <input type="number" value={formData.cityDimensions?.hikingKm || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, hikingKm: parseInt(e.target.value) || 0 } })} className="w-full px-3 py-2 border rounded text-sm outline-none" placeholder="es. 250" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">MTB / E-Bike</label>
+                                            <textarea value={formData.cityDimensions?.mtbTrails || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, mtbTrails: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. Bike park e tour guidati" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Parchi Avventura</label>
+                                            <textarea value={formData.cityDimensions?.adventureParks || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, adventureParks: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. Presente in centro forestale" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Vie Ferrate</label>
+                                            <textarea value={formData.cityDimensions?.viaFerrata || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, viaFerrata: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. 5 vie attrezzate" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-2 border-t border-slate-100 pt-6 mt-4">
+                                    <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                        <Activity size={16} className="text-red-500" /> Sport & Altro
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-50 pb-4">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Arrampicata</label>
+                                            <textarea value={formData.cityDimensions?.climbing || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, climbing: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. Falesie e indoor" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Rafting</label>
+                                            <textarea value={formData.cityDimensions?.waterRafting || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, waterRafting: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. Disponibile sul fiume" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Kayak / Canyoning</label>
+                                            <textarea value={formData.cityDimensions?.waterKayakCanyoning || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, waterKayakCanyoning: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. Canyoning nei torrenti" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Piscina</label>
+                                            <textarea value={formData.cityDimensions?.waterPool || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, waterPool: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. Olimpionica o SPA" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Vita Mondana (Aperitivi)</label>
+                                            <textarea value={formData.cityDimensions?.nightlifeAperitifs || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, nightlifeAperitifs: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. Numerosi bar e après-ski" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Eventi</label>
+                                            <textarea value={formData.cityDimensions?.nightlifeEvents || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, nightlifeEvents: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. Concerti e mercatini" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Shopping (Negozi)</label>
+                                            <textarea value={formData.cityDimensions?.shoppingType || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, shoppingType: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. Lusso e artigianato" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Relax (SPA)</label>
+                                            <textarea value={formData.cityDimensions?.relaxSpa || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, relaxSpa: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. In molti hotel" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Wellness / Centri Benessere</label>
+                                            <textarea value={formData.cityDimensions?.relaxWellness || ''} onChange={(e) => setFormData({ ...formData, cityDimensions: { ...formData.cityDimensions, relaxWellness: e.target.value } })} className="w-full px-3 py-2 border rounded text-xs outline-none h-16 resize-none" placeholder="es. Centro termale moderno" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Seasonal Descriptions */}
                         <div className="pt-4 space-y-6">
                             <h3 className="font-bold text-slate-900 flex items-center gap-2">
@@ -2286,6 +2827,32 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                                     Slug SEO: {formData.slug}{'\n'}
                                 </div>
 
+                                {formData.cityDimensions && (formData.cityDimensions.population > 0 || formData.cityDimensions.accommodationCapacity > 0 || formData.cityDimensions.cityType || formData.cityDimensions.strengths || (formData.cityDimensions.aspect && formData.cityDimensions.aspect.length > 0)) && (
+                                    <div className="mb-4 pb-4 border-b border-slate-100">
+                                        <span className="text-indigo-600 font-bold uppercase tracking-widest text-[10px]">DIMENSIONE & CARATTERISTICHE CITT\u00c0</span>{'\n'}
+                                        {formData.cityDimensions.population > 0 && `Abitanti: ${formData.cityDimensions.population}\n`}
+                                        {formData.cityDimensions.accommodationCapacity > 0 && `Posti Ricettivit\u00e0: ${formData.cityDimensions.accommodationCapacity}\n`}
+                                        {formData.cityDimensions.maxAltitude > 0 && `Altezza Massima: ${formData.cityDimensions.maxAltitude}m\n`}
+                                        {formData.cityDimensions.cityType && `Tipo: ${formData.cityDimensions.cityType === 'city' ? 'Citt\u00e0' : formData.cityDimensions.cityType === 'tourist center' ? 'Centro turistico' : 'Villaggio'}\n`}
+                                        {formData.cityDimensions.aspect && formData.cityDimensions.aspect.length > 0 && `Aspetto: ${formData.cityDimensions.aspect.map((a: string) => {
+                                            const aspectLabels: Record<string, string> = {
+                                                'traditional_village': 'Villaggio Tradizionale',
+                                                'mountain_city': 'Citt\u00e0 di Montagna',
+                                                'resort_integrated': 'Resort Integrato',
+                                                'sunny_plateau': 'Altopiano Soleggiato',
+                                                'remote_outpost': 'Avamposto Remoto',
+                                                'alpine_lake': 'Lago Alpino',
+                                                'thermal_hub': 'Centro Termale',
+                                                'protected_park': 'Parco Protetto'
+                                            };
+                                            return aspectLabels[a] || a;
+                                        }).join(', ')}\n`}
+                                        {formData.cityDimensions.trafficFreeCenter && `Centro chiuso al traffico: ${formData.cityDimensions.trafficFreeCenter === 'yes' ? 'S\u00ec' : formData.cityDimensions.trafficFreeCenter === 'no' ? 'No' : 'Parzialmente'}\n`}
+                                        {formData.cityDimensions.hasShuttle && `Navetta interna: ${formData.cityDimensions.hasShuttle === 'yes' ? 'S\u00ec' : formData.cityDimensions.hasShuttle === 'no' ? 'No' : 'Solo stagionale'}\n`}
+                                        {formData.cityDimensions.strengths && `Punti di forza: ${formData.cityDimensions.strengths}\n`}
+                                    </div>
+                                )}
+
                                 <div className="mb-4 pb-4 border-b border-slate-100">
                                     <span className="text-indigo-600 font-bold uppercase tracking-widest text-[10px]">SERVIZI & ITEMS ({formData.services.length})</span>{'\n'}
                                     {formData.services.map((s: any, i: number) => (
@@ -2329,8 +2896,11 @@ function EditLocationView({ location, onSave, onCancel, systemTags, allLocations
                     <button onClick={onCancel} className="px-6 py-2.5 text-slate-500 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all border border-transparent hover:border-slate-200">
                         Annulla modifiche
                     </button>
-                    <button onClick={() => onSave(formData)} className="px-8 py-2.5 bg-gradient-to-r from-primary to-indigo-600 text-white rounded-xl font-black uppercase tracking-widest text-xs shadow-lg hover:shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3">
-                        <Save size={18} /> Salva Scheda Località
+                    <button onClick={() => onSave(formData, false)} className="px-8 py-2.5 bg-gradient-to-r from-primary to-indigo-600 text-white rounded-xl font-black uppercase tracking-widest text-xs shadow-lg hover:shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3">
+                        <Save size={18} /> Salva
+                    </button>
+                    <button onClick={() => onSave(formData, true)} className="px-8 py-2.5 bg-indigo-500 text-white rounded-xl font-black uppercase tracking-widest text-xs shadow-lg hover:bg-indigo-600 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3">
+                        <Save size={18} /> Salva & Successivo
                     </button>
                 </div>
 

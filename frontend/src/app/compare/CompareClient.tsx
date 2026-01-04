@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { useSeasonStore } from '@/store/season-store';
 import { useCompareStore } from '@/store/compare-store';
-import { Check, Plus, X, ChevronDown, ChevronRight, ArrowLeft, ArrowRight, Sparkles, Link2 as LinkIcon } from 'lucide-react';
+import { Check, Plus, X, ChevronDown, ChevronRight, ArrowLeft, ArrowRight, Sparkles, Link2 as LinkIcon, Map, Home, Building, Sun, Mountain, Cloud, Star, Snowflake, ArrowUp, Activity, Footprints, Wind, Bike, Compass, Layers, Waves, Coffee, Music, ShoppingBag, Dumbbell, Users, MapPin, Bus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
@@ -351,24 +351,24 @@ function CompareContent() {
             <Navbar />
 
             <div className="pt-32 pb-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-end mb-8">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
                     <div>
-                        <h1 className="text-4xl font-display font-bold text-slate-900">
+                        <h1 className="text-3xl md:text-4xl font-display font-bold text-slate-900">
                             {t('title')}
                         </h1>
-                        <p className="text-slate-600 mt-2">
+                        <p className="text-slate-600 mt-2 text-sm md:text-base">
                             {t('season_analysis')}{' '}
                             <span className="font-bold text-primary capitalize">
                                 {tSeasons(currentSeason)}
                             </span>
                         </p>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3 w-full md:w-auto">
 
                         {compareLogId && selectedLocations.length >= 2 && (
                             <button
                                 onClick={copyLink}
-                                className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-lg shadow-sm border border-slate-200 hover:bg-slate-50 transition-all font-medium"
+                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-lg shadow-sm border border-slate-200 hover:bg-slate-50 transition-all font-medium text-sm md:text-base whitespace-nowrap"
                             >
                                 {copied ? <Check size={18} className="text-green-500" /> : <LinkIcon size={18} />}
                                 {copied ? tCommon('link_copied') : tCommon('copy_link')}
@@ -376,15 +376,25 @@ function CompareContent() {
                         )}
                         <button
                             onClick={() => setIsSelectorOpen(!isSelectorOpen)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow-sm transition-all font-medium ${isSelectorOpen ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-primary text-white hover:bg-opacity-90'}`}
+                            className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg shadow-sm transition-all font-medium text-sm md:text-base whitespace-nowrap ${isSelectorOpen ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-primary text-white hover:bg-opacity-90'}`}
                         >
                             {isSelectorOpen ? <X size={18} /> : <Plus size={18} />}
                             {isSelectorOpen ? t('close_selector') : t('add_location')}
                         </button>
+
+                        {selectedLocations.length > 0 && (
+                            <Link
+                                href={`/compare/map?locations=${selectedLocations.map(l => l.slug || locationNameToSlug(l.name)).join(',')}`}
+                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-lg shadow-sm border border-slate-200 hover:bg-slate-50 transition-all font-medium text-sm md:text-base whitespace-nowrap"
+                            >
+                                <Map size={18} />
+                                {t('view_map')}
+                            </Link>
+                        )}
                         {!isSelectorOpen && (
                             <Link
                                 href="/match"
-                                className="hidden lg:flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg shadow-sm hover:bg-slate-800 transition-all font-medium border border-slate-800"
+                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg shadow-sm hover:bg-slate-800 transition-all font-medium border border-slate-800 text-sm md:text-base whitespace-nowrap"
                             >
                                 <Sparkles size={18} className="text-yellow-400" />
                                 {tNav('match')}
@@ -599,6 +609,71 @@ function CompareContent() {
                                         ))}
                                     </tr>
 
+                                    {/* Strengths */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.strengths')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl4 => fl4.id === loc.id) || loc;
+                                            const strengths = fullLoc.cityDimensions?.strengths;
+                                            return (
+                                                <td key={`str-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0 italic text-slate-500">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.strengths')}</span>
+                                                    {strengths ? `"${strengths}"` : '-'}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
+
+                                    {/* Coordinates */}
+                                    <tr className="lg:hidden bg-slate-50/30">
+                                        <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                                            {t('city_dimensions.coordinates')}
+                                        </td>
+                                    </tr>
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.coordinates')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const coords = fullLoc.coordinates;
+                                            return (
+                                                <td key={`coords-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.coordinates')}</span>
+                                                    {coords?.lat && coords?.lng ? (
+                                                        <div className="flex flex-col gap-3">
+                                                            <div className="flex items-center gap-3 font-mono text-xs text-slate-600 bg-slate-50/50 p-2 rounded-lg border border-slate-100 w-fit">
+                                                                <div className="flex items-center gap-1.5 pt-0.5">
+                                                                    <Compass size={12} className="text-slate-400" />
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="text-[10px] uppercase font-bold text-slate-400">{t('city_dimensions.lat')}</span>
+                                                                    <span className="font-bold">{coords.lat.toFixed(4)}°</span>
+                                                                </div>
+                                                                <div className="w-px h-3 bg-slate-200" />
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="text-[10px] uppercase font-bold text-slate-400">{t('city_dimensions.lng')}</span>
+                                                                    <span className="font-bold">{coords.lng.toFixed(4)}°</span>
+                                                                </div>
+                                                            </div>
+                                                            <Link
+                                                                href={`/compare/map?locations=${selectedLocations.map(l => l.slug || locationNameToSlug(l.name)).join(',')}`}
+                                                                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 rounded-xl transition-all text-xs font-bold shadow-sm active:scale-95 group"
+                                                            >
+                                                                <Map size={14} className="group-hover:scale-110 transition-transform" />
+                                                                {t('compare_map_cta')}
+                                                            </Link>
+                                                        </div>
+                                                    ) : '-'}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
+
                                     {/* Altitude */}
                                     <tr className="lg:hidden bg-slate-50/30">
                                         <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
@@ -606,34 +681,341 @@ function CompareContent() {
                                         </td>
                                     </tr>
                                     <tr className="border-b border-slate-100">
-                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
                                             {t('altitude')}
                                         </td>
                                         {selectedLocations.map((loc) => (
                                             <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top font-mono text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
-                                                {loc.altitude ? `${loc.altitude}m` : 'N/D'}
+                                                <div className="flex items-center gap-1.5">
+                                                    <MapPin size={14} className="text-slate-400" />
+                                                    {loc.altitude ? `${loc.altitude}m` : 'N/D'}
+                                                </div>
                                             </td>
                                         ))}
                                     </tr>
-                                    {/* Seasonal Description */}
-                                    <tr className="lg:hidden bg-slate-50/30">
-                                        <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
-                                            {t('seasonal_description')}
+
+                                    {/* Population */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.population')}
                                         </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const val = fullLoc.cityDimensions?.population;
+                                            return (
+                                                <td key={`pop-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.population')}</span>
+                                                    <div className="flex items-center gap-1.5 font-bold">
+                                                        <Users size={14} className="text-slate-400" />
+                                                        {val > 0 ? val.toLocaleString() : '-'}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
-                                    <tr className="border-b border-slate-100 text-slate-700">
-                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
-                                            {t('seasonal_description')}
+
+                                    {/* Max Altitude */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.max_altitude')}
                                         </td>
-                                        {selectedLocations.map((loc) => (
-                                            <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
-                                                <p className="text-sm leading-relaxed text-slate-600">
-                                                    {loc.description?.[currentSeason] ||
-                                                        t('desc_unavailable')}
-                                                </p>
-                                            </td>
-                                        ))}
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const val = fullLoc.cityDimensions?.maxAltitude;
+                                            return (
+                                                <td key={`max-alt-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.max_altitude')}</span>
+                                                    <div className="flex items-center gap-1.5 font-bold">
+                                                        <ArrowUp size={14} className="text-slate-400" />
+                                                        {val > 0 ? `${val}m` : '-'}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
+
+                                    {/* Services */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.services')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const count = fullLoc.servicesCount ?? fullLoc.services?.length;
+                                            return (
+                                                <td key={`serv-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.services')}</span>
+                                                    <div className="flex items-center gap-1.5 font-bold">
+                                                        <Bus size={14} className="text-slate-400" />
+                                                        {count ?? '-'}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
+                                    {/* City Type */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.type')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const type = fullLoc.cityDimensions?.cityType;
+                                            const typeKey = type?.toLowerCase().replace(/[-\s]/g, '_');
+                                            return (
+                                                <td key={`type-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.type')}</span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Building size={14} className="text-slate-400" />
+                                                        <span className="capitalize">{type ? t(`city_dimensions.${typeKey}`, { fallback: type.replace(/_/g, ' ') }) : '-'}</span>
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
+                                    {/* Traffic Free */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.traffic_free_center')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const val = fullLoc.cityDimensions?.trafficFreeCenter;
+                                            return (
+                                                <td key={`traffic-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.traffic_free_center')}</span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Footprints size={14} className="text-slate-400" />
+                                                        <span>
+                                                            {val === 'yes' ? t('city_dimensions.yes') :
+                                                                val === 'partial' ? t('city_dimensions.partial') :
+                                                                    val === 'no' ? t('city_dimensions.no') : '-'}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
+                                    {/* Shuttle */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.shuttle')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const val = fullLoc.cityDimensions?.hasShuttle;
+                                            return (
+                                                <td key={`shuttle-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.shuttle')}</span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Bus size={14} className="text-slate-400" />
+                                                        <span>
+                                                            {val === 'yes' ? t('city_dimensions.yes') :
+                                                                val === 'seasonal' ? t('city_dimensions.seasonal') :
+                                                                    val === 'no' ? t('city_dimensions.no') : '-'}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
+                                    {/* Aspect */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.aspect')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const aspects = fullLoc.cityDimensions?.aspect || [];
+                                            return (
+                                                <td key={`aspect-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.aspect')}</span>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {aspects.map((asp: string, i: number) => {
+                                                            const aspectKey = asp.toLowerCase().replace(/[-\s]/g, '_');
+                                                            let Icon = Sparkles;
+                                                            if (aspectKey.includes('village') || aspectKey.includes('town') || aspectKey.includes('historic')) Icon = Home;
+                                                            else if (aspectKey.includes('city') || aspectKey.includes('urban') || aspectKey.includes('hub')) Icon = Building;
+                                                            else if (aspectKey.includes('sun') || aspectKey.includes('plateau')) Icon = Sun;
+                                                            else if (aspectKey.includes('park') || aspectKey.includes('nature') || aspectKey.includes('forest')) Icon = Mountain;
+                                                            else if (aspectKey.includes('water') || aspectKey.includes('lake') || aspectKey.includes('thermal')) Icon = Cloud;
+                                                            else if (aspectKey.includes('resort') || aspectKey.includes('ski')) Icon = Star;
+
+                                                            return (
+                                                                <span key={i} className="px-2 py-1 bg-white text-slate-700 border border-slate-100 rounded-lg text-[11px] font-bold capitalize flex items-center gap-1.5 shadow-sm">
+                                                                    <div className="p-1 bg-slate-50 rounded-full text-primary">
+                                                                        <Icon size={12} />
+                                                                    </div>
+                                                                    {t(`city_dimensions.${aspectKey}`, { fallback: asp.replace(/_/g, ' ') })}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                        {aspects.length === 0 && '-'}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
+
+                                    {/* Ski Area */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.ski_area_total')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const dims = fullLoc.cityDimensions || {};
+                                            return (
+                                                <td key={`ski-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.ski_area_total')}</span>
+                                                    {dims.skiAreaTotalKm || dims.skiAreaLifts ? (
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center gap-1.5 font-bold text-blue-600">
+                                                                <Snowflake size={14} className="shrink-0" />
+                                                                {dims.skiAreaTotalKm ? `${dims.skiAreaTotalKm} km` : '-'}
+                                                                {(dims.skiAreaBlueKm > 0 || dims.skiAreaRedKm > 0 || dims.skiAreaBlackKm > 0) && (
+                                                                    <span className="text-[10px] font-normal text-slate-400 ml-1">
+                                                                        ({dims.skiAreaBlueKm}{t('city_dimensions.blue')[0]} {dims.skiAreaRedKm}{t('city_dimensions.red')[0]} {dims.skiAreaBlackKm}{t('city_dimensions.black')[0]})
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                                                <ArrowUp size={12} className="shrink-0" /> {t('city_dimensions.ski_area_lifts')}: <span className="font-bold text-slate-700">{dims.skiAreaLifts || '-'}</span>
+                                                            </div>
+                                                        </div>
+                                                    ) : '-'}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
+                                    {/* Winter Alternatives */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.alt_activities')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const dims = fullLoc.cityDimensions || {};
+                                            const hasData = dims.crossCountry || dims.snowshoeing || dims.sledding || dims.snowpark;
+                                            return (
+                                                <td key={`winter-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.alt_activities')}</span>
+                                                    {hasData ? (
+                                                        <div className="text-[11px] space-y-1 text-slate-600">
+                                                            {dims.crossCountry && <div className="flex items-start gap-1.5"><Activity size={12} className="text-emerald-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.cross_country')}:</span> {dims.crossCountry}</div></div>}
+                                                            {dims.snowshoeing && <div className="flex items-start gap-1.5"><Footprints size={12} className="text-emerald-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.snowshoeing')}:</span> {dims.snowshoeing}</div></div>}
+                                                            {dims.sledding && <div className="flex items-start gap-1.5"><Wind size={12} className="text-emerald-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.sledding')}:</span> {dims.sledding}</div></div>}
+                                                            {dims.snowpark && <div className="flex items-start gap-1.5"><Star size={12} className="text-emerald-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.snowpark')}:</span> {dims.snowpark}</div></div>}
+                                                        </div>
+                                                    ) : '-'}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
+                                    {/* Summer Activities */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.summer_activities')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const dims = fullLoc.cityDimensions || {};
+                                            const hasData = dims.hikingKm > 0 || dims.mtbTrails || dims.adventureParks || dims.viaFerrata || dims.climbing;
+                                            return (
+                                                <td key={`summer-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.summer_activities')}</span>
+                                                    {hasData ? (
+                                                        <div className="text-[11px] space-y-1 text-slate-600">
+                                                            {dims.hikingKm > 0 && <div className="flex items-start gap-1.5"><Footprints size={12} className="text-orange-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.hiking')}:</span> {dims.hikingKm}km</div></div>}
+                                                            {dims.mtbTrails && <div className="flex items-start gap-1.5"><Bike size={12} className="text-orange-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.mtb')}:</span> {dims.mtbTrails}</div></div>}
+                                                            {dims.climbing && <div className="flex items-start gap-1.5"><Mountain size={12} className="text-orange-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.climbing')}:</span> {dims.climbing}</div></div>}
+                                                            {dims.adventureParks && <div className="flex items-start gap-1.5"><Compass size={12} className="text-orange-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.adventure_parks')}:</span> {dims.adventureParks}</div></div>}
+                                                            {dims.viaFerrata && <div className="flex items-start gap-1.5"><Layers size={12} className="text-orange-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.via_ferrata')}:</span> {dims.viaFerrata}</div></div>}
+                                                        </div>
+                                                    ) : '-'}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
+                                    {/* Water Activities */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.water_activities')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const dims = fullLoc.cityDimensions || {};
+                                            const hasData = dims.waterRafting || dims.waterKayakCanyoning || dims.waterPool;
+                                            return (
+                                                <td key={`water-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.water_activities')}</span>
+                                                    {hasData ? (
+                                                        <div className="text-[11px] space-y-1 text-slate-600">
+                                                            {dims.waterRafting && <div className="flex items-start gap-1.5"><Waves size={12} className="text-red-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.rafting')}:</span> {dims.waterRafting}</div></div>}
+                                                            {dims.waterKayakCanyoning && <div className="flex items-start gap-1.5"><Waves size={12} className="text-red-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.kayak_canyoning')}:</span> {dims.waterKayakCanyoning}</div></div>}
+                                                            {dims.waterPool && <div className="flex items-start gap-1.5"><Waves size={12} className="text-red-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.swimming_pool')}:</span> {dims.waterPool}</div></div>}
+                                                        </div>
+                                                    ) : '-'}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
+                                    {/* Nightlife */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.nightlife')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const dims = fullLoc.cityDimensions || {};
+                                            const hasData = dims.nightlifeAperitifs || dims.nightlifeEvents || dims.shoppingType;
+                                            return (
+                                                <td key={`night-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.nightlife')}</span>
+                                                    {hasData ? (
+                                                        <div className="text-[11px] space-y-1">
+                                                            {dims.nightlifeAperitifs && <div className="flex items-start gap-1.5"><Coffee size={12} className="text-purple-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.aperitifs')}:</span> {dims.nightlifeAperitifs}</div></div>}
+                                                            {dims.nightlifeEvents && <div className="flex items-start gap-1.5"><Music size={12} className="text-purple-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.events')}:</span> {dims.nightlifeEvents}</div></div>}
+                                                            {dims.shoppingType && <div className="flex items-start gap-1.5"><ShoppingBag size={12} className="text-purple-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.shopping')}:</span> {dims.shoppingType}</div></div>}
+                                                        </div>
+                                                    ) : '-'}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
+                                    {/* Wellness */}
+                                    <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100 italic">
+                                            {t('city_dimensions.relax')}
+                                        </td>
+                                        {selectedLocations.map((loc) => {
+                                            const fullLoc = fullSelectedLocations.find(fl => fl.id === loc.id) || loc;
+                                            const dims = fullLoc.cityDimensions || {};
+                                            const hasData = dims.relaxSpa || dims.relaxWellness;
+                                            return (
+                                                <td key={`relax-${loc.id}`} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top text-sm text-slate-700 border-r border-slate-100 last:border-r-0">
+                                                    <span className="lg:hidden text-[10px] uppercase font-bold text-slate-400 block mb-1">{t('city_dimensions.relax')}</span>
+                                                    {hasData ? (
+                                                        <div className="text-[11px] space-y-1">
+                                                            {dims.relaxSpa && <div className="flex items-start gap-1.5"><Sparkles size={12} className="text-cyan-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.spa')}:</span> {dims.relaxSpa}</div></div>}
+                                                            {dims.relaxWellness && <div className="flex items-start gap-1.5"><Dumbbell size={12} className="text-cyan-500 shrink-0 mt-0.5" /> <div><span className="font-semibold">{t('city_dimensions.wellness')}:</span> {dims.relaxWellness}</div></div>}
+                                                        </div>
+                                                    ) : '-'}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
 
                                     <tr className="border-b border-slate-100">
                                         <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
@@ -776,6 +1158,26 @@ function CompareContent() {
                                                 </td>
                                             );
                                         })}
+                                    </tr>
+
+                                    {/* Seasonal Description */}
+                                    <tr className="lg:hidden bg-slate-50/30">
+                                        <td colSpan={selectedLocations.length} className="p-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                                            {t('seasonal_description')}
+                                        </td>
+                                    </tr>
+                                    <tr className="border-b border-slate-100 text-slate-700">
+                                        <td className="hidden lg:table-cell p-4 font-bold text-slate-900 bg-slate-50/50 w-40 sticky left-0 z-10 border-r border-slate-100">
+                                            {t('seasonal_description')}
+                                        </td>
+                                        {selectedLocations.map((loc) => (
+                                            <td key={loc.id} className="snap-start p-4 w-[calc(100vw-32px)] lg:w-[330px] lg:min-w-[330px] align-top border-r border-slate-100 last:border-r-0">
+                                                <p className="text-sm leading-relaxed text-slate-600">
+                                                    {loc.description?.[currentSeason] ||
+                                                        t('desc_unavailable')}
+                                                </p>
+                                            </td>
+                                        ))}
                                     </tr>
 
                                     {/* Highlights */}

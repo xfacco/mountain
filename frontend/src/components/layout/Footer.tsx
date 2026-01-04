@@ -46,6 +46,7 @@ export function Footer() {
                             <li><Link href="/locations" className="hover:text-primary transition-colors">{tNav('destinations')}</Link></li>
                             <li><Link href="/compare" className="hover:text-primary transition-colors">{tNav('compare')}</Link></li>
                             <li><Link href="/match" className="hover:text-primary transition-colors">{tNav('match')}</Link></li>
+                            <li><Link href="/comparisons" className="hover:text-primary transition-colors">Recent Comparisons</Link></li>
                             <li><Link href="/search" className="hover:text-primary transition-colors">{tNav('search_placeholder')}</Link></li>
                         </ul>
                     </div>

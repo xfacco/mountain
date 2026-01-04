@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
-import { MapPin, Calendar, Star, Heart, Info, ChevronLeft, ChevronRight, ArrowLeft, Sun, Snowflake, Cloud, Wind, Mountain, Home, Bus, Quote, AlertCircle, Check, X, Accessibility, HelpCircle, Layers, List, Search, ArrowRight, Sparkles, Link2 as LinkIcon } from 'lucide-react';
+import { MapPin, Calendar, Star, Heart, Info, ChevronLeft, ChevronRight, ArrowLeft, Sun, Snowflake, Cloud, Wind, Mountain, Home, Bus, Quote, AlertCircle, Check, X, Accessibility, HelpCircle, Layers, List, Search, ArrowRight, Sparkles, Link2 as LinkIcon, Building, Users, Bed, ArrowUp, Footprints, Activity, Timer, Waves, Compass, ShoppingBag, Coffee, Bike, Dumbbell, Music } from 'lucide-react';
 import { locationNameToSlug } from '@/lib/url-utils';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
 import Link from 'next/link';
@@ -411,25 +411,7 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                     )}
                                 </div>
 
-                                {/* Quick Stats Summary */}
-                                <div className="grid grid-cols-2 gap-4 mb-6 pt-6 border-t border-slate-50">
-                                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100/50">
-                                        <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                                            <Mountain size={12} className="text-slate-400" /> {t('altitude')}
-                                        </div>
-                                        <div className="text-lg font-black text-slate-900 leading-none">
-                                            {location.altitude ? `${location.altitude}m` : 'N/D'}
-                                        </div>
-                                    </div>
-                                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100/50">
-                                        <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                                            <Bus size={12} className="text-slate-400" /> {t('services')}
-                                        </div>
-                                        <div className="text-lg font-black text-slate-900 leading-none">
-                                            {location.servicesCount ?? location.services?.length ?? 0}
-                                        </div>
-                                    </div>
-                                </div>
+
 
 
 
@@ -614,15 +596,10 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                         </div>
 
 
+
+
                         {/* Tab Headers */}
                         {/* General Characteristics (Top of Page) */}
-                        {location.tags && !showOnlyHighlighted && (
-                            <div id="highlights-section" className="mb-2 scroll-mt-32 group/section">
-                                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm relative">
-                                    {renderTagGroup('Highlights', location.tags.highlights, Heart, 'text-rose-500', 'bg-rose-50 border-rose-100')}
-                                </div>
-                            </div>
-                        )}
 
                         {/* Tab Content */}
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 min-h-[500px]">
@@ -630,15 +607,292 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                             {/* OVERVIEW TAB */}
                             {(activeTab === 'overview' || activeTab === 'all' || isSinglePageMode) && (searchTerm === '' || location.description?.[currentSeason]?.toLowerCase().includes(searchTerm.toLowerCase())) && !showOnlyHighlighted && (
                                 <div id="section-overview" className="mobile-fade-in space-y-8 mb-12 scroll-mt-24 lg:scroll-mt-32 relative group/section">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <h2 className="text-2xl font-bold text-slate-900">{t('seasonal_overview')}</h2>
-                                        </div>
-                                    </div>
+                                    {/* City Dimensions & Characteristics */}
+                                    {location.cityDimensions && (
+                                        <div className="scroll-mt-32 relative overflow-hidden">
 
-                                    <div className="prose prose-lg text-slate-600 leading-relaxed">
-                                        {location.description?.[currentSeason] || <span className="text-slate-400 italic">{t('no_description')}</span>}
-                                    </div>
+                                            <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2 relative z-10">
+                                                <Building className="text-indigo-600" size={24} />
+                                                {t('city_dimensions.title')}
+                                            </h3>
+
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 relative z-10">
+                                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 mb-1">
+                                                        <Mountain size={12} /> {t('altitude')}
+                                                    </div>
+                                                    <div className="font-bold text-slate-900 text-lg">
+                                                        {location.altitude ? `${location.altitude}m` : 'N/D'}
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 mb-1">
+                                                        <Bus size={12} /> {t('city_dimensions.services')}
+                                                    </div>
+                                                    <div className="font-bold text-slate-900 text-lg">
+                                                        {location.servicesCount ?? location.services?.length ?? 0}
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 mb-1">
+                                                        <Users size={12} /> {t('city_dimensions.population')}
+                                                    </div>
+                                                    <div className="font-bold text-slate-900 text-lg">
+                                                        {location.cityDimensions.population > 0 ? location.cityDimensions.population.toLocaleString() : 'N/D'}
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 mb-1">
+                                                        <Bed size={12} /> {t('city_dimensions.accommodation_capacity')}
+                                                    </div>
+                                                    <div className="font-bold text-slate-900 text-lg">
+                                                        {location.cityDimensions.accommodationCapacity > 0 ? location.cityDimensions.accommodationCapacity.toLocaleString() : 'N/D'}
+                                                    </div>
+                                                </div>
+
+                                                {location.cityDimensions.maxAltitude > 0 && (
+                                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                                        <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 mb-1">
+                                                            <ArrowUp size={12} /> {t('city_dimensions.max_altitude')}
+                                                        </div>
+                                                        <div className="font-bold text-slate-900 text-lg">
+                                                            {location.cityDimensions.maxAltitude}m
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 mb-1">
+                                                        <Building size={12} /> {t('city_dimensions.type')}
+                                                    </div>
+                                                    <div className="font-bold text-slate-900 text-sm capitalize">
+                                                        {(() => {
+                                                            if (!location.cityDimensions.cityType) return 'N/D';
+                                                            const typeKey = location.cityDimensions.cityType.toLowerCase().replace(/[-\s]/g, '_');
+                                                            return t(`city_dimensions.${typeKey}`, { fallback: location.cityDimensions.cityType.replace(/_/g, ' ') });
+                                                        })()}
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 mb-1">
+                                                        <Footprints size={12} /> {t('city_dimensions.traffic_free_center')}
+                                                    </div>
+                                                    <div className="font-bold text-slate-900 text-sm">
+                                                        {location.cityDimensions.trafficFreeCenter === 'yes' ? t('city_dimensions.yes') :
+                                                            location.cityDimensions.trafficFreeCenter === 'partial' ? t('city_dimensions.partial') : t('city_dimensions.no')}
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 mb-1">
+                                                        <Bus size={12} /> {t('city_dimensions.shuttle')}
+                                                    </div>
+                                                    <div className="font-bold text-slate-900 text-sm">
+                                                        {location.cityDimensions.hasShuttle === 'yes' ? t('city_dimensions.yes') :
+                                                            location.cityDimensions.hasShuttle === 'seasonal' ? t('city_dimensions.seasonal') : t('city_dimensions.no')}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {location.cityDimensions.aspect && location.cityDimensions.aspect.length > 0 && (
+                                                <div className="mb-6 relative z-10">
+                                                    <h4 className="text-xs font-bold uppercase text-slate-400 mb-3">{t('city_dimensions.aspect')}</h4>
+                                                    <div className="flex flex-wrap gap-3">
+                                                        {location.cityDimensions.aspect.map((asp: string, idx: number) => {
+                                                            const aspectKey = asp.toLowerCase().replace(/[-\s]/g, '_');
+                                                            let Icon = Sparkles;
+                                                            if (aspectKey.includes('village') || aspectKey.includes('town') || aspectKey.includes('historic')) Icon = Home;
+                                                            else if (aspectKey.includes('city') || aspectKey.includes('urban') || aspectKey.includes('hub')) Icon = Building;
+                                                            else if (aspectKey.includes('sun') || aspectKey.includes('plateau')) Icon = Sun;
+                                                            else if (aspectKey.includes('park') || aspectKey.includes('nature') || aspectKey.includes('forest')) Icon = Mountain;
+                                                            else if (aspectKey.includes('water') || aspectKey.includes('lake') || aspectKey.includes('thermal')) Icon = Cloud;
+                                                            else if (aspectKey.includes('resort') || aspectKey.includes('ski')) Icon = Star;
+
+                                                            return (
+                                                                <span key={idx} className="px-5 py-2.5 bg-white text-indigo-900 border border-indigo-100 rounded-2xl text-sm font-bold capitalize flex items-center gap-2.5 shadow-sm hover:shadow-md hover:scale-105 transition-all">
+                                                                    <div className="p-1.5 bg-indigo-50 rounded-full text-indigo-600">
+                                                                        <Icon size={16} />
+                                                                    </div>
+                                                                    {t(`city_dimensions.${aspectKey}`, { fallback: asp.replace(/_/g, ' ') })}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {location.cityDimensions.strengths && (
+                                                <div className="bg-gradient-to-br from-indigo-50 to-white p-5 rounded-2xl border border-indigo-100 text-slate-700 text-sm leading-relaxed relative z-10 mb-8">
+                                                    <Quote size={20} className="text-indigo-300 mb-2" />
+                                                    {location.cityDimensions.strengths}
+                                                </div>
+                                            )}
+
+                                            {/* NEW DATA SECTIONS */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+                                                {/* Ski Area */}
+                                                {(location.cityDimensions.skiAreaTotalKm > 0 || location.cityDimensions.skiAreaLifts > 0) && (
+                                                    <div className="bg-blue-50/30 p-5 rounded-2xl border border-blue-100/50">
+                                                        <h4 className="flex items-center gap-2 text-blue-700 font-bold text-sm mb-4">
+                                                            <Snowflake size={18} /> {t('city_dimensions.ski_area_total')}
+                                                        </h4>
+                                                        <div className="space-y-3">
+                                                            {location.cityDimensions.skiAreaTotalKm > 0 && (
+                                                                <div>
+                                                                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-blue-400 mb-1">
+                                                                        <Snowflake size={12} /> {t('city_dimensions.slopes_km')}
+                                                                    </div>
+                                                                    <div className="text-xl font-bold text-blue-900">{location.cityDimensions.skiAreaTotalKm} km</div>
+                                                                    <div className="flex gap-2 mt-1">
+                                                                        {location.cityDimensions.skiAreaBlueKm > 0 && <span className="text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-bold">{t('city_dimensions.blue')}: {location.cityDimensions.skiAreaBlueKm}</span>}
+                                                                        {location.cityDimensions.skiAreaRedKm > 0 && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">{t('city_dimensions.red')}: {location.cityDimensions.skiAreaRedKm}</span>}
+                                                                        {location.cityDimensions.skiAreaBlackKm > 0 && <span className="text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded font-bold">{t('city_dimensions.black')}: {location.cityDimensions.skiAreaBlackKm}</span>}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {location.cityDimensions.skiAreaLifts > 0 && (
+                                                                <div>
+                                                                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-blue-400 mb-1">
+                                                                        <ArrowUp size={12} /> {t('city_dimensions.ski_area_lifts')}
+                                                                    </div>
+                                                                    <div className="text-lg font-bold text-slate-800">{location.cityDimensions.skiAreaLifts}</div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Winter Alternatives */}
+                                                {(location.cityDimensions.crossCountry || location.cityDimensions.snowshoeing || location.cityDimensions.sledding || location.cityDimensions.snowpark) && (
+                                                    <div className="bg-emerald-50/30 p-5 rounded-2xl border border-emerald-100/50">
+                                                        <h4 className="flex items-center gap-2 text-emerald-700 font-bold text-sm mb-4">
+                                                            <Timer size={18} /> {t('city_dimensions.alt_activities')}
+                                                        </h4>
+                                                        <div className="space-y-4">
+                                                            {[
+                                                                { label: t('city_dimensions.cross_country'), value: location.cityDimensions.crossCountry, icon: Activity },
+                                                                { label: t('city_dimensions.snowshoeing'), value: location.cityDimensions.snowshoeing, icon: Footprints },
+                                                                { label: t('city_dimensions.sledding'), value: location.cityDimensions.sledding, icon: Wind },
+                                                                { label: t('city_dimensions.snowpark'), value: location.cityDimensions.snowpark, icon: Star }
+                                                            ].filter(x => x.value).map((item, i) => (
+                                                                <div key={i}>
+                                                                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-400 mb-1">
+                                                                        <item.icon size={12} /> {item.label}
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-700 leading-relaxed font-medium">{item.value}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Summer Activities */}
+                                                {(location.cityDimensions.hikingKm > 0 || location.cityDimensions.mtbTrails || location.cityDimensions.adventureParks || location.cityDimensions.viaFerrata || location.cityDimensions.climbing) && (
+                                                    <div className="bg-orange-50/30 p-5 rounded-2xl border border-orange-100/50">
+                                                        <h4 className="flex items-center gap-2 text-orange-700 font-bold text-sm mb-4">
+                                                            <Layers size={18} /> {t('city_dimensions.summer_activities')}
+                                                        </h4>
+                                                        <div className="space-y-4">
+                                                            {location.cityDimensions.hikingKm > 0 && (
+                                                                <div>
+                                                                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-orange-400 mb-1">
+                                                                        <Footprints size={12} /> {t('city_dimensions.hiking')}
+                                                                    </div>
+                                                                    <div className="text-lg font-bold text-slate-800">{location.cityDimensions.hikingKm} km</div>
+                                                                </div>
+                                                            )}
+                                                            {[
+                                                                { label: t('city_dimensions.mtb'), value: location.cityDimensions.mtbTrails, icon: Bike },
+                                                                { label: t('city_dimensions.climbing'), value: location.cityDimensions.climbing, icon: Mountain },
+                                                                { label: t('city_dimensions.adventure_parks'), value: location.cityDimensions.adventureParks, icon: Compass },
+                                                                { label: t('city_dimensions.via_ferrata'), value: location.cityDimensions.viaFerrata, icon: Layers }
+                                                            ].filter(x => x.value).map((item, i) => (
+                                                                <div key={i}>
+                                                                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-orange-400 mb-1">
+                                                                        <item.icon size={12} /> {item.label}
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-700 leading-relaxed font-medium">{item.value}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Sport & Water */}
+                                                {(location.cityDimensions.waterRafting || location.cityDimensions.waterKayakCanyoning || location.cityDimensions.waterPool) && (
+                                                    <div className="bg-red-50/30 p-5 rounded-2xl border border-red-100/50">
+                                                        <h4 className="flex items-center gap-2 text-red-700 font-bold text-sm mb-4">
+                                                            <Waves size={18} /> {t('city_dimensions.water_activities')}
+                                                        </h4>
+                                                        <div className="space-y-4">
+                                                            {[
+                                                                { label: t('city_dimensions.rafting'), value: location.cityDimensions.waterRafting, icon: Waves },
+                                                                { label: t('city_dimensions.kayak_canyoning'), value: location.cityDimensions.waterKayakCanyoning, icon: Waves },
+                                                                { label: t('city_dimensions.swimming_pool'), value: location.cityDimensions.waterPool, icon: Waves }
+                                                            ].filter(x => x.value).map((item, i) => (
+                                                                <div key={i}>
+                                                                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-red-400 mb-1">
+                                                                        <item.icon size={12} /> {item.label}
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-700 leading-relaxed font-medium">{item.value}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Lifestyle & Shopping */}
+                                                {(location.cityDimensions.nightlifeAperitifs || location.cityDimensions.nightlifeEvents || location.cityDimensions.shoppingType) && (
+                                                    <div className="bg-purple-50/30 p-5 rounded-2xl border border-purple-100/50">
+                                                        <h4 className="flex items-center gap-2 text-purple-700 font-bold text-sm mb-4">
+                                                            <ShoppingBag size={18} /> {t('city_dimensions.nightlife')}
+                                                        </h4>
+                                                        <div className="space-y-4">
+                                                            {[
+                                                                { label: t('city_dimensions.aperitifs'), value: location.cityDimensions.nightlifeAperitifs, icon: Coffee },
+                                                                { label: t('city_dimensions.events'), value: location.cityDimensions.nightlifeEvents, icon: Music },
+                                                                { label: t('city_dimensions.shopping'), value: location.cityDimensions.shoppingType, icon: ShoppingBag }
+                                                            ].filter(x => x.value).map((item, i) => (
+                                                                <div key={i}>
+                                                                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-purple-400 mb-1">
+                                                                        <item.icon size={12} /> {item.label}
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-700 leading-relaxed font-medium">{item.value}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Wellness */}
+                                                {(location.cityDimensions.relaxSpa || location.cityDimensions.relaxWellness) && (
+                                                    <div className="bg-cyan-50/30 p-5 rounded-2xl border border-cyan-100/50">
+                                                        <h4 className="flex items-center gap-2 text-cyan-700 font-bold text-sm mb-4">
+                                                            <Sparkles size={18} /> {t('city_dimensions.relax')}
+                                                        </h4>
+                                                        <div className="space-y-4">
+                                                            {[
+                                                                { label: t('city_dimensions.spa'), value: location.cityDimensions.relaxSpa, icon: Sparkles },
+                                                                { label: t('city_dimensions.wellness'), value: location.cityDimensions.relaxWellness, icon: Dumbbell }
+                                                            ].filter(x => x.value).map((item, i) => (
+                                                                <div key={i}>
+                                                                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-cyan-400 mb-1">
+                                                                        <item.icon size={12} /> {item.label}
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-700 leading-relaxed font-medium">{item.value}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
 
                                     {/* AI Match Weights (Nested) */}
                                     {location.tagWeights && (
@@ -754,6 +1008,28 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                             </div>
                                         </div>
                                     )}
+
+                                    {/* Seasonal Overview Description */}
+                                    <div className="pt-10 border-t border-slate-100 space-y-8">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <h2 className="text-2xl font-bold text-slate-900">{t('seasonal_overview')}</h2>
+                                            </div>
+                                        </div>
+
+                                        <div className="prose prose-lg text-slate-600 leading-relaxed">
+                                            {location.description?.[currentSeason] || <span className="text-slate-400 italic">{t('no_description')}</span>}
+                                        </div>
+                                    </div>
+
+                                    {/* Highlights Tags */}
+                                    {location.tags?.highlights && (
+                                        <div id="highlights-section" className="pt-10 border-t border-slate-100 space-y-6 scroll-mt-32 group/section">
+                                            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative">
+                                                {renderTagGroup('Highlights', location.tags.highlights, Heart, 'text-rose-500', 'bg-rose-50 border-rose-100')}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -796,12 +1072,12 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                                                     onClick={() => toggleHighlight(`${service.name}-tourism`)}
                                                                     className={`p-1.5 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${isHighlighted
                                                                         ? 'bg-rose-500 text-white'
-                                                                        : 'bg-white text-slate-300 hover:text-rose-500 border border-slate-100 shadow-sm'
+                                                                        : 'bg-white text-slate-700 hover:text-rose-500 border border-slate-100 shadow-sm'
                                                                         }`}
                                                                     title={t('highlight_element')}
                                                                 >
                                                                     <Heart size={14} className={isHighlighted ? "fill-current" : ""} />
-                                                                    <span className="hidden md:inline text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
+                                                                    <span className="text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -847,12 +1123,12 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                                                 onClick={() => toggleHighlight(`${service.name}-sport`)}
                                                                 className={`p-1.5 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${isHighlighted
                                                                     ? 'bg-rose-500 text-white'
-                                                                    : 'bg-slate-50 text-slate-300 hover:text-rose-500 border border-slate-100 shadow-sm'
+                                                                    : 'bg-slate-50 text-slate-700 hover:text-rose-500 border border-slate-100 shadow-sm'
                                                                     }`}
                                                                 title={t('highlight_element')}
                                                             >
                                                                 <Heart size={14} className={isHighlighted ? "fill-current" : ""} />
-                                                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
+                                                                <span className="text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
                                                             </button>
                                                         </div>
                                                     </div>
@@ -897,12 +1173,12 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                                                 onClick={() => toggleHighlight(`${service.name}-infrastructure`)}
                                                                 className={`p-1.5 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${isHighlighted
                                                                     ? 'bg-rose-500 text-white'
-                                                                    : 'bg-slate-50 text-slate-300 hover:text-rose-500 border border-slate-100 shadow-sm'
+                                                                    : 'bg-slate-50 text-slate-700 hover:text-rose-500 border border-slate-100 shadow-sm'
                                                                     }`}
                                                                 title={t('highlight_element')}
                                                             >
                                                                 <Heart size={14} className={isHighlighted ? "fill-current" : ""} />
-                                                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
+                                                                <span className="text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
                                                             </button>
                                                         </div>
                                                     </div>
@@ -943,12 +1219,12 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                                                 onClick={() => toggleHighlight(`${service.name}-info`)}
                                                                 className={`p-1.5 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${isHighlighted
                                                                     ? 'bg-rose-500 text-white'
-                                                                    : 'bg-slate-50 text-slate-300 hover:text-rose-500 border border-slate-100 shadow-sm'
+                                                                    : 'bg-slate-50 text-slate-700 hover:text-rose-500 border border-slate-100 shadow-sm'
                                                                     }`}
                                                                 title={t('highlight_element')}
                                                             >
                                                                 <Heart size={14} className={isHighlighted ? "fill-current" : ""} />
-                                                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
+                                                                <span className="text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
                                                             </button>
                                                         </div>
                                                     </div>
@@ -987,12 +1263,12 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                                                 onClick={() => toggleHighlight(`${service.name}-general`)}
                                                                 className={`p-1.5 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${isHighlighted
                                                                     ? 'bg-rose-500 text-white'
-                                                                    : 'bg-slate-50 text-slate-300 hover:text-rose-500 border border-slate-100 shadow-sm'
+                                                                    : 'bg-slate-50 text-slate-700 hover:text-rose-500 border border-slate-100 shadow-sm'
                                                                     }`}
                                                                 title={t('highlight_element')}
                                                             >
                                                                 <Heart size={14} className={isHighlighted ? "fill-current" : ""} />
-                                                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
+                                                                <span className="text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
                                                             </button>
                                                         </div>
                                                     </div>
@@ -1043,12 +1319,12 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                                                     onClick={() => toggleHighlight(`${service.name}-accommodation`)}
                                                                     className={`p-1.5 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${isHighlighted
                                                                         ? 'bg-rose-500 text-white'
-                                                                        : 'bg-white text-slate-300 hover:text-rose-500 border border-slate-100 shadow-sm'
+                                                                        : 'bg-white text-slate-700 hover:text-rose-500 border border-slate-100 shadow-sm'
                                                                         }`}
                                                                     title={t('highlight_element')}
                                                                 >
                                                                     <Heart size={14} className={isHighlighted ? "fill-current" : ""} />
-                                                                    <span className="hidden md:inline text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
+                                                                    <span className="text-[10px] font-black uppercase tracking-wider">{t('highlight_element')}</span>
                                                                 </button>
                                                             </div>
                                                         </div>

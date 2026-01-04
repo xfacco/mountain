@@ -96,7 +96,13 @@ IMPORTANTE:
 2. Poi elenca una lista ESTESA di servizi specifici con descrizioni dettagliate.
 3. Se un dato tecnico (km, altitudine) è disponibile, INCLUDILO nella descrizione del servizio.
 
-Genera solo JSON valido.
+
+Genera solo JSON valido. 
+Assicurati assolutamente di:
+1. Chiudere tutte le stringhe, le parentesi graffe e le parentesi quadre.
+2. Usare la virgola separatrice tra tutti gli elementi di liste e oggetti.
+3. Effettuare l'escaping corretto delle virgolette doppie all'interno delle stringhe (es. \\").
+4. Non aggiungere commenti (// o /* */) nel JSON.
 """
 
 USER_PROMPT_TEMPLATE = """

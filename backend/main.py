@@ -149,10 +149,26 @@ async def research_location(request: ScrapeRequest):
         try:
             data = json.loads(clean_text)
         except json.JSONDecodeError as e:
-            print(f"JSON Parse Error: {e}")
-            # Fallback: try to fix common trailing comma issues or comments if any (simple retry)
-            # For now just re-raise to hit the main exception handler
-            raise e
+            print(f"JSON Parse Error (First Attempt): {e}")
+            try:
+                # Attempt to repair common JSON issues
+                # 1. Missing comma between objects: } { -> }, {
+                repair_text = re.sub(r'}\s*{', '}, {', clean_text)
+                repair_text = re.sub(r']\s*{', '], {', repair_text)
+                 # 2. Fix trailing commas (again, to be safe)
+                repair_text = re.sub(r',\s*([}\]])', r'\1', repair_text)
+                # 3. Unescaped control characters
+                repair_text = repair_text.replace('\n', ' ').replace('\t', ' ')
+                
+                print("Attempting to parse repaired JSON...")
+                data = json.loads(repair_text)
+                print("Repaired JSON parsed successfully!")
+            except Exception as e2:
+                print(f"JSON Repair Failed: {e2}")
+                # Log the broken text for debugging
+                with open("broken_json.log", "w") as f:
+                    f.write(clean_text)
+                raise e # Raise original error if repair fails
         
         return {
             "status": "success",

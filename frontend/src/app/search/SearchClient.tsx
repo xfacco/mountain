@@ -449,7 +449,6 @@ function SearchContent() {
                                     })
                                 ) : (
                                     <div className="col-span-full text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 shadow-inner">
-                                        <SearchIcon size={48} className="mx-auto text-slate-200 mb-6" />
                                         <h3 className="text-xl font-bold text-slate-900 mb-2">{t('no_results_title')}</h3>
                                         <p className="text-slate-400 max-w-xs mx-auto">{t('no_results_desc')}</p>
                                         <button
@@ -458,6 +457,16 @@ function SearchContent() {
                                         >
                                             {t('reset_and_retry')}
                                         </button>
+
+                                        <div className="mt-8 pt-6 border-t border-slate-100 max-w-md mx-auto">
+                                            <p className="text-sm text-slate-600 mb-3">{tCommon('suggest_location_title')}</p>
+                                            <Link
+                                                href="/contact"
+                                                className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-sm hover:shadow-lg"
+                                            >
+                                                {tCommon('suggest_location_button')}
+                                            </Link>
+                                        </div>
                                     </div>
                                 )}
                             </div>
