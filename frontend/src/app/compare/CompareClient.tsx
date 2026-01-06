@@ -73,7 +73,7 @@ function CompareContent() {
 
                         if (data.locations && Array.isArray(data.locations)) {
                             const { collection, getDocs, query, where, documentId } = await import('firebase/firestore');
-                            const locIds = data.locations.map((l: any) => l.id);
+                            const locIds = data.locations.map((l: any) => l.id).filter((id: any) => id);
                             if (locIds.length > 0) {
                                 const q = query(collection(db, 'locations'), where(documentId(), 'in', locIds));
                                 const locSnap = await getDocs(q);

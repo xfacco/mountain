@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { APIProvider, Map, AdvancedMarker, Pin, InfoWindow } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, Marker, InfoWindow } from '@vis.gl/react-google-maps';
 import { Navbar } from '@/components/layout/Navbar';
 import { Loader2, AlertTriangle, MapPin } from 'lucide-react';
 import Link from 'next/link';
@@ -117,18 +117,15 @@ export default function MapClient() {
                         <Map
                             defaultCenter={startPosition}
                             defaultZoom={9}
-                            mapId="78e2144e4744279358a7cdc0"
                             style={{ width: '100%', height: 'calc(100vh - 64px)' }}
                             onBoundsChanged={(ev) => setMapBounds(ev.map.getBounds() || null)}
                         >
                             {locations.map((loc) => (
-                                <AdvancedMarker
+                                <Marker
                                     key={loc.id}
                                     position={{ lat: loc.coordinates.lat, lng: loc.coordinates.lng }}
                                     onClick={() => setSelectedLocation(loc)}
-                                >
-                                    <Pin background={'#0f172a'} glyphColor={'#ffffff'} borderColor={'#000000'} />
-                                </AdvancedMarker>
+                                />
                             ))}
 
                             {selectedLocation && (

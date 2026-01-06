@@ -17,6 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         '/map',
         '/about',
         '/contact',
+        '/blog',
         '/directory',
         '/privacy',
         '/terms'
@@ -24,12 +25,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         url: `${baseUrl}${route}`,
         lastModified: new Date(),
         changeFrequency: (route === '/privacy' || route === '/terms' ? 'monthly' : 'weekly') as any,
-        priority: route === '' ? 1 : 0.8,
+        priority: route === '' ? 1 : (route === '/blog' ? 0.9 : 0.8),
     }));
 
     // Dynamic pages
     let dynamicPages: MetadataRoute.Sitemap = [];
     try {
+        // 1. Locations
         const locationsRef = collection(db, 'locations');
         const q = query(locationsRef);
         const querySnapshot = await getDocs(q);
@@ -79,7 +81,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             }
         });
 
-        // Add Comparison Detail Pages (/compare?id=...)
+        // 2. Blog Posts
+        const blogRef = collection(db, 'blog_posts');
+        const blogSnapshot = await getDocs(blogRef);
+        blogSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.status === 'published' && data.slug) {
+                dynamicPages.push({
+                    url: `${baseUrl}/blog/${data.slug}`,
+                    lastModified: data.updatedAt?.toDate?.() || new Date(),
+                    changeFrequency: 'monthly' as const,
+                    priority: 0.7,
+                });
+            }
+        });
+
+        // 3. Comparison Detail Pages (/compare?id=...)
         const compareLogsRef = collection(db, 'compare_logs');
         const compareSnapshot = await getDocs(compareLogsRef);
 

@@ -31,7 +31,8 @@ import {
     Heart,
     Download,
     Mountain,
-    Timer
+    Timer,
+    FileText
 } from 'lucide-react';
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -41,6 +42,7 @@ import { locationNameToSlug } from '@/lib/url-utils';
 import TagManagementView from './TagManagementView';
 import SeoInsightsManager from './SeoInsightsManager';
 import DuplicateTagsInspector from './DuplicateTagsInspector';
+import BlogManagement from './BlogManagement';
 
 export default function AdminDashboardPage() {
     return (
@@ -594,6 +596,15 @@ function AdminDashboard() {
                         <Heart size={18} />
                         Log Highlight Luoghi
                     </button>
+
+                    <button
+                        onClick={() => { setActiveTab('blog'); setEditingLocation(null); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'blog' ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                    >
+                        <FileText size={18} />
+                        Gestione Blog
+                    </button>
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
@@ -927,6 +938,7 @@ function AdminDashboard() {
                         {activeTab === 'ai-tasks' && <AITaskRunner />}
                         {activeTab === 'share-logs' && <ShareLogsView />}
                         {activeTab === 'highlight-logs' && <HighlightLogsView />}
+                        {activeTab === 'blog' && <BlogManagement />}
                         {activeTab === 'home-config' && <HomeConfigView />}
                     </>
                 )}

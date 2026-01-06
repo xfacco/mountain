@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { Facebook, Instagram, Twitter, Linkedin, Mail, MapPin, Phone, Code, ChevronDown, ChevronUp } from 'lucide-react';
+import { Facebook, Instagram, X, Linkedin, Mail, MapPin, Phone, Code, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 export function Footer() {
@@ -31,10 +31,8 @@ export function Footer() {
                         <p className="text-sm leading-relaxed text-slate-400 mb-6">© 2026 Alpe Match - {t('rights_reserved')}</p>
 
                         <div className="flex gap-4">
-                            <a href="#" className="hover:text-white transition-colors"><Facebook size={20} /></a>
-                            <a href="#" className="hover:text-white transition-colors"><Instagram size={20} /></a>
-                            <a href="#" className="hover:text-white transition-colors"><Twitter size={20} /></a>
-                            <a href="#" className="hover:text-white transition-colors"><Linkedin size={20} /></a>
+                            <a href="https://www.instagram.com/alpematch/" className="hover:text-white transition-colors"><Instagram size={20} /></a>
+                            <a href="https://x.com/alpematch" className="hover:text-white transition-colors"><X size={20} /></a>
                         </div>
                     </div>
 
@@ -46,6 +44,7 @@ export function Footer() {
                             <li><Link href="/locations" className="hover:text-primary transition-colors">{tNav('destinations')}</Link></li>
                             <li><Link href="/compare" className="hover:text-primary transition-colors">{tNav('compare')}</Link></li>
                             <li><Link href="/match" className="hover:text-primary transition-colors">{tNav('match')}</Link></li>
+                            <li><Link href="/blog" className="hover:text-primary transition-colors">Blog</Link></li>
                             <li><Link href="/comparisons" className="hover:text-primary transition-colors">Recent Comparisons</Link></li>
                             <li><Link href="/search" className="hover:text-primary transition-colors">{tNav('search_placeholder')}</Link></li>
                         </ul>
@@ -65,8 +64,8 @@ export function Footer() {
                 <div className="mt-8">
                     <MetaInspector />
                 </div>
-            </div>
-        </footer>
+            </div >
+        </footer >
     );
 }
 

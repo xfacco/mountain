@@ -1,0 +1,13 @@
+{
+    "Blog": {
+        "title": "Blog & Insights",
+        "subtitle": "Discover stories, guides, and tips for your mountain adventures",
+        "search_placeholder": "Search articles...",
+        "loading": "Loading articles...",
+        "no_posts": "No articles found",
+        "back_to_blog": "Back to Blog",
+        "share": "Share",
+        "related_posts": "Related Articles",
+        "read_more": "Read More"
+    }
+}
