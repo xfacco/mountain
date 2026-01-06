@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
-import { MapPin, Calendar, Star, Heart, Info, ChevronLeft, ChevronRight, ArrowLeft, Sun, Snowflake, Cloud, Wind, Mountain, Home, Bus, Quote, AlertCircle, Check, X, Accessibility, HelpCircle, Layers, List, Search, ArrowRight, Sparkles, Link2 as LinkIcon, Building, Users, Bed, ArrowUp, Footprints, Activity, Timer, Waves, Compass, ShoppingBag, Coffee, Bike, Dumbbell, Music } from 'lucide-react';
+import { MapPin, Calendar, Star, Heart, Info, ChevronLeft, ChevronRight, ArrowLeft, Sun, Snowflake, Cloud, Wind, Mountain, Home, Bus, Quote, AlertCircle, Check, X, Accessibility, HelpCircle, Layers, List, Search, ArrowRight, Sparkles, Link2 as LinkIcon, Building, Users, Bed, ArrowUp, Footprints, Activity, Timer, Waves, Compass, ShoppingBag, Coffee, Bike, Dumbbell, Music, Volume2, Square, Sparkle } from 'lucide-react';
 import { locationNameToSlug } from '@/lib/url-utils';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
 import Link from 'next/link';
@@ -16,12 +16,16 @@ import { RadarChart } from '@/components/ui/RadarChart';
 import { motion, AnimatePresence } from 'framer-motion';
 import { normalizeTags } from '@/lib/tag-utils';
 
+import { useLocationStore } from '@/store/location-store';
+
+
 export default function LocationDetailClient({ initialData }: { initialData?: any }) {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
     const { currentSeason, setSeason } = useSeasonStore();
     const { selectedLocations, addLocation, removeLocation } = useCompareStore();
+    const { locations, fetchLocations } = useLocationStore();
     const [location, setLocation] = useState<any>(initialData || null);
     const [loading, setLoading] = useState(!initialData);
     const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
@@ -42,9 +46,39 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
     // Local Search State
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Highlighted Sections State
     const [highlightedSections, setHighlightedSections] = useState<string[]>([]);
     const [showOnlyHighlighted, setShowOnlyHighlighted] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+
+    // Cancel speech on unmount
+    useEffect(() => {
+        return () => {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+        };
+    }, []);
+
+    const toggleSpeech = () => {
+        if (!('speechSynthesis' in window)) return;
+
+        if (isSpeaking) {
+            window.speechSynthesis.cancel();
+            setIsSpeaking(false);
+        } else {
+            const textToRead = location?.description?.[currentSeason];
+            if (!textToRead) return;
+
+            const utterance = new SpeechSynthesisUtterance(textToRead);
+            // Default to Italian as requested by user context, could be dynamic
+            utterance.lang = 'it-IT';
+            utterance.onend = () => setIsSpeaking(false);
+            utterance.onerror = () => setIsSpeaking(false);
+
+            setIsSpeaking(true);
+            window.speechSynthesis.speak(utterance);
+        }
+    };
 
     // Fetch IP on mount
     useEffect(() => {
@@ -68,8 +102,87 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
         }
     }, [location?.id]);
 
+    useEffect(() => {
+        const fetchLocation = async () => {
+            if (!params.id) return;
 
+            // Try to find in global store first (it contains status: published and basic fields)
+            const decodedName = decodeURIComponent(params.id as string);
+            const cachedLoc = locations.find(l => l.name === decodedName || locationNameToSlug(l.name) === decodedName);
 
+            if (cachedLoc && !location) {
+                setLocation(cachedLoc);
+                // We still want to fetch details, but we can set loading to false earlier if we have basic data
+                // setLoading(false); // Only if we want to show partial data immediately
+            }
+
+            try {
+                const { collection, query, where, getDocs } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase');
+
+                // Query by name instead of ID since URL param is now name
+                const q = query(collection(db, 'locations'), where('name', '==', decodedName));
+                let querySnapshot = await getDocs(q);
+
+                // Fallback for slugs if name match fails
+                if (querySnapshot.empty) {
+                    // This is slightly expensive but rare (legacy links)
+                    const allDocs = await getDocs(collection(db, 'locations'));
+                    const match = allDocs.docs.find(d => locationNameToSlug(d.data().name) === decodedName);
+                    if (match) {
+                        const locData = match.data();
+                        const locId = match.id;
+
+                        // Fetch heavy details
+                        try {
+                            const { doc, getDoc } = await import('firebase/firestore');
+                            const detailsSnap = await getDoc(doc(db, 'location_details', locId));
+                            if (detailsSnap.exists()) {
+                                setLocation({ id: locId, ...locData, ...detailsSnap.data() });
+                            } else {
+                                setLocation({ id: locId, ...locData });
+                            }
+                        } catch (e) {
+                            setLocation({ id: locId, ...locData });
+                        }
+                        setLoading(false);
+                        return;
+                    }
+                }
+
+                if (!querySnapshot.empty) {
+                    const docSnap = querySnapshot.docs[0]; // Take the first match
+                    const locData = docSnap.data();
+                    const locId = docSnap.id;
+
+                    // Fetch heavy details
+                    try {
+                        const { doc, getDoc } = await import('firebase/firestore');
+                        const detailsSnap = await getDoc(doc(db, 'location_details', locId));
+                        if (detailsSnap.exists()) {
+                            setLocation({ id: locId, ...locData, ...detailsSnap.data() });
+                        } else {
+                            setLocation({ id: locId, ...locData });
+                        }
+                    } catch (e) {
+                        console.error("Error fetching heavy details:", e);
+                        setLocation({ id: locId, ...locData });
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching location:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        // Ensure store is populated before we search it
+        if (locations.length === 0) {
+            fetchLocations().then(() => fetchLocation());
+        } else {
+            fetchLocation();
+        }
+    }, [params.id, locations, fetchLocations]);
     const toggleHighlight = (sectionId: string) => {
         const isAdding = !highlightedSections.includes(sectionId);
         const next = isAdding
@@ -204,46 +317,6 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
         { id: 'accommodation', label: t('tabs.accommodation'), icon: Home },
         { id: 'all', label: t('tabs.all'), icon: List }
     ];
-
-    useEffect(() => {
-        const fetchLocation = async () => {
-            if (!params.id) return;
-            try {
-                const { collection, query, where, getDocs } = await import('firebase/firestore');
-                const { db } = await import('@/lib/firebase');
-
-                // Query by name instead of ID since URL param is now name
-                const decodedName = decodeURIComponent(params.id as string);
-                const q = query(collection(db, 'locations'), where('name', '==', decodedName));
-                const querySnapshot = await getDocs(q);
-
-                if (!querySnapshot.empty) {
-                    const docSnap = querySnapshot.docs[0]; // Take the first match
-                    const locData = docSnap.data();
-                    const locId = docSnap.id;
-
-                    // Fetch heavy details
-                    try {
-                        const { doc, getDoc } = await import('firebase/firestore');
-                        const detailsSnap = await getDoc(doc(db, 'location_details', locId));
-                        if (detailsSnap.exists()) {
-                            setLocation({ id: locId, ...locData, ...detailsSnap.data() });
-                        } else {
-                            setLocation({ id: locId, ...locData });
-                        }
-                    } catch (e) {
-                        console.error("Error fetching heavy details:", e);
-                        setLocation({ id: locId, ...locData });
-                    }
-                }
-            } catch (error) {
-                console.error("Error fetching location:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchLocation();
-    }, [params.id]);
 
     if (loading) return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -390,7 +463,22 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                             </div>
 
                             <div className="px-2">
-                                <h1 className="text-3xl font-black text-slate-900 mb-2 leading-tight">{location.name}</h1>
+                                <div className="flex items-start justify-between gap-4 mb-2">
+                                    <h1 className="text-3xl font-black text-slate-900 leading-tight">{location.name}</h1>
+                                    {location.description?.[currentSeason] && (
+                                        <button
+                                            onClick={toggleSpeech}
+                                            className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm ${isSpeaking
+                                                ? 'bg-rose-500 text-white animate-pulse'
+                                                : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100'
+                                                }`}
+                                            title={isSpeaking ? t('stop_listening') : t('listen')}
+                                        >
+                                            {isSpeaking ? <Square size={14} fill="currentColor" /> : <Volume2 size={14} />}
+                                            <span className="hidden sm:inline">{isSpeaking ? t('stop_listening') : t('listen')}</span>
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="flex flex-wrap items-center gap-4 mb-6 text-slate-500 text-sm">
                                     <span className="flex items-center gap-1">
                                         <MapPin size={14} /> {location.region}, {location.country}
@@ -1014,6 +1102,19 @@ export default function LocationDetailClient({ initialData }: { initialData?: an
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <h2 className="text-2xl font-bold text-slate-900">{t('seasonal_overview')}</h2>
+                                                {location.description?.[currentSeason] && (
+                                                    <button
+                                                        onClick={toggleSpeech}
+                                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${isSpeaking
+                                                            ? 'bg-rose-100 text-rose-600 animate-pulse'
+                                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                            }`}
+                                                        title={isSpeaking ? t('stop_listening') : t('listen')}
+                                                    >
+                                                        {isSpeaking ? <Square size={14} fill="currentColor" /> : <Volume2 size={14} />}
+                                                        <span>{isSpeaking ? t('stop_listening') : t('listen')}</span>
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
 

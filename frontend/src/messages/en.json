@@ -156,6 +156,8 @@
         "highlight_element": "Add To Highlight",
         "favorite_location": "Add destination to favorites",
         "unfavorite_location": "Remove destination from favorites",
+        "listen": "Listen to description",
+        "stop_listening": "Stop listening",
         "full_destination": "Full Destination",
         "city_dimensions": {
             "title": "Main features",
@@ -331,7 +333,19 @@
         "general_services": "General Services",
         "tag_general": "General Tags",
         "details_general": "General Details",
-        "loading_details": "Updating data..."
+        "loading_details": "Updating data...",
+        "advisor": {
+            "title": "AlpeMatch Insight Advisor",
+            "subtitle": "Smart analysis of your selection",
+            "highest_resort": "Highest Resort",
+            "highest_desc": "{name} leads with {val}m, offering better snow security.",
+            "best_for": "Best for {target}",
+            "best_for_desc": "{name} is the top choice for this traveler type.",
+            "top_vibe": "Top Atmosphere",
+            "vibe_desc": "{name} excels in {vibe}, perfect for your mood.",
+            "summary_intro": "Based on our data comparison:",
+            "no_data": "Add more locations to see smart insights."
+        }
     },
     "Map": {
         "config_required": "Configuration Required",
@@ -355,6 +369,7 @@
         "active_filters": "Active Filters:",
         "clear_all": "Clear all",
         "results_found": "{count} results found",
+        "view_results": "View Results",
         "no_results": "No results found matching your criteria.",
         "hero_title": "Find your next destination",
         "hero_subtitle": "Explore by name, activity, atmosphere or unique features.",
@@ -365,6 +380,8 @@
         "recommended": "Recommended",
         "reset_and_retry": "Reset everything and try again",
         "categories": {
+            "dimensions": "Main Features",
+            "vibe_style": "Vibe & Style",
             "vibe": "Vibe",
             "target": "Target",
             "highlights": "Highlights",
@@ -486,6 +503,19 @@
         "remove": "Remove",
         "close": "Close",
         "copy_link": "Copy Link",
-        "link_copied": "Link Copied!"
+        "link_copied": "Link Copied!",
+        "targets": {
+            "family": "Family",
+            "couple": "Couple",
+            "friends": "Friends",
+            "solo": "Solo"
+        },
+        "vibes": {
+            "relax": "Relax & Wellness",
+            "sport": "Sport & Adrenaline",
+            "party": "Party & Fun",
+            "luxury": "Luxury & Comfort",
+            "nature": "Nature & Silence"
+        }
     }
 }

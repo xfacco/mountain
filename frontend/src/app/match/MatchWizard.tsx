@@ -42,6 +42,9 @@ interface Preferences {
     };
 }
 
+import { useLocationStore } from '@/store/location-store';
+
+
 function MatchWizardContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -50,6 +53,7 @@ function MatchWizardContent() {
     const tLocDetail = useTranslations('LocationDetail');
     const { currentSeason, setSeason } = useSeasonStore();
     const { selectedLocations, addLocation, removeLocation } = useCompareStore();
+    const { locations, fetchLocations } = useLocationStore();
     const tCommon = useTranslations('Common');
 
     const [currentStep, setCurrentStep] = useState<Step>('intro');
@@ -98,31 +102,13 @@ function MatchWizardContent() {
     }, []);
 
     // Results
-    const [locations, setLocations] = useState<any[]>([]);
     const [matches, setMatches] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
     // Load locations
     useEffect(() => {
-        const fetchLocations = async () => {
-            try {
-                // Ensure firebase is initialized client-side
-                const { collection, getDocs, query, where } = await import('firebase/firestore');
-                const { db } = await import('@/lib/firebase');
-
-                // For a real app, we might want to filter server side or use a designated endpoint
-                // Here we fetch all published locations and filter in memory for the match algorithm
-                const q = query(collection(db, 'locations'), where('status', '==', 'published'));
-                const querySnapshot = await getDocs(q);
-
-                const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-                setLocations(docs);
-            } catch (e) {
-                console.error("Error fetching locations for matching", e);
-            }
-        };
         fetchLocations();
-    }, []);
+    }, [fetchLocations]);
 
     // Load local history on mount
     useEffect(() => {

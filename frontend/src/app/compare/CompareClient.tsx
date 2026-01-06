@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { useSeasonStore } from '@/store/season-store';
 import { useCompareStore } from '@/store/compare-store';
-import { Check, Plus, X, ChevronDown, ChevronRight, ArrowLeft, ArrowRight, Sparkles, Link2 as LinkIcon, Map, Home, Building, Sun, Mountain, Cloud, Star, Snowflake, ArrowUp, Activity, Footprints, Wind, Bike, Compass, Layers, Waves, Coffee, Music, ShoppingBag, Dumbbell, Users, MapPin, Bus } from 'lucide-react';
+import { Check, Plus, X, ChevronDown, ChevronRight, ArrowLeft, ArrowRight, Sparkles, Link2 as LinkIcon, Map, Home, Building, Sun, Mountain, Cloud, Star, Snowflake, ArrowUp, Activity, Footprints, Wind, Bike, Compass, Layers, Waves, Coffee, Music, ShoppingBag, Dumbbell, Users, MapPin, Bus, Quote, Sparkle, Heart, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { TAG_CATEGORIES } from '@/lib/tags-config';
@@ -14,11 +14,14 @@ import { RadarChart } from '@/components/ui/RadarChart';
 import { locationNameToSlug } from '@/lib/url-utils';
 
 
+import { useLocationStore } from '@/store/location-store';
+
+
 function CompareContent() {
     const searchParams = useSearchParams();
     const { currentSeason } = useSeasonStore();
     const { selectedLocations, addLocation, removeLocation, clearLocations } = useCompareStore();
-    const [locationOptions, setLocationOptions] = useState<any[]>([]);
+    const { locations: locationOptions, loading, fetchLocations } = useLocationStore();
     const [fullSelectedLocations, setFullSelectedLocations] = useState<any[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     const [compareLogId, setCompareLogId] = useState<string | null>(null);
@@ -26,7 +29,6 @@ function CompareContent() {
     const [copied, setCopied] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const [loading, setLoading] = useState(true);
     const [loadingDetails, setLoadingDetails] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const headerRef = useRef<HTMLDivElement>(null);
@@ -99,17 +101,6 @@ function CompareContent() {
             .then(data => setUserIp(data.ip))
             .catch(err => console.error("Error fetching IP", err));
     }, []);
-
-
-
-    // ... (rest of logic) ...
-
-    // Update logging to set compareLogId
-    // ...
-
-
-
-
 
     // Fetch details for selected locations whenever the selection changes
     useEffect(() => {
@@ -235,27 +226,8 @@ function CompareContent() {
     });
 
     useEffect(() => {
-        const fetchLocs = async () => {
-            try {
-                const { collection, getDocs, orderBy, query } = await import('firebase/firestore');
-                const { db } = await import('@/lib/firebase');
-
-                const q = query(collection(db, 'locations'), orderBy('name'));
-                const querySnapshot = await getDocs(q);
-
-                const docs = querySnapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() } as any))
-                    .filter(loc => loc.status === 'published');
-
-                setLocationOptions(docs);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchLocs();
-    }, []);
+        fetchLocations();
+    }, [fetchLocations]);
 
     const toggleLocation = (location: any) => {
         if (selectedLocations.find((l) => l.id === location.id)) {

@@ -11,14 +11,15 @@ import { useCompareStore } from '@/store/compare-store';
 import { Search, SortAsc, TrendingUp, Layers, ArrowRight, Globe, Sparkles, Star, Check } from 'lucide-react';
 import { CompareAddedModal } from '@/components/ui/CompareAddedModal';
 import { CompareLimitModal } from '@/components/ui/CompareLimitModal';
-
+import { useLocationStore } from '@/store/location-store';
 
 export default function LocationsClient() {
     const { currentSeason } = useSeasonStore();
     const { selectedLocations, addLocation, removeLocation } = useCompareStore();
-    const [locations, setLocations] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { locations, loading, fetchLocations } = useLocationStore();
     const [sortBy, setSortBy] = useState<'name' | 'altitude' | 'services' | 'country'>('name');
+    const [visibleCount, setVisibleCount] = useState(12);
+
     const t = useTranslations('Locations');
     const tCommon = useTranslations('LocationDetail');
 
@@ -27,27 +28,8 @@ export default function LocationsClient() {
     const [lastAddedLocation, setLastAddedLocation] = useState('');
 
     useEffect(() => {
-        const fetchLocations = async () => {
-            try {
-                const { collection, getDocs, query } = await import('firebase/firestore');
-                const { db } = await import('@/lib/firebase');
-
-                const q = query(collection(db, 'locations'));
-                const querySnapshot = await getDocs(q);
-
-                const docs = querySnapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() } as any))
-                    .filter(loc => loc.status === 'published' && (loc.language === 'en' || !loc.language));
-
-                setLocations(docs);
-            } catch (e) {
-                console.error("Error loading locations:", e);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchLocations();
-    }, []);
+    }, [fetchLocations]);
 
     const sortedLocations = [...locations].sort((a, b) => {
         if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
@@ -60,6 +42,8 @@ export default function LocationsClient() {
         if (sortBy === 'country') return (a.country || '').localeCompare(b.country || '');
         return 0;
     });
+
+    const paginatedLocations = sortedLocations.slice(0, visibleCount);
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -77,7 +61,13 @@ export default function LocationsClient() {
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
-
+                            <Link
+                                href="/search"
+                                className="flex items-center gap-2 px-6 py-3 bg-white text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all border border-slate-200 shadow-sm group"
+                            >
+                                <Search size={18} className="text-slate-400 group-hover:text-primary transition-colors" />
+                                {t('advanced_search')}
+                            </Link>
                             <Link
                                 href="/match"
                                 className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-lg shadow-primary/20 group"
@@ -128,84 +118,97 @@ export default function LocationsClient() {
                         <p className="text-slate-500 text-lg">{t('no_results')}</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {sortedLocations.map((location) => {
-                            const isSelected = selectedLocations.some(l => l.id === location.id);
-                            return (
-                                <div key={location.id} className="relative group">
-                                    <Link
-                                        href={`/locations/${locationNameToSlug(location.name)}`}
-                                        className="block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                                    >
-                                        <div className="aspect-[4/3] relative overflow-hidden bg-slate-200">
-                                            <img
-                                                src={location.seasonalImages?.[currentSeason] || location.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba'}
-                                                alt={location.name}
-                                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                            />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {paginatedLocations.map((location) => {
+                                const isSelected = selectedLocations.some(l => l.id === location.id);
+                                return (
+                                    <div key={location.id} className="relative group">
+                                        <Link
+                                            href={`/locations/${locationNameToSlug(location.name)}`}
+                                            className="block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                                        >
+                                            <div className="aspect-[4/3] relative overflow-hidden bg-slate-200">
+                                                <img
+                                                    src={location.seasonalImages?.[currentSeason] || location.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba'}
+                                                    alt={location.name}
+                                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                                />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 
-                                            <div className="absolute bottom-4 left-4 right-4">
-                                                <div className="text-white/90 text-sm font-medium mb-1 uppercase tracking-wider">
-                                                    {location.region}, {location.country}
-                                                </div>
-                                                <h3 className="text-2xl font-display font-bold text-white">
-                                                    {location.name}
-                                                </h3>
-                                            </div>
-                                        </div>
-
-                                        <div className="p-6">
-                                            <p className="text-slate-600 line-clamp-3 mb-4 text-sm leading-relaxed">
-                                                {location.description?.[currentSeason] || location.description?.['winter'] || t('no_description')}
-                                            </p>
-
-                                            <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs text-slate-400 uppercase font-bold">{t('altitude')}</span>
-                                                    <span className="text-sm font-bold text-slate-800">
-                                                        {location.altitude ? `${location.altitude}m` : 'N/D'}
-                                                    </span>
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs text-slate-400 uppercase font-bold">{t('services')}</span>
-                                                    <span className="text-sm font-bold text-slate-800">
-                                                        {location.servicesCount ?? location.services?.length ?? 0}
-                                                    </span>
+                                                <div className="absolute bottom-4 left-4 right-4">
+                                                    <div className="text-white/90 text-sm font-medium mb-1 uppercase tracking-wider">
+                                                        {location.region}, {location.country}
+                                                    </div>
+                                                    <h3 className="text-2xl font-display font-bold text-white">
+                                                        {location.name}
+                                                    </h3>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </Link>
 
-                                    {/* Quick Compare Button */}
-                                    <button
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            if (isSelected) {
-                                                removeLocation(location.id);
-                                            } else {
-                                                if (selectedLocations.length >= 3) {
-                                                    setLimitModalOpen(true);
-                                                    return;
+                                            <div className="p-6">
+                                                <p className="text-slate-600 line-clamp-3 mb-4 text-sm leading-relaxed">
+                                                    {location.description?.[currentSeason] || location.description?.['winter'] || t('no_description')}
+                                                </p>
+
+                                                <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs text-slate-400 uppercase font-bold">{t('altitude')}</span>
+                                                        <span className="text-sm font-bold text-slate-800">
+                                                            {location.altitude ? `${location.altitude}m` : 'N/D'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs text-slate-400 uppercase font-bold">{t('services')}</span>
+                                                        <span className="text-sm font-bold text-slate-800">
+                                                            {location.servicesCount ?? location.services?.length ?? 0}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Link>
+
+                                        {/* Quick Compare Button */}
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (isSelected) {
+                                                    removeLocation(location.id);
+                                                } else {
+                                                    if (selectedLocations.length >= 4) {
+                                                        setLimitModalOpen(true);
+                                                        return;
+                                                    }
+                                                    addLocation(location);
+                                                    setLastAddedLocation(location.name);
+                                                    setModalOpen(true);
                                                 }
-                                                addLocation(location);
-                                                setLastAddedLocation(location.name);
-                                                setModalOpen(true);
-                                            }
-                                        }}
-                                        className={`absolute top-4 right-4 p-2 rounded-xl transition-all z-10 shadow-lg backdrop-blur-md ${isSelected
+                                            }}
+                                            className={`absolute top-4 right-4 p-2 rounded-xl transition-all z-10 shadow-lg backdrop-blur-md ${isSelected
                                                 ? 'bg-primary text-white'
                                                 : 'bg-white/80 text-slate-600 hover:bg-white hover:text-primary'
-                                            }`}
-                                        title={isSelected ? tCommon('remove_from_compare') : tCommon('add_to_compare')}
-                                    >
-                                        {isSelected ? <Check size={20} /> : <Star size={20} />}
-                                    </button>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                                }`}
+                                            title={isSelected ? tCommon('remove_from_compare') : tCommon('add_to_compare')}
+                                        >
+                                            {isSelected ? <Check size={20} /> : <Star size={20} />}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {visibleCount < sortedLocations.length && (
+                            <div className="mt-12 flex justify-center">
+                                <button
+                                    onClick={() => setVisibleCount(prev => prev + 12)}
+                                    className="px-8 py-3 bg-white text-slate-900 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm cursor-pointer"
+                                >
+                                    Carica altre destinazioni
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
 
                 <SuggestLocationBanner />
