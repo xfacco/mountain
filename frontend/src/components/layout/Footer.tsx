@@ -31,8 +31,8 @@ export function Footer() {
                         <p className="text-sm leading-relaxed text-slate-400 mb-6">© 2026 Alpe Match - {t('rights_reserved')}</p>
 
                         <div className="flex gap-4">
-                            <a href="https://www.instagram.com/alpematch/" className="hover:text-white transition-colors"><Instagram size={20} /></a>
-                            <a href="https://x.com/alpematch" className="hover:text-white transition-colors"><X size={20} /></a>
+                            <a target="_Blank" href="https://www.instagram.com/alpematch/" className="hover:text-white transition-colors"><Instagram size={20} /></a>
+                            <a target="_Blank" href="https://x.com/alpematch" className="hover:text-white transition-colors"><X size={20} /></a>
                         </div>
                     </div>
 
@@ -58,6 +58,7 @@ export function Footer() {
                             <li><Link href="/contact" className="hover:text-primary transition-colors">{t('contact')}</Link></li>
                             <li><Link href="/privacy" className="hover:text-primary transition-colors">{t('privacy')}</Link></li>
                             <li><Link href="/terms" className="hover:text-primary transition-colors">{t('terms')}</Link></li>
+                            <li><Link href="/cookie-policy" className="hover:text-primary transition-colors">{t('cookies')}</Link></li>
                         </ul>
                     </div>
                 </div>

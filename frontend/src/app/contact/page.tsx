@@ -19,7 +19,8 @@ export default function ContactPage() {
         email: '',
         reason: 'info',
         description: '',
-        passions: ''
+        passions: '',
+        privacyAccepted: false
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -41,7 +42,8 @@ export default function ContactPage() {
                 email: '',
                 reason: 'info',
                 description: '',
-                passions: ''
+                passions: '',
+                privacyAccepted: false
             });
         } catch (err) {
             console.error("Error submitting contact form:", err);
@@ -193,6 +195,41 @@ export default function ContactPage() {
                                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                             className="w-full px-5 py-4 rounded-xl border border-slate-200 focus:border-primary outline-none transition-all bg-slate-50/50 resize-none"
                                         />
+                                    </div>
+
+                                    <div
+                                        onClick={() => setFormData({ ...formData, privacyAccepted: !formData.privacyAccepted })}
+                                        className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-2xl border border-slate-100 group transition-all hover:bg-white hover:shadow-md cursor-pointer"
+                                    >
+                                        <div className="flex items-center h-5 pt-0.5">
+                                            <input
+                                                id="privacy-checkbox"
+                                                required
+                                                type="checkbox"
+                                                checked={formData.privacyAccepted}
+                                                onChange={(e) => {
+                                                    // This is to prevent double-toggle when clicking the checkbox directly
+                                                    setFormData({ ...formData, privacyAccepted: e.target.checked });
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer transition-all"
+                                            />
+                                        </div>
+                                        <label
+                                            htmlFor="privacy-checkbox"
+                                            className="text-sm text-slate-500 leading-tight cursor-pointer select-none"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            {t('form.privacy_label')}{' '}
+                                            <a
+                                                href="/privacy"
+                                                target="_blank"
+                                                className="text-primary font-bold hover:underline"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                {t('form.privacy_link')}
+                                            </a>
+                                        </label>
                                     </div>
 
                                     {error && (

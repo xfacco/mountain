@@ -150,6 +150,7 @@
         "about": "About Us",
         "privacy": "Privacy Policy",
         "terms": "Terms of Service",
+        "cookies": "Cookie Policy",
         "contact": "Contact"
     },
     "Contact": {
@@ -162,7 +163,9 @@
             "reason": "Reason for Contact",
             "description": "Message",
             "passions": "Your Passions",
-            "passions_hint": "Skiing, Trekking, Spa, etc...",
+            "passions_hint": "E.g. Skiing, SPA, Local food...",
+            "privacy_label": "I agree to the processing of my personal data according to the",
+            "privacy_link": "Privacy Policy",
             "submit": "Send Message",
             "success": "Message sent successfully! We will get back to you soon.",
             "error": "Error sending message. Please try again."

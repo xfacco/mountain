@@ -62,6 +62,7 @@ export const metadata: Metadata = {
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import JsonLd from '@/components/seo/JsonLd';
+import CookieConsent from '@/components/layout/CookieConsent';
 
 export default async function RootLayout({
   children,
@@ -101,7 +102,7 @@ export default async function RootLayout({
       <body className={`${inter.variable} ${outfit.variable} antialiased`}>
         <JsonLd data={websiteSchema} />
         <JsonLd data={organizationSchema} />
-        {/* Google Analytics */}
+        {/* Google Analytics with Consent Mode */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-FWTMGB9GWC"
           strategy="afterInteractive"
@@ -110,13 +111,22 @@ export default async function RootLayout({
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
+            
+            // Set default consent to 'denied'
+            gtag('consent', 'default', {
+              'analytics_storage': 'denied',
+              'ad_storage': 'denied',
+              'ad_user_data': 'denied',
+              'ad_personalization': 'denied'
+            });
 
+            gtag('js', new Date());
             gtag('config', 'G-FWTMGB9GWC');
           `}
         </Script>
         <NextIntlClientProvider messages={messages}>
           <SeasonProvider>
+            <CookieConsent />
             {children}
             <Footer />
           </SeasonProvider>

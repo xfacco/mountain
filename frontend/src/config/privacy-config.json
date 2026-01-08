@@ -1,0 +1,65 @@
+{
+    "siteName": "Alpe Match",
+    "siteUrl": "https://www.alpematch.com",
+    "dataController": "Alpe Match Team",
+    "contactEmail": "alpematch@gmail.com",
+    "lastUpdated": "2026-01-06",
+    "sections": {
+        "search": {
+            "description_it": "Il nostro sistema di ricerca analizza i termini inseriti e i filtri selezionati per interrogare il nostro database di località montane.",
+            "description_en": "Our search system analyzes the terms entered and the selected filters to query our database of mountain locations.",
+            "dataCollected_it": [
+                "Termini di ricerca",
+                "Filtri geografici",
+                "Filtri per servizi"
+            ],
+            "dataCollected_en": [
+                "Search terms",
+                "Geographical filters",
+                "Service filters"
+            ]
+        },
+        "match": {
+            "description_it": "Il Match Wizard è uno strumento interattivo che utilizza le tue risposte a domande su target, stile di viaggio (vibe) e attività preferite per calcolare un indice di affinità con le destinazioni.",
+            "description_en": "The Match Wizard is an interactive tool that uses your answers to questions about target, travel style (vibe) and favorite activities to calculate an affinity index with destinations.",
+            "dataCollected_it": [
+                "Preferenze di viaggio",
+                "Target (famiglia, coppie, etc.)",
+                "Interessi e passioni"
+            ],
+            "dataCollected_en": [
+                "Travel preferences",
+                "Target (family, couples, etc.)",
+                "Interests and passions"
+            ]
+        },
+        "compare": {
+            "description_it": "Lo strumento di comparazione permette di affiancare i dati tecnici e i servizi di un massimo di 3 località contemporaneamente.",
+            "description_en": "The comparison tool allows you to side-by-side technical data and services of up to 3 locations simultaneously.",
+            "dataCollected_it": [
+                "Località selezionate per il confronto"
+            ],
+            "dataCollected_en": [
+                "Locations selected for comparison"
+            ]
+        },
+        "contact": {
+            "description_it": "Modulo di contatto per richieste informazioni, segnalazione bug o suggerimenti.",
+            "description_en": "Contact form for information requests, bug reports or suggestions.",
+            "dataCollected_it": [
+                "Nome",
+                "Cognome",
+                "E-mail",
+                "Messaggio",
+                "Passioni"
+            ],
+            "dataCollected_en": [
+                "First Name",
+                "Last Name",
+                "Email",
+                "Message",
+                "Passions"
+            ]
+        }
+    }
+}

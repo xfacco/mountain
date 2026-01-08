@@ -1,0 +1,27 @@
+{
+    "siteName": "Alpe Match",
+    "lastUpdated": "2026-01-06",
+    "version": "1.0.0",
+    "sections": {
+        "search": {
+            "title_it": "Servizio di Ricerca",
+            "content_it": "Alpe Match fornisce un motore di ricerca per facilitare il reperimento di informazioni sulle località montane. I dati mostrati sono raccolti tramite algoritmi proprietari e fonti pubbliche. Sebbene ci sforziamo di mantenere le informazioni aggiornate, non garantiamo l'assoluta precisione o l'aggiornamento in tempo reale di orari, prezzi o disponibilità dei servizi."
+        },
+        "match": {
+            "title_it": "Match Wizard e Algoritmi",
+            "content_it": "Il sistema di 'Matching' fornisce suggerimenti basati sulle preferenze espresse dall'utente. Tali risultati hanno scopo puramente informativo e non costituiscono consulenza professionale o raccomandazioni di viaggio vincolanti. La scelta finale della destinazione resta di esclusiva responsabilità dell'utente."
+        },
+        "compare": {
+            "title_it": "Strumento di Comparazione",
+            "content_it": "Lo strumento permette il confronto tecnico tra diverse località. Alpe Match non risponde di eventuali discrepanze tra i dati confrontati sul sito e le condizioni effettive riscontrate in loco. Si consiglia sempre di verificare le informazioni critiche sui siti ufficiali dei gestori degli impianti."
+        },
+        "intellectual_property": {
+            "title_it": "Proprietà Intellettuale",
+            "content_it": "Tutti i contenuti, il design, il logo e gli algoritmi di calcolo presenti su Alpe Match sono di proprietà esclusiva del team Alpe Match. È vietata la riproduzione, anche parziale, o l'utilizzo dei dati a fini commerciali senza autorizzazione scritta."
+        },
+        "liability": {
+            "title_it": "Limitazione di Responsabilità",
+            "content_it": "Alpe Match non potrà essere ritenuta responsabile per danni diretti o indiretti derivanti dall'utilizzo del sito o dall'affidamento sulle informazioni in esso contenute."
+        }
+    }
+}
